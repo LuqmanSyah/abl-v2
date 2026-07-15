@@ -4,11 +4,17 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Filament\Resources\Positions\PositionResource;
+use App\Filament\Resources\ReviewPeriods\ReviewPeriodResource;
+use App\Filament\Resources\Trainings\TrainingResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Widgets\EmployeeStats;
 use App\Filament\Widgets\HrStats;
 use App\Filament\Widgets\ManagerStats;
+use App\Models\Position;
+use App\Models\ReviewPeriod;
+use App\Models\Training;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -18,11 +24,44 @@ class FilamentAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_login_page_is_available(): void
+    public function test_all_panel_login_pages_use_one_login_page(): void
     {
-        $this->get('/pegawai/login')->assertOk();
-        $this->get('/atasan/login')->assertOk();
-        $this->get('/hr/login')->assertOk();
+        $this->get('/login')->assertOk();
+        $this->get('/pegawai/login')->assertRedirect('/login');
+        $this->get('/atasan/login')->assertRedirect('/login');
+        $this->get('/hr/login')->assertRedirect('/login');
+    }
+
+    public function test_login_redirects_each_role_to_its_panel(): void
+    {
+        foreach (UserRole::cases() as $role) {
+            $user = User::factory()->create([
+                'role' => $role,
+                'password' => 'password',
+            ]);
+
+            $this->post('/login', [
+                'email' => $user->email,
+                'password' => 'password',
+            ])->assertRedirect('/'.$role->value);
+
+            auth()->logout();
+        }
+    }
+
+    public function test_inactive_user_cannot_log_in(): void
+    {
+        $user = User::factory()->create([
+            'is_active' => false,
+            'password' => 'password',
+        ]);
+
+        $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
     }
 
     public function test_only_hr_can_access_organization_resources(): void
@@ -47,6 +86,65 @@ class FilamentAccessTest extends TestCase
         $user = User::factory()->create(['is_active' => false]);
 
         $this->assertFalse($user->canAccessPanel(filament()->getPanel('employee')));
+    }
+
+    public function test_invalid_organization_assignments_are_rejected(): void
+    {
+        $firstUnit = Unit::create(['name' => 'Satu', 'code' => 'SATU']);
+        $secondUnit = Unit::create(['name' => 'Dua', 'code' => 'DUA']);
+        $otherPosition = Position::create(['unit_id' => $secondUnit->id, 'name' => 'Staf Dua', 'level' => 1]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'unit_id' => $firstUnit->id]);
+        $notManager = User::factory()->create(['role' => UserRole::Employee]);
+
+        try {
+            $employee->update(['manager_id' => $notManager->id]);
+            $this->fail('Pegawai non-Atasan tidak boleh dipilih sebagai atasan langsung.');
+        } catch (\DomainException $exception) {
+            $this->assertSame('Atasan langsung harus pengguna aktif dengan peran Atasan.', $exception->getMessage());
+        }
+
+        $employee->refresh();
+        $this->expectException(\DomainException::class);
+        $employee->update(['position_id' => $otherPosition->id]);
+    }
+
+    public function test_manager_with_subordinates_cannot_be_deactivated_or_change_role(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+
+        foreach ([['is_active' => false], ['role' => UserRole::Hr]] as $attributes) {
+            try {
+                $manager->update($attributes);
+                $this->fail('Atasan dengan bawahan tidak boleh dinonaktifkan atau diubah perannya.');
+            } catch (\DomainException $exception) {
+                $this->assertSame('Atasan yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.', $exception->getMessage());
+            }
+
+            $manager->refresh();
+        }
+
+        $employee->update(['manager_id' => null]);
+        $manager->update(['is_active' => false]);
+
+        $this->assertFalse($manager->is_active);
+    }
+
+    public function test_historical_master_data_cannot_be_hard_deleted(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $employee = User::factory()->create();
+        $period = ReviewPeriod::create([
+            'name' => 'Semester', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0, 'is_active' => true,
+        ]);
+        $training = Training::create(['name' => 'Pelatihan', 'type' => 'internal', 'is_active' => true]);
+        $this->actingAs($hr);
+
+        $this->assertFalse(UserResource::canDelete($employee));
+        $this->assertFalse(ReviewPeriodResource::canDelete($period));
+        $this->assertFalse(TrainingResource::canDelete($training));
     }
 
     public function test_each_role_can_only_access_its_panel(): void
@@ -84,7 +182,7 @@ class FilamentAccessTest extends TestCase
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
         $hr = User::factory()->create(['role' => UserRole::Hr]);
 
-        $this->actingAs($employee)->get('/pegawai')->assertOk();
+        $this->actingAs($employee)->get('/pegawai')->assertOk()->assertSee('portal-filament.css', false);
         $this->assertContains(EmployeeStats::class, filament()->getPanel('employee')->getWidgets());
         $this->actingAs($employee)->get('/pegawai/duty-trips/create')->assertForbidden();
         $this->actingAs($employee)->get('/pegawai/employee-kpis')->assertOk();

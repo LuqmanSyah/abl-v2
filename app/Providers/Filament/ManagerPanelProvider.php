@@ -36,6 +36,11 @@ class ManagerPanelProvider extends RolePanelProvider
                 TrainingRequestResource::class,
                 MentoringResource::class,
             ])
+            ->navigationGroups([
+                'Operasional',
+                'Kinerja',
+                'Pengembangan',
+            ])
             ->widgets([ManagerStats::class, AccountWidget::class])
             ->colors(['primary' => Color::Green]);
     }

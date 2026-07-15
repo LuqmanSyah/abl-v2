@@ -55,10 +55,19 @@ class HrPanelProvider extends RolePanelProvider
                 MentoringResource::class,
                 ActivityLogResource::class,
             ])
+            ->navigationGroups([
+                'Organisasi',
+                'Operasional',
+                'Kinerja',
+                'Pengembangan',
+                'Laporan & Audit',
+            ])
             ->widgets([HrStats::class, AccountWidget::class])
             ->navigationItems([
                 NavigationItem::make('Laporan SDM')
                     ->icon('heroicon-o-chart-bar')
+                    ->group('Laporan & Audit')
+                    ->sort(10)
                     ->url(fn (): string => route('hr.reports.index')),
             ])
             ->colors(['primary' => Color::Amber]);

@@ -36,6 +36,11 @@ class EmployeePanelProvider extends RolePanelProvider
                 TrainingRequestResource::class,
                 MentoringResource::class,
             ])
+            ->navigationGroups([
+                'Operasional',
+                'Kinerja',
+                'Pengembangan',
+            ])
             ->widgets([EmployeeStats::class, AccountWidget::class])
             ->colors(['primary' => Color::Blue]);
     }

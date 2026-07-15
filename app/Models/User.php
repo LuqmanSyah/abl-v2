@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
+use DomainException;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,30 @@ class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $user): void {
+            if ($user->position_id && Position::whereKey($user->position_id)->where('unit_id', $user->unit_id)->doesntExist()) {
+                throw new DomainException('Jabatan harus berasal dari unit kerja yang dipilih.');
+            }
+
+            if ($user->exists && $user->subordinates()->exists()
+                && (($user->isDirty('role') && $user->role !== UserRole::Manager)
+                    || ($user->isDirty('is_active') && ! $user->is_active))) {
+                throw new DomainException('Atasan yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.');
+            }
+
+            if (! $user->manager_id) {
+                return;
+            }
+
+            if ($user->role !== UserRole::Employee || $user->manager_id === $user->id
+                || self::whereKey($user->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()) {
+                throw new DomainException('Atasan langsung harus pengguna aktif dengan peran Atasan.');
+            }
+        });
+    }
 
     /**
      * The attributes that are mass assignable.

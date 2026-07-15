@@ -2,6 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
+use App\Models\Position;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -15,11 +18,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $unit = Unit::firstOrCreate(
+            ['code' => 'SDM'],
+            ['name' => 'Sumber Daya Manusia'],
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $position = Position::firstOrCreate(
+            ['unit_id' => $unit->id, 'name' => 'Admin SDM'],
+            ['level' => 10],
+        );
+
+        User::updateOrCreate(
+            ['email' => 'hr@example.com'],
+            [
+                'name' => 'Admin SDM',
+                'password' => 'password',
+                'role' => UserRole::Hr,
+                'unit_id' => $unit->id,
+                'position_id' => $position->id,
+                'is_active' => true,
+            ],
+        );
     }
 }

@@ -21,8 +21,6 @@ class DutyTripsTable
                 TextColumn::make('manager.name')
                     ->label('Atasan')
                     ->searchable(),
-                TextColumn::make('dutyLocation.name')
-                    ->searchable(),
                 TextColumn::make('destination')
                     ->label('Tujuan')
                     ->searchable(),
@@ -37,26 +35,11 @@ class DutyTripsTable
                 TextColumn::make('location_name')
                     ->label('Lokasi')
                     ->searchable(),
-                TextColumn::make('latitude')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('longitude')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('radius_meters')
-                    ->label('Radius (m)')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('supporting_document_path')
-                    ->searchable(),
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state)
                     ->searchable(),
-                TextColumn::make('approved_at')
-                    ->dateTime()
-                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

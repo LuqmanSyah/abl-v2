@@ -14,7 +14,7 @@ enum DutyTripStatus: string
     {
         return match ($this) {
             self::Pending => 'Menunggu Persetujuan',
-            self::Approved => 'Disetujui',
+            self::Approved => 'Ditugaskan',
             self::Rejected => 'Ditolak',
             self::Completed => 'Selesai',
             self::Cancelled => 'Dibatalkan',

@@ -18,17 +18,23 @@ class DutyTripInfolist
                 TextEntry::make('manager.name')
                     ->label('Atasan'),
                 TextEntry::make('dutyLocation.name')
-                    ->label('Duty location')
+                    ->label('Lokasi terdaftar')
                     ->placeholder('-'),
-                TextEntry::make('destination'),
+                TextEntry::make('destination')
+                    ->label('Tujuan dinas'),
                 TextEntry::make('purpose')
+                    ->label('Keperluan')
                     ->columnSpanFull(),
                 TextEntry::make('starts_at')
+                    ->label('Mulai')
                     ->dateTime(),
                 TextEntry::make('ends_at')
+                    ->label('Selesai')
                     ->dateTime(),
-                TextEntry::make('location_name'),
+                TextEntry::make('location_name')
+                    ->label('Nama lokasi'),
                 TextEntry::make('address')
+                    ->label('Alamat')
                     ->columnSpanFull(),
                 ViewEntry::make('map')
                     ->label('Titik lokasi')
@@ -39,16 +45,16 @@ class DutyTripInfolist
                 TextEntry::make('longitude')
                     ->numeric(),
                 TextEntry::make('radius_meters')
+                    ->label('Radius (meter)')
                     ->numeric(),
                 TextEntry::make('supporting_document_path')
+                    ->label('Dokumen pendukung')
                     ->placeholder('-'),
                 TextEntry::make('status')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state),
-                TextEntry::make('rejection_reason')
-                    ->placeholder('-')
-                    ->columnSpanFull(),
                 TextEntry::make('approved_at')
+                    ->label('Ditugaskan pada')
                     ->dateTime()
                     ->placeholder('-'),
                 TextEntry::make('created_at')

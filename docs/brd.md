@@ -30,9 +30,9 @@ Sistem mencakup tiga layanan utama:
 
 1. **Absensi Dinas**
 
-   * Pengajuan dinas.
+   * Perintah dinas oleh Atasan.
    * Pemilihan lokasi melalui Google Maps.
-   * Persetujuan Atasan.
+   * Penugasan kepada bawahan langsung.
    * Absensi menggunakan GPS dan foto langsung.
    * Validasi radius lokasi.
    * Penyimpanan absensi secara luring.
@@ -53,7 +53,7 @@ Sistem mencakup tiga layanan utama:
 
 ## 1.4 Batasan Sistem
 
-1. Sistem hanya menangani absensi untuk dinas yang telah disetujui.
+1. Sistem hanya menangani absensi untuk perintah dinas aktif.
 2. Sistem hanya menampilkan estimasi bonus dan tidak memproses pembayaran.
 3. Mentor dalam sistem merupakan Atasan.
 4. Sistem tidak menggantikan sistem penggajian.
@@ -67,8 +67,7 @@ Sistem mencakup tiga layanan utama:
 
 Pegawai dapat:
 
-* Mengajukan dinas.
-* Memilih lokasi dinas melalui Google Maps.
+* Melihat perintah dinas dari Atasan.
 * Melakukan absensi menggunakan GPS dan kamera.
 * Melihat KPI dan skor merit.
 * Mengisi penilaian 360 derajat.
@@ -80,7 +79,8 @@ Pegawai dapat:
 
 Atasan dapat:
 
-* Menyetujui atau menolak pengajuan dinas.
+* Membuat, mengubah, atau membatalkan perintah dinas bagi bawahan.
+* Memilih lokasi dinas melalui Google Maps.
 * Melihat lokasi dinas pada peta.
 * Memantau absensi Pegawai.
 * Menetapkan dan menilai KPI.
@@ -111,7 +111,7 @@ Sistem harus mencegah kecurangan absensi dinas melalui validasi GPS, radius loka
 
 ## BR-02
 
-Sistem harus mempermudah proses pengajuan dan persetujuan dinas.
+Sistem harus mempermudah penerbitan dan pemantauan perintah dinas.
 
 ## BR-03
 
@@ -151,10 +151,11 @@ Admin SDM/HR harus dapat mengelola akun dan data Pegawai.
 
 ## 4.2 Absensi Dinas
 
-### FR-ABS-01 — Pengajuan Dinas
+### FR-ABS-01 — Perintah Dinas
 
-Pegawai dapat mengisi pengajuan dinas yang memuat:
+Atasan dapat membuat perintah dinas bagi bawahan langsung yang memuat:
 
+* Pegawai yang ditugaskan;
 * Tujuan dinas;
 * Tanggal dan waktu;
 * Keperluan;
@@ -163,7 +164,7 @@ Pegawai dapat mengisi pengajuan dinas yang memuat:
 
 ### FR-ABS-02 — Map Picker
 
-Sistem harus menyediakan Google Maps Map Picker agar Pegawai dapat:
+Sistem harus menyediakan Google Maps Map Picker agar Atasan dapat:
 
 * Mencari lokasi berdasarkan nama atau alamat;
 * Memilih titik lokasi pada peta;
@@ -180,13 +181,13 @@ Admin SDM/HR dapat menyimpan lokasi yang sering digunakan beserta:
 * Longitude;
 * Radius geofencing.
 
-### FR-ABS-04 — Persetujuan Dinas
+### FR-ABS-04 — Penerbitan Dinas
 
-Atasan dapat melihat detail dan titik lokasi pada peta, kemudian menyetujui atau menolak pengajuan.
+Perintah dinas langsung aktif setelah dibuat Atasan dan dapat dilihat Pegawai yang ditugaskan.
 
 ### FR-ABS-05 — Penguncian Lokasi
 
-Setelah pengajuan disetujui, Pegawai tidak dapat mengubah lokasi dinas.
+Atasan hanya dapat mengubah atau membatalkan perintah sebelum waktu mulai. Pegawai tidak dapat mengubah lokasi dinas.
 
 ### FR-ABS-06 — Validasi GPS
 
@@ -194,7 +195,7 @@ Saat absensi, sistem harus mengambil koordinat aktual Pegawai.
 
 ### FR-ABS-07 — Validasi Radius
 
-Sistem harus menghitung jarak antara posisi Pegawai dan lokasi dinas yang telah disetujui.
+Sistem harus menghitung jarak antara posisi Pegawai dan lokasi perintah dinas.
 
 Absensi dinyatakan valid apabila Pegawai berada di dalam radius yang ditentukan.
 
@@ -330,26 +331,26 @@ Atasan dapat mencatat:
 
 # 5. Alur Proses Bisnis
 
-## 5.1 Pengajuan Dinas
+## 5.1 Perintah Dinas
 
-1. Pegawai mengisi formulir pengajuan dinas.
-2. Pegawai memilih lokasi melalui Google Maps Map Picker.
+1. Atasan memilih bawahan langsung yang akan ditugaskan.
+2. Atasan memilih lokasi melalui Google Maps Map Picker.
 3. Sistem menyimpan alamat, latitude, dan longitude.
-4. Pegawai mengirim pengajuan.
-5. Atasan melihat detail dan lokasi pada peta.
-6. Atasan menyetujui atau menolak pengajuan.
-7. Jika disetujui, lokasi dikunci.
-8. Pegawai menerima informasi hasil pengajuan.
+4. Atasan mengisi tujuan, keperluan, dan jadwal dinas.
+5. Atasan menerbitkan perintah dinas.
+6. Pegawai menerima dan melihat tugas.
+7. Atasan dapat mengubah atau membatalkan tugas sebelum waktu mulai.
+8. Lokasi dikunci setelah tugas berjalan atau absensi tercatat.
 
 **Alur singkat:**
 
-**Pegawai mengajukan dinas → memilih lokasi → Atasan memeriksa → Atasan menyetujui atau menolak.**
+**Atasan memilih bawahan dan lokasi → perintah dinas aktif → Pegawai melihat tugas.**
 
 ---
 
 ## 5.2 Absensi Dinas
 
-1. Pegawai membuka dinas yang telah disetujui.
+1. Pegawai membuka perintah dinas aktif.
 2. Sistem mengambil lokasi GPS Pegawai.
 3. Sistem membandingkan posisi Pegawai dengan lokasi dinas.
 4. Sistem menghitung jarak dan memeriksa radius.
@@ -403,13 +404,11 @@ Atasan dapat mencatat:
 
 # 6. Status Utama Sistem
 
-## 6.1 Status Pengajuan Dinas
+## 6.1 Status Perintah Dinas
 
-* Menunggu Persetujuan;
-* Disetujui;
-* Ditolak;
-* Selesai;
-* Dibatalkan.
+* Ditugaskan;
+* Dibatalkan;
+* Selesai.
 
 ## 6.2 Status Absensi
 
@@ -481,10 +480,10 @@ Sistem harus melakukan pencadangan data secara berkala.
 
 # 8. Aturan Bisnis
 
-1. Pegawai hanya dapat melakukan absensi pada dinas yang telah disetujui.
-2. Pegawai wajib memilih lokasi sebelum mengirim pengajuan.
-3. Atasan wajib memeriksa lokasi pada peta.
-4. Lokasi tidak dapat diubah setelah pengajuan disetujui.
+1. Pegawai hanya dapat melakukan absensi pada perintah dinas aktif miliknya.
+2. Atasan wajib memilih bawahan langsung dan lokasi sebelum menerbitkan perintah.
+3. Atasan dapat mengubah atau membatalkan perintah sebelum waktu mulai.
+4. Lokasi tidak dapat diubah setelah tugas berjalan atau absensi tercatat.
 5. Pegawai wajib mengaktifkan GPS dan kamera saat absensi.
 6. Foto absensi harus diambil langsung melalui kamera.
 7. Validasi lokasi menggunakan latitude dan longitude.
@@ -502,7 +501,7 @@ Sistem mengelola data:
 
 * Pengguna dan Pegawai;
 * Jabatan dan unit kerja;
-* Pengajuan dinas;
+* Perintah dinas;
 * Lokasi dinas;
 * Latitude dan longitude;
 * Radius geofencing;
@@ -521,9 +520,9 @@ Sistem mengelola data:
 
 Sistem dianggap berhasil apabila:
 
-1. Pegawai dapat mengajukan dinas.
-2. Pegawai dapat memilih lokasi melalui Google Maps.
-3. Atasan dapat memeriksa dan menyetujui lokasi dinas.
+1. Atasan dapat membuat perintah dinas bagi bawahan langsung.
+2. Atasan dapat memilih lokasi melalui Google Maps.
+3. Pegawai dapat melihat tugas dinas tanpa mengubahnya.
 4. Sistem dapat memvalidasi posisi Pegawai berdasarkan radius.
 5. Sistem dapat mengambil foto langsung.
 6. Absensi dapat disimpan ketika perangkat luring.

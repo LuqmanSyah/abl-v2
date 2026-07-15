@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\DutyTrips;
 
-use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\DutyTrips\Pages\CreateDutyTrip;
 use App\Filament\Resources\DutyTrips\Pages\EditDutyTrip;
@@ -28,7 +27,17 @@ class DutyTripResource extends Resource
 
     protected static ?string $modelLabel = 'dinas';
 
-    protected static ?string $pluralModelLabel = 'pengajuan dinas';
+    protected static ?string $pluralModelLabel = 'dinas';
+
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Dinas Saya',
+            UserRole::Manager => 'Perintah Dinas',
+            UserRole::Hr => 'Monitoring Dinas',
+            default => 'Dinas',
+        };
+    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -47,19 +56,19 @@ class DutyTripResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->role === UserRole::Employee;
+        return auth()->user()?->role === UserRole::Manager;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->role === UserRole::Employee
-            && $record->employee_id === auth()->id()
-            && $record->status === DutyTripStatus::Pending;
+        $user = auth()->user();
+
+        return $user && $record instanceof DutyTrip && $record->canBeChangedBy($user);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        return false;
     }
 
     public static function form(Schema $schema): Schema

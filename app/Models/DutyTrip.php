@@ -31,14 +31,33 @@ class DutyTrip extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (self $trip): void {
+        $validateAssignment = function (self $trip): void {
+            $validManager = User::whereKey($trip->manager_id)->where('role', UserRole::Manager)->exists();
+            $validEmployee = User::whereKey($trip->employee_id)
+                ->where('role', UserRole::Employee)
+                ->where('manager_id', $trip->manager_id)
+                ->exists();
+
+            if (! $validManager || ! $validEmployee) {
+                throw new DomainException('Pegawai harus merupakan bawahan langsung Atasan pemberi tugas.');
+            }
+        };
+
+        static::creating($validateAssignment);
+        static::created(fn (self $trip) => ActivityLog::record('duty_trip.assigned', $trip));
+
+        static::updating(function (self $trip) use ($validateAssignment): void {
+            if ($trip->isDirty(['employee_id', 'manager_id'])) {
+                $validateAssignment($trip);
+            }
+
             $locked = [
                 'duty_location_id', 'location_name', 'address', 'latitude', 'longitude', 'radius_meters',
             ];
 
-            if (in_array($trip->getRawOriginal('status'), [DutyTripStatus::Approved->value, DutyTripStatus::Completed->value], true)
+            if (($trip->getRawOriginal('status') === DutyTripStatus::Completed->value || $trip->attendance()->exists())
                 && $trip->isDirty($locked)) {
-                throw new DomainException('Lokasi dinas yang disetujui tidak dapat diubah.');
+                throw new DomainException('Lokasi dinas yang telah selesai tidak dapat diubah.');
             }
         });
     }
@@ -63,22 +82,23 @@ class DutyTrip extends Model
         return $this->hasOne(Attendance::class);
     }
 
-    public function approve(User $manager): void
+    public function canBeChangedBy(User $manager): bool
     {
-        if ($this->status !== DutyTripStatus::Pending || $this->manager_id !== $manager->id) {
-            throw new DomainException('Pengajuan tidak dapat disetujui oleh pengguna ini.');
-        }
-
-        $this->update(['status' => DutyTripStatus::Approved, 'approved_at' => now(), 'rejection_reason' => null]);
+        return $manager->role === UserRole::Manager
+            && $this->manager_id === $manager->id
+            && $this->status === DutyTripStatus::Approved
+            && $this->starts_at->isFuture()
+            && ! $this->attendance()->exists();
     }
 
-    public function reject(User $manager, string $reason): void
+    public function cancel(User $manager): void
     {
-        if ($this->status !== DutyTripStatus::Pending || $this->manager_id !== $manager->id) {
-            throw new DomainException('Pengajuan tidak dapat ditolak oleh pengguna ini.');
+        if (! $this->canBeChangedBy($manager)) {
+            throw new DomainException('Perintah dinas tidak dapat dibatalkan pengguna ini.');
         }
 
-        $this->update(['status' => DutyTripStatus::Rejected, 'rejection_reason' => $reason]);
+        $this->update(['status' => DutyTripStatus::Cancelled]);
+        ActivityLog::record('duty_trip.cancelled', $this, $manager);
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

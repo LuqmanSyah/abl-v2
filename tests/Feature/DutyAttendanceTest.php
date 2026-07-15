@@ -24,29 +24,39 @@ class DutyAttendanceTest extends TestCase
         $this->assertSame(111, GeoDistance::meters(-6.1754, 106.8272, -6.1744, 106.8272));
     }
 
-    public function test_only_assigned_manager_can_approve_and_location_is_then_locked(): void
+    public function test_only_assigned_manager_can_change_or_cancel_future_trip(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $trip->update(['starts_at' => now()->addHour(), 'ends_at' => now()->addHours(2)]);
+        $otherManager = User::factory()->create(['role' => UserRole::Manager]);
+
+        $this->assertFalse($trip->canBeChangedBy($otherManager));
+        $this->assertTrue($trip->canBeChangedBy($manager));
+
+        try {
+            $trip->cancel($otherManager);
+            $this->fail('Atasan lain seharusnya ditolak.');
+        } catch (DomainException) {
+            $this->assertSame(DutyTripStatus::Approved, $trip->status);
+        }
+
+        $trip->cancel($manager);
+        $this->assertSame(DutyTripStatus::Cancelled, $trip->fresh()->status);
+    }
+
+    public function test_manager_cannot_assign_another_managers_subordinate(): void
     {
         [$employee, $manager, $trip] = $this->trip();
         $otherManager = User::factory()->create(['role' => UserRole::Manager]);
-
-        try {
-            $trip->approve($otherManager);
-            $this->fail('Manager lain seharusnya ditolak.');
-        } catch (DomainException) {
-            $this->assertSame(DutyTripStatus::Pending, $trip->status);
-        }
-
-        $trip->approve($manager);
-        $this->assertSame(DutyTripStatus::Approved, $trip->fresh()->status);
+        $otherEmployee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $otherManager->id]);
 
         $this->expectException(DomainException::class);
-        $trip->update(['latitude' => -7.0]);
+        $trip->update(['employee_id' => $otherEmployee->id]);
     }
 
     public function test_attendance_is_valid_inside_radius_and_idempotent(): void
     {
         [$employee, $manager, $trip] = $this->trip();
-        $trip->approve($manager);
         $payload = [
             'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862217',
             'captured_at' => now()->toIso8601String(),
@@ -61,13 +71,16 @@ class DutyAttendanceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::Valid, $first->status);
         $this->assertTrue($first->is($second));
+        $this->assertSame(DutyTripStatus::Completed, $trip->fresh()->status);
         $this->assertDatabaseCount('attendances', 1);
+
+        $this->expectException(DomainException::class);
+        $trip->update(['latitude' => -7.0]);
     }
 
     public function test_outside_radius_and_poor_accuracy_are_flagged(): void
     {
         [$employee, $manager, $trip] = $this->trip();
-        $trip->approve($manager);
         $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
             'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862218',
             'captured_at' => now()->toIso8601String(),
@@ -83,7 +96,6 @@ class DutyAttendanceTest extends TestCase
     public function test_outside_radius_and_late_attendance_are_classified(): void
     {
         [$employee, $manager, $trip] = $this->trip();
-        $trip->approve($manager);
         $outside = app(AttendanceRecorder::class)->record($trip, $employee, [
             'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862219',
             'captured_at' => now()->toIso8601String(),
@@ -94,7 +106,6 @@ class DutyAttendanceTest extends TestCase
 
         [$lateEmployee, $lateManager, $lateTrip] = $this->trip();
         $lateTrip->update(['starts_at' => now()->subHours(3), 'ends_at' => now()->subHours(2)]);
-        $lateTrip->approve($lateManager);
         $late = app(AttendanceRecorder::class)->record($lateTrip, $lateEmployee, [
             'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862220',
             'captured_at' => now()->toIso8601String(),
@@ -111,7 +122,6 @@ class DutyAttendanceTest extends TestCase
     {
         Storage::fake('local');
         [$employee, $manager, $trip] = $this->trip();
-        $trip->approve($manager);
         $payload = [
             'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862221',
             'captured_at' => now()->toIso8601String(),
@@ -130,16 +140,18 @@ class DutyAttendanceTest extends TestCase
         $this->assertDatabaseCount('attendances', 1);
     }
 
-    public function test_manager_approval_and_employee_capture_pages_render(): void
+    public function test_manager_assigns_trip_and_employee_captures_attendance(): void
     {
         [$employee, $manager, $trip] = $this->trip();
 
         $this->actingAs($manager)
-            ->get("/atasan/duty-trips/{$trip->id}")
+            ->get('/atasan/duty-trips/create')
             ->assertOk()
-            ->assertSee('Setujui');
+            ->assertSee('Pegawai yang ditugaskan');
 
-        $trip->approve($manager);
+        $this->actingAs($employee)
+            ->get('/pegawai/duty-trips/create')
+            ->assertForbidden();
 
         $this->actingAs($employee)
             ->get(route('attendance.capture', $trip))
@@ -164,7 +176,8 @@ class DutyAttendanceTest extends TestCase
             'latitude' => -6.1754,
             'longitude' => 106.8272,
             'radius_meters' => 100,
-            'status' => DutyTripStatus::Pending,
+            'status' => DutyTripStatus::Approved,
+            'approved_at' => now(),
         ]);
 
         return [$employee, $manager, $trip];

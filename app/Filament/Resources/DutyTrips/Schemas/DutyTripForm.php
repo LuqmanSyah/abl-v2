@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DutyTrips\Schemas;
 
 use App\Enums\DutyTripStatus;
+use App\Enums\UserRole;
 use App\Filament\Forms\Components\MapPicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class DutyTripForm
 {
@@ -18,14 +20,21 @@ class DutyTripForm
     {
         return $schema
             ->components([
-                Hidden::make('employee_id'),
+                Select::make('employee_id')
+                    ->label('Pegawai yang ditugaskan')
+                    ->relationship('employee', 'name', fn (Builder $query) => $query
+                        ->where('role', UserRole::Employee)
+                        ->where('manager_id', auth()->id()))
+                    ->searchable()
+                    ->preload()
+                    ->required(),
                 Hidden::make('manager_id'),
                 Select::make('duty_location_id')
                     ->label('Lokasi terdaftar')
                     ->relationship('dutyLocation', 'name', fn ($query) => $query->where('is_active', true))
                     ->searchable()
                     ->preload()
-                    ->helperText('Opsional. Koordinat lokasi terdaftar disalin saat pengajuan dibuat.'),
+                    ->helperText('Opsional. Koordinat lokasi terdaftar disalin saat perintah dibuat.'),
                 MapPicker::make('map_picker')
                     ->label('Pilih titik lokasi')
                     ->dehydrated(false)
@@ -76,7 +85,7 @@ class DutyTripForm
                     ->disk('local')
                     ->directory('duty-trip-documents')
                     ->maxSize(5120),
-                Hidden::make('status')->default(DutyTripStatus::Pending->value),
+                Hidden::make('status')->default(DutyTripStatus::Approved->value),
             ]);
     }
 }

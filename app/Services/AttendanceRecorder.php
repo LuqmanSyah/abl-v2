@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
+use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\User;
@@ -16,8 +17,8 @@ class AttendanceRecorder
     /** @param array<string, mixed> $data */
     public function record(DutyTrip $trip, User $employee, array $data, string $photoPath): Attendance
     {
-        if ($trip->employee_id !== $employee->id || $trip->status !== DutyTripStatus::Approved) {
-            throw new DomainException('Absensi hanya tersedia untuk dinas yang telah disetujui.');
+        if ($trip->employee_id !== $employee->id) {
+            throw new DomainException('Absensi hanya tersedia untuk Pegawai yang ditugaskan.');
         }
 
         if ($existing = Attendance::where('client_uuid', $data['client_uuid'])->first()) {
@@ -30,6 +31,10 @@ class AttendanceRecorder
 
         if ($existing = $trip->attendance()->first()) {
             return $existing;
+        }
+
+        if ($trip->status !== DutyTripStatus::Approved) {
+            throw new DomainException('Absensi hanya tersedia untuk dinas aktif.');
         }
 
         $capturedAt = CarbonImmutable::parse($data['captured_at']);
@@ -49,7 +54,7 @@ class AttendanceRecorder
             default => AttendanceStatus::Valid,
         };
 
-        return Attendance::create([
+        $attendance = Attendance::create([
             ...$data,
             'duty_trip_id' => $trip->id,
             'employee_id' => $employee->id,
@@ -59,5 +64,10 @@ class AttendanceRecorder
             'mock_location_suspected' => $suspected,
             'synced_at' => now(),
         ]);
+
+        $trip->update(['status' => DutyTripStatus::Completed]);
+        ActivityLog::record('duty_trip.completed', $trip, $employee, ['attendance_id' => $attendance->id]);
+
+        return $attendance;
     }
 }

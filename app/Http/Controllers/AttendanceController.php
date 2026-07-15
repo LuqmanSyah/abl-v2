@@ -61,6 +61,7 @@ class AttendanceController extends Controller
             UserRole::Hr => true,
         };
         abort_unless($allowed, 403);
+        abort_unless($attendance->photo_path && Storage::disk('local')->exists($attendance->photo_path), 404);
 
         return Storage::disk('local')->response($attendance->photo_path);
     }
@@ -69,6 +70,6 @@ class AttendanceController extends Controller
     {
         return $request->user()?->role === UserRole::Employee
             && $trip->employee_id === $request->user()->id
-            && $trip->status === DutyTripStatus::Approved;
+            && in_array($trip->status, [DutyTripStatus::Approved, DutyTripStatus::Completed], true);
     }
 }

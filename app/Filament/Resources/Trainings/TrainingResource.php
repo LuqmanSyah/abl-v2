@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Filament\Resources\Trainings\Pages\ListTrainings;
 use App\Models\Training;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -21,12 +20,17 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class TrainingResource extends Resource
 {
     protected static ?string $model = Training::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pengembangan';
+
+    protected static ?int $navigationSort = 50;
 
     protected static ?string $modelLabel = 'pelatihan';
 
@@ -56,7 +60,7 @@ class TrainingResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return static::canCreate();
+        return false;
     }
 
     public static function form(Schema $schema): Schema
@@ -86,7 +90,6 @@ class TrainingResource extends Resource
             ])
             ->recordActions([
                 EditAction::make()->visible(fn (): bool => auth()->user()->role === UserRole::Hr),
-                DeleteAction::make()->visible(fn (): bool => auth()->user()->role === UserRole::Hr),
             ]);
     }
 

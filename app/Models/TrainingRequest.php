@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class TrainingRequest extends Model
 {
@@ -66,58 +67,88 @@ class TrainingRequest extends Model
 
     public function approveByManager(User $manager, ?string $notes = null): void
     {
-        if ($manager->role !== UserRole::Manager || $this->manager_id !== $manager->id || $this->status !== TrainingRequestStatus::PendingManager) {
-            throw new DomainException('Pengajuan pelatihan tidak dapat disetujui pengguna ini.');
-        }
+        $this->transition(function (self $request) use ($manager, $notes): void {
+            if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
+                throw new DomainException('Pengajuan pelatihan tidak dapat disetujui pengguna ini.');
+            }
 
-        $this->update([
-            'status' => TrainingRequestStatus::PendingHr,
-            'manager_notes' => $notes,
-            'manager_decided_at' => now(),
-        ]);
-        ActivityLog::record('training.manager_approved', $this, $manager);
+            $request->update([
+                'status' => TrainingRequestStatus::PendingHr,
+                'manager_notes' => $notes,
+                'manager_decided_at' => now(),
+            ]);
+            ActivityLog::record('training.manager_approved', $request, $manager);
+        });
+    }
+
+    public function resubmit(User $employee, string $reason): void
+    {
+        $this->transition(function (self $request) use ($employee, $reason): void {
+            if ($employee->role !== UserRole::Employee || $request->user_id !== $employee->id
+                || $request->status !== TrainingRequestStatus::Rejected || ! $employee->manager_id
+                || User::whereKey($employee->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
+                || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
+                throw new DomainException('Pengajuan pelatihan ini tidak dapat diajukan ulang.');
+            }
+
+            $request->update([
+                'manager_id' => $employee->manager_id,
+                'status' => TrainingRequestStatus::PendingManager,
+                'reason' => $reason,
+                'manager_notes' => null,
+                'manager_decided_at' => null,
+                'requested_at' => now(),
+            ]);
+            ActivityLog::record('training.resubmitted', $request, $employee);
+        });
     }
 
     public function rejectByManager(User $manager, string $notes): void
     {
-        if ($manager->role !== UserRole::Manager || $this->manager_id !== $manager->id || $this->status !== TrainingRequestStatus::PendingManager) {
-            throw new DomainException('Pengajuan pelatihan tidak dapat ditolak pengguna ini.');
-        }
+        $this->transition(function (self $request) use ($manager, $notes): void {
+            if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
+                throw new DomainException('Pengajuan pelatihan tidak dapat ditolak pengguna ini.');
+            }
 
-        $this->update([
-            'status' => TrainingRequestStatus::Rejected,
-            'manager_notes' => $notes,
-            'manager_decided_at' => now(),
-        ]);
-        ActivityLog::record('training.manager_rejected', $this, $manager);
+            $request->update([
+                'status' => TrainingRequestStatus::Rejected,
+                'manager_notes' => $notes,
+                'manager_decided_at' => now(),
+            ]);
+            ActivityLog::record('training.manager_rejected', $request, $manager);
+        });
     }
 
     public function verifyByHr(User $hr): void
     {
-        if ($hr->role !== UserRole::Hr || $this->status !== TrainingRequestStatus::PendingHr) {
-            throw new DomainException('Pengajuan pelatihan belum dapat diverifikasi HR.');
-        }
+        $this->transition(function (self $request) use ($hr): void {
+            if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::PendingHr) {
+                throw new DomainException('Pengajuan pelatihan belum dapat diverifikasi HR.');
+            }
 
-        $this->update([
-            'status' => TrainingRequestStatus::Approved,
-            'hr_verified_by' => $hr->id,
-            'hr_verified_at' => now(),
-        ]);
-        ActivityLog::record('training.hr_verified', $this, $hr);
+            $request->update([
+                'status' => TrainingRequestStatus::Approved,
+                'hr_verified_by' => $hr->id,
+                'hr_verified_at' => now(),
+            ]);
+            ActivityLog::record('training.hr_verified', $request, $hr);
+        });
     }
 
     public function complete(User $hr, string $result): void
     {
-        if ($hr->role !== UserRole::Hr || $this->status !== TrainingRequestStatus::Approved) {
-            throw new DomainException('Pelatihan belum dapat diselesaikan.');
-        }
+        $this->transition(function (self $request) use ($hr, $result): void {
+            if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::Approved) {
+                throw new DomainException('Pelatihan belum dapat diselesaikan.');
+            }
 
-        $this->update([
-            'status' => TrainingRequestStatus::Completed,
-            'hr_result' => $result,
-            'completed_at' => now(),
-        ]);
-        ActivityLog::record('training.completed', $this, $hr);
+            $request->update([
+                'status' => TrainingRequestStatus::Completed,
+                'hr_result' => $result,
+                'completed_at' => now(),
+            ]);
+            ActivityLog::record('training.completed', $request, $hr);
+        });
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
@@ -127,5 +158,14 @@ class TrainingRequest extends Model
             UserRole::Manager => $query->where('manager_id', $user->id),
             UserRole::Hr => $query,
         };
+    }
+
+    private function transition(callable $transition): void
+    {
+        DB::transaction(function () use ($transition): void {
+            $request = self::query()->lockForUpdate()->findOrFail($this->id);
+            $transition($request);
+            $this->setRawAttributes($request->getAttributes(), true);
+        }, 3);
     }
 }

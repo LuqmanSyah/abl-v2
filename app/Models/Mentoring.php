@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MentoringStatus;
 use App\Enums\UserRole;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -34,6 +35,11 @@ class Mentoring extends Model
         static::creating(function (self $mentoring): void {
             $mentoring->status ??= MentoringStatus::Pending;
 
+            if ($mentoring->status === MentoringStatus::Pending
+                && (! $mentoring->requested_at || $mentoring->requested_at->isPast())) {
+                throw new DomainException('Jadwal mentoring yang diajukan tidak boleh lampau.');
+            }
+
             if (auth()->user()?->role === UserRole::Employee && $mentoring->employee_id !== auth()->id()) {
                 throw new DomainException('Pegawai hanya dapat mengajukan mentoring untuk dirinya sendiri.');
             }
@@ -59,6 +65,10 @@ class Mentoring extends Model
     public function approve(User $manager, mixed $scheduledAt, ?string $notes = null): void
     {
         $this->guardManager($manager, MentoringStatus::Pending);
+        $scheduledAt = CarbonImmutable::parse($scheduledAt);
+        if ($scheduledAt->isPast()) {
+            throw new DomainException('Jadwal mentoring yang disetujui tidak boleh lampau.');
+        }
         $this->update([
             'status' => MentoringStatus::Approved,
             'scheduled_at' => $scheduledAt,

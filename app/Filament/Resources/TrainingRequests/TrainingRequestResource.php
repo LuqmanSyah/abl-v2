@@ -18,12 +18,17 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class TrainingRequestResource extends Resource
 {
     protected static ?string $model = TrainingRequest::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pengembangan';
+
+    protected static ?int $navigationSort = 60;
 
     protected static ?string $modelLabel = 'pengajuan pelatihan';
 
@@ -63,8 +68,13 @@ class TrainingRequestResource extends Resource
             Hidden::make('requested_at')->default(fn () => now()),
             Select::make('training_id')
                 ->label('Pelatihan')
-                ->relationship('training', 'name', fn (Builder $query) => $query->where('is_active', true))
-                ->searchable()->preload()->required(),
+                ->relationship('training', 'name', fn (Builder $query) => $query
+                    ->where('is_active', true)
+                    ->whereDoesntHave('requests', fn (Builder $query) => $query->where('user_id', auth()->id())))
+                ->searchable()
+                ->preload()
+                ->required()
+                ->helperText('Pelatihan yang pernah diajukan dikelola dari baris pengajuan sebelumnya.'),
             Textarea::make('reason')->label('Alasan pengajuan')->required()->columnSpanFull(),
         ]);
     }
@@ -83,6 +93,14 @@ class TrainingRequestResource extends Resource
                 TextColumn::make('requested_at')->label('Diajukan')->dateTime()->sortable(),
             ])
             ->recordActions([
+                Action::make('resubmit')->label('Ajukan Ulang')->color('primary')
+                    ->icon('heroicon-o-arrow-path')
+                    ->schema([Textarea::make('reason')->label('Alasan pengajuan terbaru')->required()])
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Employee
+                        && $record->user_id === auth()->id()
+                        && $record->status === TrainingRequestStatus::Rejected)
+                    ->action(fn ($record, array $data) => $record->resubmit(auth()->user(), $data['reason']))
+                    ->successNotificationTitle('Pengajuan dikirim ulang kepada Atasan'),
                 Action::make('approve_manager')->label('Setujui')->color('success')
                     ->schema([Textarea::make('notes')->label('Catatan')])
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === TrainingRequestStatus::PendingManager)

@@ -16,12 +16,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class PositionCompetencyResource extends Resource
 {
     protected static ?string $model = PositionCompetency::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pengembangan';
+
+    protected static ?int $navigationSort = 20;
 
     protected static ?string $modelLabel = 'standar kompetensi jabatan';
 

@@ -19,12 +19,17 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class MentoringResource extends Resource
 {
     protected static ?string $model = Mentoring::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pengembangan';
+
+    protected static ?int $navigationSort = 70;
 
     protected static ?string $modelLabel = 'mentoring';
 
@@ -63,7 +68,7 @@ class MentoringResource extends Resource
             Hidden::make('status')->default(MentoringStatus::Pending->value),
             TextInput::make('topic')->label('Topik')->required(),
             Textarea::make('target')->label('Target')->required()->columnSpanFull(),
-            DateTimePicker::make('requested_at')->label('Jadwal yang diajukan')->native(false)->required(),
+            DateTimePicker::make('requested_at')->label('Jadwal yang diajukan')->native(false)->minDate(now())->required(),
         ]);
     }
 
@@ -84,7 +89,7 @@ class MentoringResource extends Resource
             ->recordActions([
                 Action::make('approve')->label('Jadwalkan')->color('success')
                     ->schema([
-                        DateTimePicker::make('scheduled_at')->label('Jadwal')->native(false)->required(),
+                        DateTimePicker::make('scheduled_at')->label('Jadwal')->native(false)->minDate(now())->required(),
                         Textarea::make('notes')->label('Catatan'),
                     ])
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === MentoringStatus::Pending)

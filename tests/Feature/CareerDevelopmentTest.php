@@ -95,6 +95,81 @@ class CareerDevelopmentTest extends TestCase
         CareerGoal::create(['user_id' => $colleague->id, 'target_position_id' => $target->id]);
     }
 
+    public function test_rejected_training_request_can_be_resubmitted(): void
+    {
+        [$employee, $manager] = $this->organization();
+        $training = Training::create(['name' => 'Komunikasi', 'type' => 'internal', 'is_active' => true]);
+        $request = TrainingRequest::create([
+            'user_id' => $employee->id, 'training_id' => $training->id, 'manager_id' => $manager->id,
+            'reason' => 'Alasan awal', 'requested_at' => now(),
+        ]);
+        $request->rejectByManager($manager, 'Perjelas manfaat');
+
+        $request->resubmit($employee, 'Dibutuhkan untuk presentasi bulanan');
+
+        $request->refresh();
+        $this->assertSame(TrainingRequestStatus::PendingManager, $request->status);
+        $this->assertSame('Dibutuhkan untuk presentasi bulanan', $request->reason);
+        $this->assertNull($request->manager_notes);
+        $this->assertDatabaseCount('training_requests', 1);
+    }
+
+    public function test_training_transition_reloads_status_before_writing(): void
+    {
+        [$employee, $manager] = $this->organization();
+        $training = Training::create(['name' => 'Komunikasi', 'type' => 'internal', 'is_active' => true]);
+        $request = TrainingRequest::create([
+            'user_id' => $employee->id, 'training_id' => $training->id, 'manager_id' => $manager->id,
+            'reason' => 'Perlu', 'requested_at' => now(),
+        ]);
+        $approval = $request->fresh();
+        $staleRejection = $request->fresh();
+
+        $approval->approveByManager($manager);
+
+        try {
+            $staleRejection->rejectByManager($manager, 'Ditolak terlambat');
+            $this->fail('Transisi dari salinan status lama harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Pengajuan pelatihan tidak dapat ditolak pengguna ini.', $exception->getMessage());
+        }
+
+        $this->assertSame(TrainingRequestStatus::PendingHr, $request->fresh()->status);
+        $this->assertDatabaseCount('activity_logs', 2);
+    }
+
+    public function test_mentoring_dates_cannot_be_in_the_past(): void
+    {
+        [$employee, $manager] = $this->organization();
+        $this->actingAs($employee);
+
+        try {
+            Mentoring::create([
+                'employee_id' => $employee->id, 'manager_id' => $manager->id,
+                'topic' => 'Karier', 'target' => 'Rencana promosi', 'requested_at' => now()->subMinute(),
+            ]);
+            $this->fail('Jadwal usulan mentoring lampau harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Jadwal mentoring yang diajukan tidak boleh lampau.', $exception->getMessage());
+        }
+
+        $mentoring = Mentoring::create([
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'topic' => 'Karier', 'target' => 'Rencana promosi', 'requested_at' => now()->addDay(),
+        ]);
+        $this->actingAs($manager);
+
+        try {
+            $mentoring->approve($manager, now()->subMinute());
+            $this->fail('Jadwal persetujuan mentoring lampau harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Jadwal mentoring yang disetujui tidak boleh lampau.', $exception->getMessage());
+        }
+
+        $this->assertSame(MentoringStatus::Pending, $mentoring->fresh()->status);
+        $this->assertNull($mentoring->fresh()->scheduled_at);
+    }
+
     public function test_career_resources_render_for_each_role(): void
     {
         [$employee, $manager, $hr] = $this->organization();

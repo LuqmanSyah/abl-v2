@@ -17,12 +17,17 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class CareerGoalResource extends Resource
 {
     protected static ?string $model = CareerGoal::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFlag;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pengembangan';
+
+    protected static ?int $navigationSort = 40;
 
     protected static ?string $modelLabel = 'target karier';
 

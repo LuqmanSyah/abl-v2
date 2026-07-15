@@ -29,8 +29,8 @@ class CreateDutyTrip extends CreateRecord
         $data['status'] = DutyTripStatus::Approved->value;
         $data['approved_at'] = now();
 
-        if ($location = DutyLocation::find($data['duty_location_id'] ?? null)) {
-            $data = [...$data, ...$location->only(['name', 'address', 'latitude', 'longitude', 'radius_meters'])];
+        if ($location = DutyLocation::where('is_active', true)->find($data['duty_location_id'] ?? null)) {
+            $data = [...$data, ...$location->only(['address', 'latitude', 'longitude', 'radius_meters'])];
             $data['location_name'] = $location->name;
         }
 

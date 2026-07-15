@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class AttendancesTable
@@ -21,15 +22,19 @@ class AttendancesTable
                     ->label('Pegawai')
                     ->searchable(),
                 TextColumn::make('captured_at')
-                    ->label('Waktu')
+                    ->label('Waktu absensi')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('latitude')
+                    ->label('Garis lintang')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('longitude')
+                    ->label('Garis bujur')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('accuracy_meters')
                     ->label('Akurasi GPS (m)')
                     ->numeric()
@@ -42,13 +47,16 @@ class AttendancesTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof AttendanceStatus ? $state->label() : (string) $state)
+                    ->color(fn ($state): string => $state instanceof AttendanceStatus ? $state->color() : 'gray')
                     ->searchable(),
                 IconColumn::make('mock_location_suspected')
                     ->label('GPS mencurigakan')
                     ->boolean(),
                 TextColumn::make('synced_at')
+                    ->label('Tersinkron pada')
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -59,10 +67,13 @@ class AttendancesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Status absensi')
+                    ->options(AttendanceStatus::options()),
             ])
             ->recordActions([
                 ViewAction::make(),
-            ]);
+            ])
+            ->defaultSort('captured_at', 'desc');
     }
 }

@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Services\AttendanceRecorder;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class AttendanceController extends Controller
 {
@@ -47,14 +50,35 @@ class AttendanceController extends Controller
         }
 
         $photoPath = $request->file('photo')->store('attendance', 'local');
-        $attendance = $recorder->record($dutyTrip, $request->user(), $data, $photoPath);
 
-        return response()->json(['message' => 'Absensi tersimpan.', 'attendance' => $attendance], 201);
+        try {
+            $attendance = $recorder->record($dutyTrip, $request->user(), $data, $photoPath);
+        } catch (DomainException $exception) {
+            Storage::disk('local')->delete($photoPath);
+
+            return response()->json(['message' => $exception->getMessage()], 422);
+        } catch (Throwable $exception) {
+            Storage::disk('local')->delete($photoPath);
+
+            throw $exception;
+        }
+
+        $created = $attendance->photo_path === $photoPath;
+        if (! $created) {
+            Storage::disk('local')->delete($photoPath);
+        }
+
+        $message = $attendance->status === AttendanceStatus::Valid
+            ? 'Absensi berhasil disimpan.'
+            : 'Absensi tersimpan dengan status: '.$attendance->status->label().'.';
+
+        return response()->json(['message' => $message, 'attendance' => $attendance], $created ? 201 : 200);
     }
 
     public function photo(Request $request, Attendance $attendance): StreamedResponse
     {
         $user = $request->user();
+        abort_unless($user->is_active, 403);
         $allowed = match ($user->role) {
             UserRole::Employee => $attendance->employee_id === $user->id,
             UserRole::Manager => $attendance->dutyTrip()->where('manager_id', $user->id)->exists(),
@@ -69,6 +93,7 @@ class AttendanceController extends Controller
     private function canAttend(Request $request, DutyTrip $trip): bool
     {
         return $request->user()?->role === UserRole::Employee
+            && $request->user()->is_active
             && $trip->employee_id === $request->user()->id
             && in_array($trip->status, [DutyTripStatus::Approved, DutyTripStatus::Completed], true);
     }

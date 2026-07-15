@@ -7,6 +7,7 @@ use App\Filament\Resources\DutyTrips\DutyTripResource;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class DutyTripsTable
@@ -39,6 +40,7 @@ class DutyTripsTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state)
+                    ->color(fn ($state): string => $state instanceof DutyTripStatus ? $state->color() : 'gray')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()
@@ -50,11 +52,14 @@ class DutyTripsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Status dinas')
+                    ->options(DutyTripStatus::options()),
             ])
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make()->visible(fn ($record): bool => DutyTripResource::canEdit($record)),
-            ]);
+            ])
+            ->defaultSort('starts_at', 'desc');
     }
 }

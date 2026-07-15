@@ -20,4 +20,20 @@ enum AttendanceStatus: string
             self::NeedsReview => 'Memerlukan Pemeriksaan',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Valid => 'success',
+            self::PendingSync => 'gray',
+            self::Late, self::NeedsReview => 'warning',
+            self::OutsideRadius => 'danger',
+        };
+    }
+
+    /** @return array<string, string> */
+    public static function options(): array
+    {
+        return array_column(array_map(fn (self $status) => [$status->value, $status->label()], self::cases()), 1, 0);
+    }
 }

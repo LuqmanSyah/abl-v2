@@ -51,16 +51,20 @@ class DutyTripInfolist
                     ->label('Dokumen pendukung')
                     ->placeholder('-'),
                 TextEntry::make('status')
+                    ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state),
+                    ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state)
+                    ->color(fn ($state): string => $state instanceof DutyTripStatus ? $state->color() : 'gray'),
                 TextEntry::make('approved_at')
                     ->label('Ditugaskan pada')
                     ->dateTime()
                     ->placeholder('-'),
                 TextEntry::make('created_at')
+                    ->label('Dibuat pada')
                     ->dateTime()
                     ->placeholder('-'),
                 TextEntry::make('updated_at')
+                    ->label('Diperbarui pada')
                     ->dateTime()
                     ->placeholder('-'),
             ]);

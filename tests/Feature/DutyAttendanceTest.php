@@ -118,6 +118,57 @@ class DutyAttendanceTest extends TestCase
         $this->assertSame(AttendanceStatus::Late, $late->status);
     }
 
+    public function test_backdated_attendance_requires_review(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $trip->update([
+            'starts_at' => now()->subDay()->startOfHour(),
+            'ends_at' => now()->subDay()->addHour()->startOfHour(),
+        ]);
+
+        $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862222',
+            'captured_at' => $trip->starts_at->addMinutes(30)->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/backdated.jpg');
+
+        $this->assertSame(AttendanceStatus::NeedsReview, $attendance->status);
+    }
+
+    public function test_attendance_before_start_is_rejected_without_leaking_photo(): void
+    {
+        Storage::fake('local');
+        [$employee, $manager, $trip] = $this->trip();
+        $trip->update(['starts_at' => now()->addHour(), 'ends_at' => now()->addHours(2)]);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
+
+        $this->actingAs($employee)->postJson(route('attendance.store', $trip), [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862223',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+            'photo' => UploadedFile::fake()->createWithContent('photo.png', $png),
+        ])->assertUnprocessable()->assertJsonPath('message', 'Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
+
+        $this->assertDatabaseCount('attendances', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('attendance'));
+    }
+
+    public function test_inactive_employee_is_logged_out_from_attendance_route(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $employee->update(['is_active' => false]);
+
+        $this->actingAs($employee)
+            ->get(route('attendance.capture', $trip))
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
+    }
+
     public function test_sync_endpoint_is_idempotent(): void
     {
         Storage::fake('local');
@@ -156,7 +207,12 @@ class DutyAttendanceTest extends TestCase
         $this->actingAs($employee)
             ->get(route('attendance.capture', $trip))
             ->assertOk()
-            ->assertSee('Ambil GPS dan Simpan');
+            ->assertSee('Ambil lokasi dan simpan absensi')
+            ->assertSee('duty_trip_id: tripId', false)
+            ->assertSee('fetch(data.endpoint', false)
+            ->assertSee("indexedDB.open('sdm-attendance', 2)", false)
+            ->assertSee('error.retryable === false', false)
+            ->assertSee('Penyimpanan luring tidak tersedia', false);
     }
 
     /** @return array{User, User, DutyTrip} */

@@ -1,14 +1,18 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthenticatedSessionController;
 use App\Http\Controllers\HrReportController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [AuthenticatedSessionController::class, 'create'])->name('home');
 
-Route::middleware('auth')->group(function () {
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('login.store');
+
+Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/pegawai/dinas/{dutyTrip}/absensi', [AttendanceController::class, 'show'])
         ->name('attendance.capture');
     Route::post('/pegawai/dinas/{dutyTrip}/absensi', [AttendanceController::class, 'store'])

@@ -9,6 +9,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Assets\Css;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -21,7 +22,13 @@ abstract class RolePanelProvider extends PanelProvider
     protected function basePanel(Panel $panel): Panel
     {
         return $panel
-            ->login()
+            ->login(fn () => redirect()->route('login'))
+            ->assets([
+                Css::make('portal-theme', asset('css/portal-filament.css')),
+            ])
+            ->sidebarCollapsibleOnDesktop()
+            ->unsavedChangesAlerts()
+            ->databaseTransactions()
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([Dashboard::class])
             ->middleware([

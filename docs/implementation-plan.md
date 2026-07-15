@@ -4,7 +4,7 @@ Sumber kebutuhan: `docs/brd.md` versi 1.2.
 
 ## Keputusan Teknis
 
-- Laravel 12, Filament 5, database bawaan proyek.
+- Laravel 12 dan Filament 5 berjalan lokal; MySQL 8.4 berjalan dalam Docker.
 - Tiga panel: `/pegawai`, `/atasan`, dan `/hr`. Resource, query, serta aksi tetap dibatasi server-side per peran.
 - Peran disimpan langsung pada `users.role`; belum perlu package permission.
 - Workflow memakai enum status dan policy/action server-side. Tombol tersembunyi bukan pengamanan.
@@ -124,14 +124,14 @@ Hasil:
 - Dashboard HR untuk absensi, merit, pelatihan, dan mentoring.
 - Laporan Pegawai dengan filter periode/unit/jabatan dan ekspor CSV aman dari formula injection.
 - Riwayat aktivitas untuk perintah dinas, publikasi merit, keputusan pelatihan, dan mentoring.
-- Retensi foto dan backup SQLite terjadwal melalui Laravel scheduler.
+- Retensi foto terjadwal melalui Laravel scheduler; backup MySQL memakai `mysqldump` dari host.
 - Panduan restore, checklist deployment, responsive report, authorization, file privat, dan eager-loaded report query.
 
 Verifikasi:
 
 - Test scope laporan, filter, ekspor, dan formula injection.
 - Test file privat tidak dapat diakses tanpa otorisasi dan foto kedaluwarsa dihapus.
-- Test backup SQLite menghasilkan file valid yang dapat dibuka kembali; prosedur restore dan checklist deployment tersedia di `docs/operations.md`.
+- Backup MySQL diuji melalui restore staging; prosedur dan checklist deployment tersedia di `docs/operations.md`.
 
 BRD: NFR-02, NFR-04, NFR-05, NFR-09, data utama, dan kriteria keberhasilan.
 

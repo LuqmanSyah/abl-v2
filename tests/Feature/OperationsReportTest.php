@@ -4,10 +4,16 @@ namespace Tests\Feature;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
+use App\Enums\MentoringStatus;
+use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
+use App\Models\Mentoring;
 use App\Models\Position;
+use App\Models\ReviewPeriod;
+use App\Models\Training;
+use App\Models\TrainingRequest;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,6 +81,37 @@ class OperationsReportTest extends TestCase
         Artisan::call('attendance:purge-photos', ['--days' => 365]);
         Storage::disk('local')->assertMissing('attendance/private.jpg');
         $this->get(route('attendance.photo', $attendance))->assertNotFound();
+    }
+
+    public function test_report_period_scopes_development_activity(): void
+    {
+        [$hr, $employee] = $this->employees();
+        $period = ReviewPeriod::create([
+            'name' => 'Periode aktif', 'starts_at' => today(), 'ends_at' => today()->addDays(10),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0, 'is_active' => true,
+        ]);
+        $firstTraining = Training::create(['name' => 'Dalam periode', 'type' => 'internal', 'is_active' => true]);
+        $secondTraining = Training::create(['name' => 'Luar periode', 'type' => 'internal', 'is_active' => true]);
+        foreach ([[$firstTraining, now()->addDay()], [$secondTraining, now()->addDays(20)]] as [$training, $requestedAt]) {
+            TrainingRequest::create([
+                'user_id' => $employee->id, 'training_id' => $training->id, 'manager_id' => $employee->manager_id,
+                'status' => TrainingRequestStatus::Completed, 'reason' => 'Pengembangan', 'requested_at' => $requestedAt,
+            ]);
+            Mentoring::create([
+                'employee_id' => $employee->id, 'manager_id' => $employee->manager_id,
+                'status' => MentoringStatus::Completed, 'topic' => $training->name,
+                'target' => 'Target', 'requested_at' => $requestedAt,
+            ]);
+        }
+
+        $response = $this->actingAs($hr)->get(route('hr.reports.index', ['review_period_id' => $period->id]))->assertOk();
+        $row = $response->viewData('rows')->firstWhere('name', $employee->name);
+
+        $this->assertSame(1, $row['training_count']);
+        $this->assertSame(1, $row['completed_training_count']);
+        $this->assertSame(1, $row['mentoring_count']);
+        $this->assertSame(1, $row['completed_mentoring_count']);
     }
 
     /** @return array{User, User, User, Unit} */

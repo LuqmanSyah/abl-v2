@@ -10,6 +10,8 @@
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px #0002; }
         .head, form { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
         .head { justify-content: space-between; margin-bottom: 20px; }
+        h1 { margin: 0 0 6px; }
+        .subtitle { margin: 0; color: #6b7280; }
         label { display: grid; gap: 6px; font-weight: 600; }
         select, button, .button { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; background: white; color: inherit; text-decoration: none; }
         button, .primary { background: #b45309; color: white; border-color: #b45309; cursor: pointer; }
@@ -24,8 +26,8 @@
 <main>
     <div class="card">
         <div class="head">
-            <div><h1>Laporan SDM</h1><a href="{{ url('/hr') }}">Kembali ke panel HR</a></div>
-            <a class="button primary" href="{{ route('hr.reports.export', array_filter($filters)) }}">Ekspor CSV</a>
+            <div><a href="{{ url('/hr') }}">← Kembali ke panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.</p></div>
+            <a class="button primary" href="{{ route('hr.reports.export', array_filter($filters)) }}">Unduh CSV</a>
         </div>
         <form method="get">
             <label>Periode
@@ -50,10 +52,12 @@
                 </select>
             </label>
             <button type="submit">Terapkan</button>
+            @if (array_filter($filters)) <a class="button" href="{{ route('hr.reports.index') }}">Hapus filter</a> @endif
         </form>
         <div class="table">
             <table>
-                <thead><tr><th>NIP</th><th>Pegawai</th><th>Unit</th><th>Jabatan</th><th>Absensi</th><th>Valid</th><th>Merit</th><th>Pelatihan</th><th>Selesai</th><th>Mentoring</th><th>Selesai</th></tr></thead>
+                <caption style="position:absolute;clip:rect(0,0,0,0)">Ringkasan SDM per pegawai</caption>
+                <thead><tr><th>NIP</th><th>Pegawai</th><th>Unit</th><th>Jabatan</th><th>Total absensi</th><th>Absensi valid</th><th>Skor merit</th><th>Pelatihan</th><th>Pelatihan selesai</th><th>Mentoring</th><th>Mentoring selesai</th></tr></thead>
                 <tbody>
                 @forelse ($rows as $row)
                     <tr>
@@ -62,7 +66,7 @@
                         <td>{{ $row['training_count'] }}</td><td>{{ $row['completed_training_count'] }}</td><td>{{ $row['mentoring_count'] }}</td><td>{{ $row['completed_mentoring_count'] }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="11">Tidak ada data.</td></tr>
+                    <tr><td colspan="11" style="padding:32px;text-align:center;color:#6b7280">Tidak ada pegawai yang cocok dengan filter. Ubah atau hapus filter untuk melihat data.</td></tr>
                 @endforelse
                 </tbody>
             </table>

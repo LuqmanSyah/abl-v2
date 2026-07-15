@@ -58,6 +58,14 @@ class HrReportController extends Controller
             $period,
             fn (Builder $query) => $query->whereBetween('captured_at', [$period->starts_at->startOfDay(), $period->ends_at->endOfDay()]),
         );
+        $trainingScope = fn (Builder $query) => $query->when(
+            $period,
+            fn (Builder $query) => $query->whereBetween('requested_at', [$period->starts_at->startOfDay(), $period->ends_at->endOfDay()]),
+        );
+        $mentoringScope = fn (Builder $query) => $query->when(
+            $period,
+            fn (Builder $query) => $query->whereBetween('requested_at', [$period->starts_at->startOfDay(), $period->ends_at->endOfDay()]),
+        );
 
         return User::query()
             ->where('role', UserRole::Employee)
@@ -74,10 +82,10 @@ class HrReportController extends Controller
             ->withCount([
                 'attendances as attendance_count' => $attendanceScope,
                 'attendances as valid_attendance_count' => fn (Builder $query) => $attendanceScope($query)->where('status', AttendanceStatus::Valid),
-                'trainingRequests as training_count',
-                'trainingRequests as completed_training_count' => fn (Builder $query) => $query->where('status', TrainingRequestStatus::Completed),
-                'mentorings as mentoring_count',
-                'mentorings as completed_mentoring_count' => fn (Builder $query) => $query->where('status', MentoringStatus::Completed),
+                'trainingRequests as training_count' => $trainingScope,
+                'trainingRequests as completed_training_count' => fn (Builder $query) => $trainingScope($query)->where('status', TrainingRequestStatus::Completed),
+                'mentorings as mentoring_count' => $mentoringScope,
+                'mentorings as completed_mentoring_count' => fn (Builder $query) => $mentoringScope($query)->where('status', MentoringStatus::Completed),
             ])
             ->orderBy('name')
             ->get()
@@ -114,7 +122,7 @@ class HrReportController extends Controller
 
     private function authorizeHr(Request $request): void
     {
-        abort_unless($request->user()?->role === UserRole::Hr, 403);
+        abort_unless($request->user()?->is_active && $request->user()->role === UserRole::Hr, 403);
     }
 
     private function csvValue(mixed $value): mixed

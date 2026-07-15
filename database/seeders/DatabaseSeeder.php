@@ -3,7 +3,12 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\CareerGoal;
+use App\Models\Competency;
+use App\Models\EmployeeCompetency;
 use App\Models\Position;
+use App\Models\PositionCompetency;
+use App\Models\Training;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -38,7 +43,7 @@ class DatabaseSeeder extends Seeder
             ['level' => 3],
         );
 
-        User::updateOrCreate(
+        $employee = User::updateOrCreate(
             ['email' => 'hr@example.com'],
             [
                 'name' => 'Admin SDM',
@@ -48,6 +53,33 @@ class DatabaseSeeder extends Seeder
                 'position_id' => $hrPosition->id,
                 'is_active' => true,
             ],
+        );
+
+        $leadership = Competency::firstOrCreate(['name' => 'Kepemimpinan'], ['description' => 'Kemampuan memimpin tim dan mengambil keputusan.']);
+        $communication = Competency::firstOrCreate(['name' => 'Komunikasi'], ['description' => 'Kemampuan menyampaikan informasi secara efektif.']);
+        PositionCompetency::updateOrCreate(
+            ['position_id' => $managerPosition->id, 'competency_id' => $leadership->id],
+            ['required_level' => 4],
+        );
+        PositionCompetency::updateOrCreate(
+            ['position_id' => $managerPosition->id, 'competency_id' => $communication->id],
+            ['required_level' => 4],
+        );
+        EmployeeCompetency::updateOrCreate(
+            ['user_id' => $employee->id, 'competency_id' => $leadership->id],
+            ['level' => 2, 'assessed_at' => today(), 'notes' => 'Data demo'],
+        );
+        EmployeeCompetency::updateOrCreate(
+            ['user_id' => $employee->id, 'competency_id' => $communication->id],
+            ['level' => 3, 'assessed_at' => today(), 'notes' => 'Data demo'],
+        );
+        CareerGoal::updateOrCreate(
+            ['user_id' => $employee->id],
+            ['target_position_id' => $managerPosition->id],
+        );
+        Training::firstOrCreate(
+            ['name' => 'Dasar Kepemimpinan'],
+            ['competency_id' => $leadership->id, 'provider' => 'Internal', 'type' => 'internal', 'is_active' => true],
         );
 
         $manager = User::updateOrCreate(

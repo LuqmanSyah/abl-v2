@@ -66,11 +66,16 @@ class FilamentAccessTest extends TestCase
     public function test_panels_only_register_resources_needed_by_the_role(): void
     {
         $this->assertTrue(Route::has('filament.employee.resources.duty-trips.index'));
+        $this->assertTrue(Route::has('filament.employee.resources.employee-kpis.index'));
+        $this->assertTrue(Route::has('filament.employee.resources.performance-reviews.index'));
+        $this->assertTrue(Route::has('filament.employee.resources.merit-results.index'));
         $this->assertFalse(Route::has('filament.employee.resources.users.index'));
         $this->assertTrue(Route::has('filament.manager.resources.attendances.index'));
         $this->assertFalse(Route::has('filament.manager.resources.duty-locations.index'));
         $this->assertTrue(Route::has('filament.hr.resources.users.index'));
         $this->assertTrue(Route::has('filament.hr.resources.duty-locations.index'));
+        $this->assertTrue(Route::has('filament.hr.resources.review-periods.index'));
+        $this->assertTrue(Route::has('filament.hr.resources.kpi-indicators.index'));
     }
 
     public function test_role_resource_pages_render(): void
@@ -81,12 +86,21 @@ class FilamentAccessTest extends TestCase
 
         $this->actingAs($employee)->get('/pegawai')->assertOk();
         $this->assertContains(EmployeeStats::class, filament()->getPanel('employee')->getWidgets());
-        $this->actingAs($employee)->get('/pegawai/duty-trips/create')->assertOk();
+        $this->actingAs($employee)->get('/pegawai/duty-trips/create')->assertForbidden();
+        $this->actingAs($employee)->get('/pegawai/employee-kpis')->assertOk();
+        $this->actingAs($employee)->get('/pegawai/performance-reviews/create')->assertOk();
+        $this->actingAs($employee)->get('/pegawai/merit-results')->assertOk();
         $this->actingAs($manager)->get('/atasan')->assertOk();
         $this->assertContains(ManagerStats::class, filament()->getPanel('manager')->getWidgets());
-        $this->actingAs($manager)->get('/atasan/duty-trips')->assertOk();
+        $this->actingAs($manager)->get('/atasan/duty-trips/create')->assertOk();
+        $this->actingAs($manager)->get('/atasan/employee-kpis/create')->assertOk();
+        $this->actingAs($manager)->get('/atasan/performance-reviews/create')->assertOk();
+        $this->actingAs($manager)->get('/atasan/merit-results')->assertOk();
         $this->actingAs($hr)->get('/hr')->assertOk();
         $this->assertContains(HrStats::class, filament()->getPanel('hr')->getWidgets());
         $this->actingAs($hr)->get('/hr/duty-locations/create')->assertOk();
+        $this->actingAs($hr)->get('/hr/review-periods/create')->assertOk();
+        $this->actingAs($hr)->get('/hr/kpi-indicators/create')->assertOk();
+        $this->actingAs($hr)->get('/hr/merit-results')->assertOk();
     }
 }

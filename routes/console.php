@@ -54,5 +54,8 @@ Artisan::command('backup:database {--keep=14}', function () {
     $this->info("Backup dibuat: {$path}");
 })->purpose('Buat backup konsisten database SQLite');
 
-Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00');
+if (config('database.default') === 'sqlite') {
+    Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00');
+}
+
 Schedule::command('attendance:purge-photos --days='.config('hr.photo_retention_days'))->dailyAt('03:00');

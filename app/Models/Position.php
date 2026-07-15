@@ -22,4 +22,14 @@ class Position extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function competencyStandards(): HasMany
+    {
+        return $this->hasMany(PositionCompetency::class);
+    }
+
+    public function careerGoals(): HasMany
+    {
+        return $this->hasMany(CareerGoal::class, 'target_position_id');
+    }
 }

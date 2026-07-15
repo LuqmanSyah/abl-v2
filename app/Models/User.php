@@ -9,6 +9,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -98,5 +99,40 @@ class User extends Authenticatable implements FilamentUser
     public function managedDutyTrips(): HasMany
     {
         return $this->hasMany(DutyTrip::class, 'manager_id');
+    }
+
+    public function employeeKpis(): HasMany
+    {
+        return $this->hasMany(EmployeeKpi::class, 'employee_id');
+    }
+
+    public function meritResults(): HasMany
+    {
+        return $this->hasMany(MeritResult::class, 'employee_id');
+    }
+
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'employee_id');
+    }
+
+    public function competencies(): HasMany
+    {
+        return $this->hasMany(EmployeeCompetency::class);
+    }
+
+    public function careerGoal(): HasOne
+    {
+        return $this->hasOne(CareerGoal::class);
+    }
+
+    public function trainingRequests(): HasMany
+    {
+        return $this->hasMany(TrainingRequest::class);
+    }
+
+    public function mentorings(): HasMany
+    {
+        return $this->hasMany(Mentoring::class, 'employee_id');
     }
 }

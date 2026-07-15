@@ -5,7 +5,7 @@ Sumber kebutuhan: `docs/brd.md` versi 1.2.
 ## Keputusan Teknis
 
 - Laravel 12, Filament 5, database bawaan proyek.
-- Satu panel `/admin` untuk Pegawai, Atasan, dan HR. Resource, query, serta aksi dibatasi per peran.
+- Tiga panel: `/pegawai`, `/atasan`, dan `/hr`. Resource, query, serta aksi tetap dibatasi server-side per peran.
 - Peran disimpan langsung pada `users.role`; belum perlu package permission.
 - Workflow memakai enum status dan policy/action server-side. Tombol tersembunyi bukan pengamanan.
 - Koordinat memakai `decimal(10, 7)`; jarak dihitung dengan rumus Haversine.
@@ -14,6 +14,8 @@ Sumber kebutuhan: `docs/brd.md` versi 1.2.
 - Formula merit awal disimpan sebagai bobot konfigurasi. Pembayaran bonus tetap di luar sistem.
 
 ## Fase 0 — Fondasi
+
+Status: selesai.
 
 Hasil:
 
@@ -32,6 +34,8 @@ Verifikasi:
 BRD: FR-USR-01 sampai FR-USR-03, NFR-01.
 
 ## Fase 1 — Absensi Dinas
+
+Status: selesai. Uji perangkat nyata tetap wajib sebelum deployment.
 
 Hasil:
 

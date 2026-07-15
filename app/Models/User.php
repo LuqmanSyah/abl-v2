@@ -62,7 +62,12 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active;
+        return $this->is_active && match ($panel->getId()) {
+            'employee' => $this->role === UserRole::Employee,
+            'manager' => $this->role === UserRole::Manager,
+            'hr' => $this->role === UserRole::Hr,
+            default => false,
+        };
     }
 
     public function unit(): BelongsTo
@@ -83,5 +88,15 @@ class User extends Authenticatable implements FilamentUser
     public function subordinates(): HasMany
     {
         return $this->hasMany(self::class, 'manager_id');
+    }
+
+    public function dutyTrips(): HasMany
+    {
+        return $this->hasMany(DutyTrip::class, 'employee_id');
+    }
+
+    public function managedDutyTrips(): HasMany
+    {
+        return $this->hasMany(DutyTrip::class, 'manager_id');
     }
 }

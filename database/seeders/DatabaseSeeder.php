@@ -23,9 +23,19 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Sumber Daya Manusia'],
         );
 
-        $position = Position::firstOrCreate(
+        $hrPosition = Position::firstOrCreate(
             ['unit_id' => $unit->id, 'name' => 'Admin SDM'],
             ['level' => 10],
+        );
+
+        $managerPosition = Position::firstOrCreate(
+            ['unit_id' => $unit->id, 'name' => 'Kepala Bagian'],
+            ['level' => 8],
+        );
+
+        $employeePosition = Position::firstOrCreate(
+            ['unit_id' => $unit->id, 'name' => 'Staf'],
+            ['level' => 3],
         );
 
         User::updateOrCreate(
@@ -35,7 +45,32 @@ class DatabaseSeeder extends Seeder
                 'password' => 'password',
                 'role' => UserRole::Hr,
                 'unit_id' => $unit->id,
-                'position_id' => $position->id,
+                'position_id' => $hrPosition->id,
+                'is_active' => true,
+            ],
+        );
+
+        $manager = User::updateOrCreate(
+            ['email' => 'atasan@example.com'],
+            [
+                'name' => 'Atasan Demo',
+                'password' => 'password',
+                'role' => UserRole::Manager,
+                'unit_id' => $unit->id,
+                'position_id' => $managerPosition->id,
+                'is_active' => true,
+            ],
+        );
+
+        User::updateOrCreate(
+            ['email' => 'pegawai@example.com'],
+            [
+                'name' => 'Pegawai Demo',
+                'password' => 'password',
+                'role' => UserRole::Employee,
+                'unit_id' => $unit->id,
+                'position_id' => $employeePosition->id,
+                'manager_id' => $manager->id,
                 'is_active' => true,
             ],
         );

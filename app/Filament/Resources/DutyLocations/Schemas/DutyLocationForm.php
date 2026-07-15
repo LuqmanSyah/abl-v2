@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DutyLocations\Schemas;
 
+use App\Filament\Forms\Components\MapPicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -19,6 +20,10 @@ class DutyLocationForm
                 Textarea::make('address')
                     ->label('Alamat')
                     ->required()
+                    ->columnSpanFull(),
+                MapPicker::make('map_picker')
+                    ->label('Cari atau pilih titik pada peta')
+                    ->dehydrated(false)
                     ->columnSpanFull(),
                 TextInput::make('latitude')
                     ->label('Latitude')

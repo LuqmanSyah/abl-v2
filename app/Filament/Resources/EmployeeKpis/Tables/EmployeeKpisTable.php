@@ -14,27 +14,36 @@ class EmployeeKpisTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('reviewPeriod.name')
+                    ->label('Periode')
                     ->searchable(),
-                TextColumn::make('kpi_indicator_id')
-                    ->numeric()
-                    ->sortable(),
+                TextColumn::make('indicator.name')
+                    ->label('Indikator KPI')
+                    ->searchable(),
                 TextColumn::make('employee.name')
+                    ->label('Pegawai')
                     ->searchable(),
                 TextColumn::make('manager.name')
-                    ->searchable(),
+                    ->label('Atasan')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('target')
+                    ->label('Target')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('achievement')
+                    ->label('Capaian')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')
+                    ->label('Dibuat pada')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
+                    ->label('Diperbarui pada')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

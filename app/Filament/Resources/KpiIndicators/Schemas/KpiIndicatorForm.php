@@ -6,6 +6,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class KpiIndicatorForm
 {
@@ -15,7 +16,8 @@ class KpiIndicatorForm
             ->components([
                 Select::make('review_period_id')
                     ->label('Periode')
-                    ->relationship('reviewPeriod', 'name')
+                    ->relationship('reviewPeriod', 'name', fn (Builder $query) => $query
+                        ->whereDoesntHave('meritResults', fn (Builder $query) => $query->whereNotNull('published_at')))
                     ->searchable()->preload()
                     ->required(),
                 TextInput::make('name')

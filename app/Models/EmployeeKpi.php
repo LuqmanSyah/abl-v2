@@ -23,11 +23,28 @@ class EmployeeKpi extends Model
     protected static function booted(): void
     {
         static::saving(function (self $kpi): void {
+            if (($kpi->hasPublishedMeritResult() || ($kpi->exists && $kpi->hasPublishedMeritResult(true)))
+                && (! $kpi->exists || $kpi->isDirty($kpi->getFillable()))) {
+                throw new DomainException('KPI dengan hasil merit terpublikasi tidak dapat diubah.');
+            }
+
+            if ((float) $kpi->target <= 0) {
+                throw new DomainException('Target KPI harus lebih dari 0.');
+            }
+            if ((float) $kpi->achievement < 0) {
+                throw new DomainException('Capaian KPI tidak boleh negatif.');
+            }
             if (KpiIndicator::whereKey($kpi->kpi_indicator_id)->where('review_period_id', $kpi->review_period_id)->doesntExist()) {
                 throw new DomainException('Indikator KPI bukan bagian periode terpilih.');
             }
             if (User::whereKey($kpi->employee_id)->where('manager_id', $kpi->manager_id)->doesntExist()) {
                 throw new DomainException('Pegawai bukan bawahan Atasan terpilih.');
+            }
+        });
+
+        static::deleting(function (self $kpi): void {
+            if ($kpi->hasPublishedMeritResult()) {
+                throw new DomainException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
             }
         });
     }
@@ -50,6 +67,14 @@ class EmployeeKpi extends Model
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function hasPublishedMeritResult(bool $original = false): bool
+    {
+        return MeritResult::where('review_period_id', $original ? $this->getRawOriginal('review_period_id') : $this->review_period_id)
+            ->where('employee_id', $original ? $this->getRawOriginal('employee_id') : $this->employee_id)
+            ->whereNotNull('published_at')
+            ->exists();
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

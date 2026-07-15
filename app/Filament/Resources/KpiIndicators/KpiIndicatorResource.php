@@ -15,12 +15,17 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class KpiIndicatorResource extends Resource
 {
     protected static ?string $model = KpiIndicator::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
+
+    protected static ?int $navigationSort = 20;
 
     protected static ?string $modelLabel = 'indikator KPI';
 
@@ -38,12 +43,14 @@ class KpiIndicatorResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return static::canViewAny();
+        return static::canViewAny()
+            && $record instanceof KpiIndicator
+            && $record->reviewPeriod?->hasPublishedMeritResults() === false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canViewAny();
+        return static::canEdit($record);
     }
 
     public static function form(Schema $schema): Schema

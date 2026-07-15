@@ -15,12 +15,17 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class ReviewPeriodResource extends Resource
 {
     protected static ?string $model = ReviewPeriod::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
+
+    protected static ?int $navigationSort = 10;
 
     protected static ?string $modelLabel = 'periode penilaian';
 
@@ -38,12 +43,12 @@ class ReviewPeriodResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return static::canViewAny();
+        return static::canViewAny() && $record instanceof ReviewPeriod && ! $record->hasPublishedMeritResults();
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canViewAny();
+        return false;
     }
 
     public static function form(Schema $schema): Schema

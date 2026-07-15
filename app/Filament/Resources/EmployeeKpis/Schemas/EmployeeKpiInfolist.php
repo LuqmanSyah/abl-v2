@@ -12,26 +12,23 @@ class EmployeeKpiInfolist
         return $schema
             ->components([
                 TextEntry::make('reviewPeriod.name')
-                    ->label('Review period'),
-                TextEntry::make('kpi_indicator_id')
-                    ->numeric(),
+                    ->label('Periode'),
+                TextEntry::make('indicator.name')
+                    ->label('Indikator KPI'),
                 TextEntry::make('employee.name')
-                    ->label('Employee'),
+                    ->label('Pegawai'),
                 TextEntry::make('manager.name')
-                    ->label('Manager'),
+                    ->label('Atasan'),
                 TextEntry::make('target')
+                    ->label('Target')
                     ->numeric(),
                 TextEntry::make('achievement')
+                    ->label('Capaian')
                     ->numeric(),
                 TextEntry::make('notes')
-                    ->placeholder('-')
+                    ->label('Catatan')
+                    ->placeholder('Tidak ada catatan.')
                     ->columnSpanFull(),
-                TextEntry::make('created_at')
-                    ->dateTime()
-                    ->placeholder('-'),
-                TextEntry::make('updated_at')
-                    ->dateTime()
-                    ->placeholder('-'),
             ]);
     }
 }

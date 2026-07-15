@@ -18,12 +18,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class EmployeeKpiResource extends Resource
 {
     protected static ?string $model = EmployeeKpi::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
+
+    protected static ?int $navigationSort = 30;
 
     protected static ?string $modelLabel = 'KPI pegawai';
 
@@ -51,7 +56,10 @@ class EmployeeKpiResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->role === UserRole::Manager && $record->manager_id === auth()->id();
+        return auth()->user()?->role === UserRole::Manager
+            && $record instanceof EmployeeKpi
+            && $record->manager_id === auth()->id()
+            && ! $record->hasPublishedMeritResult();
     }
 
     public static function canDelete(Model $record): bool

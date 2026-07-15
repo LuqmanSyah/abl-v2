@@ -14,12 +14,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class MeritResultResource extends Resource
 {
     protected static ?string $model = MeritResult::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTrophy;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
+
+    protected static ?int $navigationSort = 50;
 
     protected static ?string $modelLabel = 'hasil merit';
 

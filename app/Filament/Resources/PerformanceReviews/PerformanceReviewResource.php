@@ -17,12 +17,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class PerformanceReviewResource extends Resource
 {
     protected static ?string $model = PerformanceReview::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
+
+    protected static ?int $navigationSort = 40;
 
     protected static ?string $modelLabel = 'penilaian 360';
 

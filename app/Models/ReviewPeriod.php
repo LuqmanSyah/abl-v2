@@ -24,6 +24,10 @@ class ReviewPeriod extends Model
     protected static function booted(): void
     {
         static::saving(function (self $period): void {
+            if ($period->exists && $period->isDirty($period->getFillable()) && $period->hasPublishedMeritResults()) {
+                throw new DomainException('Periode dengan hasil merit terpublikasi tidak dapat diubah.');
+            }
+
             $total = $period->kpi_weight + $period->discipline_weight + $period->manager_weight + $period->review_360_weight;
             if ($total !== 100) {
                 throw new DomainException('Total bobot merit wajib 100%.');
@@ -42,5 +46,10 @@ class ReviewPeriod extends Model
     public function meritResults(): HasMany
     {
         return $this->hasMany(MeritResult::class);
+    }
+
+    public function hasPublishedMeritResults(): bool
+    {
+        return $this->meritResults()->whereNotNull('published_at')->exists();
     }
 }

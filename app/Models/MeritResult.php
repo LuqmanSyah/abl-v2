@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class MeritResult extends Model
 {
@@ -40,20 +41,33 @@ class MeritResult extends Model
 
     public function verifyByManager(User $manager): void
     {
-        if ($this->employee->manager_id !== $manager->id || $manager->role !== UserRole::Manager) {
-            throw new DomainException('Hasil merit tidak dapat diverifikasi pengguna ini.');
-        }
-        $this->update(['manager_verified_by' => $manager->id, 'manager_verified_at' => now()]);
-        ActivityLog::record('merit.manager_verified', $this, $manager);
+        DB::transaction(function () use ($manager): void {
+            $result = self::query()->lockForUpdate()->findOrFail($this->id);
+
+            if ($result->employee->manager_id !== $manager->id || $manager->role !== UserRole::Manager
+                || $result->manager_verified_at || $result->published_at) {
+                throw new DomainException('Hasil merit tidak dapat diverifikasi pengguna ini.');
+            }
+
+            $result->update(['manager_verified_by' => $manager->id, 'manager_verified_at' => now()]);
+            ActivityLog::record('merit.manager_verified', $result, $manager);
+            $this->setRawAttributes($result->getAttributes(), true);
+        }, 3);
     }
 
     public function verifyByHr(User $hr): void
     {
-        if ($hr->role !== UserRole::Hr || ! $this->manager_verified_at) {
-            throw new DomainException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
-        }
-        $this->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);
-        ActivityLog::record('merit.hr_published', $this, $hr);
+        DB::transaction(function () use ($hr): void {
+            $result = self::query()->lockForUpdate()->findOrFail($this->id);
+
+            if ($hr->role !== UserRole::Hr || ! $result->manager_verified_at || $result->published_at) {
+                throw new DomainException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
+            }
+
+            $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);
+            ActivityLog::record('merit.hr_published', $result, $hr);
+            $this->setRawAttributes($result->getAttributes(), true);
+        }, 3);
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

@@ -5,8 +5,6 @@ namespace App\Filament\Resources\ReviewPeriods\Tables;
 use App\Models\EmployeeKpi;
 use App\Services\MeritCalculator;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -68,11 +66,6 @@ class ReviewPeriodsTable
                         }
                     }),
                 EditAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
             ]);
     }
 }

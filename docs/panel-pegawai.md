@@ -177,6 +177,8 @@ Daftar pengajuan menampilkan pegawai, pelatihan, status, alasan, catatan atasan,
 3. Verifikasi HR mengubah status menjadi disetujui.
 4. HR mencatat hasil setelah pelatihan selesai.
 
+Atasan juga dapat merekomendasikan pelatihan berdasarkan hasil merit. Rekomendasi tersebut langsung tampil pada daftar Pegawai dengan status **Disetujui**, tanpa persetujuan Pegawai dan tanpa antrean verifikasi HR. HR tetap mencatat hasil setelah pelatihan selesai.
+
 Pengajuan tidak dapat diubah atau dihapus. Bila ditolak, aksi **Ajukan Ulang** tersedia untuk memperbarui alasan dan mengirim kembali pengajuan kepada atasan. Pelatihan yang pernah diajukan dikelola melalui baris pengajuan lama, bukan melalui pengajuan baru.
 
 ### 5.5 Mentoring
@@ -204,5 +206,5 @@ Menu akun dipakai untuk melihat akun yang sedang aktif dan keluar dari aplikasi.
 - **Hanya lihat:** Dinas Saya, Riwayat Absensi, KPI Pegawai, Hasil Merit, Kompetensi Pegawai, dan Katalog Pelatihan.
 - **Buat dan lihat:** Penilaian 360.
 - **Buat, ubah, dan hapus data sendiri:** Target Karier.
-- **Buat dan pantau proses:** Pengajuan Pelatihan dan Mentoring.
+- **Buat dan pantau proses:** Pengajuan Pelatihan dan Mentoring; lihat rekomendasi pelatihan dari Atasan.
 - **Data personal:** panel membatasi data operasional, KPI, hasil merit, kompetensi, target karier, pengajuan pelatihan, dan mentoring sesuai akun pegawai yang masuk.

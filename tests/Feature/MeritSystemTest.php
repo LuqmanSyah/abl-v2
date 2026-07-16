@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Filament\Resources\EmployeeKpis\EmployeeKpiResource;
 use App\Filament\Resources\KpiIndicators\KpiIndicatorResource;
 use App\Filament\Resources\ReviewPeriods\ReviewPeriodResource;
+use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
@@ -136,6 +137,64 @@ class MeritSystemTest extends TestCase
         }
 
         $this->assertDatabaseCount('employee_kpis', 0);
+    }
+
+    public function test_merit_breakdown_contains_kpi_history_and_immutable_reviews(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $otherManager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Audit Merit', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 1_000_000,
+        ]);
+        $indicator = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 100]);
+
+        $this->actingAs($manager);
+        $kpi = EmployeeKpi::create([
+            'review_period_id' => $period->id, 'kpi_indicator_id' => $indicator->id,
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'target' => 100, 'achievement' => 40,
+        ]);
+        $kpi->update(['achievement' => 80]);
+        $review = PerformanceReview::create([
+            'review_period_id' => $period->id, 'reviewer_id' => $manager->id,
+            'reviewee_id' => $employee->id, 'type' => ReviewType::ManagerToEmployee,
+            'score' => 4, 'submitted_at' => now(),
+        ]);
+
+        $result = app(MeritCalculator::class)->calculate($period, $employee);
+        $breakdown = $result->breakdownForManager($manager);
+
+        $this->assertSame('Audit Merit', $breakdown['period']);
+        $this->assertCount(1, $breakdown['kpis']);
+        $this->assertSame(80.0, $breakdown['kpis'][0]['score']);
+        $this->assertCount(2, $breakdown['kpis'][0]['history']);
+        $this->assertCount(1, $breakdown['reviews']);
+
+        $updatedLog = ActivityLog::where('action', 'kpi.updated')->where('subject_id', $kpi->id)->sole();
+        $this->assertEquals(40, $updatedLog->data['changes']['achievement']['old']);
+        $this->assertEquals(80, $updatedLog->data['changes']['achievement']['new']);
+
+        foreach ([
+            fn () => $review->update(['score' => 5]),
+            fn () => $review->fresh()->delete(),
+        ] as $mutation) {
+            try {
+                $mutation();
+                $this->fail('Penilaian terkirim harus immutable.');
+            } catch (DomainException) {
+                $this->assertDatabaseHas('performance_reviews', ['id' => $review->id, 'score' => 4]);
+            }
+        }
+
+        try {
+            $result->breakdownForManager($otherManager);
+            $this->fail('Atasan lain tidak boleh melihat breakdown merit.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Rincian merit tidak dapat dilihat pengguna ini.', $exception->getMessage());
+        }
     }
 
     public function test_published_merit_locks_period_and_kpi_inputs(): void

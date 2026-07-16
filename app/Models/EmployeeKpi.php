@@ -42,11 +42,32 @@ class EmployeeKpi extends Model
             }
         });
 
+        static::created(fn (self $kpi) => ActivityLog::record('kpi.created', $kpi, data: [
+            'values' => $kpi->only($kpi->getFillable()),
+        ]));
+
+        static::updated(function (self $kpi): void {
+            $changes = collect($kpi->getChanges())
+                ->except('updated_at')
+                ->mapWithKeys(fn (mixed $value, string $field): array => [
+                    $field => ['old' => $kpi->getRawOriginal($field), 'new' => $value],
+                ])
+                ->all();
+
+            if ($changes) {
+                ActivityLog::record('kpi.updated', $kpi, data: ['changes' => $changes]);
+            }
+        });
+
         static::deleting(function (self $kpi): void {
             if ($kpi->hasPublishedMeritResult()) {
                 throw new DomainException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
             }
         });
+
+        static::deleted(fn (self $kpi) => ActivityLog::record('kpi.deleted', $kpi, data: [
+            'values' => $kpi->only($kpi->getFillable()),
+        ]));
     }
 
     public function reviewPeriod(): BelongsTo

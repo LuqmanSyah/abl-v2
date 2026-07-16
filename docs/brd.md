@@ -4,7 +4,7 @@
 
 **Nama Proyek:** Sistem Sumber Daya Manusia
 **Modul:** Absensi Dinas, Sistem Merit, dan Pembinaan Karier
-**Versi:** 1.2
+**Versi:** 1.3
 
 ---
 
@@ -85,7 +85,7 @@ Atasan dapat:
 * Memantau absensi Pegawai.
 * Menetapkan dan menilai KPI.
 * Mengisi penilaian kinerja.
-* Menyetujui pelatihan.
+* Menyetujui atau menolak pengajuan pelatihan Pegawai dan merekomendasikan pelatihan berdasarkan hasil merit.
 * Menyetujui jadwal dan mencatat hasil mentoring.
 
 ## 2.3 Admin SDM/HR
@@ -98,6 +98,7 @@ Admin SDM/HR dapat:
 * Mengelola indikator KPI dan formula merit.
 * Mengelola kompetensi dan jalur karier.
 * Mengelola katalog pelatihan.
+* Memverifikasi pengajuan pelatihan dari Pegawai, memantau rekomendasi Atasan, dan mencatat hasil pelatihan.
 * Memantau absensi, kinerja, dan pembinaan karier.
 * Membuat laporan.
 
@@ -304,15 +305,15 @@ Admin SDM/HR dapat mengelola pelatihan internal dan eksternal.
 
 ### FR-KAR-06 — Pengajuan Pelatihan
 
-Pegawai dapat mengajukan pelatihan yang tersedia atau direkomendasikan.
+Pegawai dapat mengajukan pelatihan yang tersedia kepada Atasan langsung.
 
 ### FR-KAR-07 — Persetujuan Pelatihan
 
-Atasan dapat menyetujui atau menolak pengajuan pelatihan.
+Atasan dapat menyetujui atau menolak pengajuan pelatihan dari Pegawai. Atasan juga dapat merekomendasikan pelatihan kepada bawahan langsung berdasarkan hasil merit; rekomendasi tersebut langsung berstatus Disetujui tanpa verifikasi HR.
 
 ### FR-KAR-08 — Verifikasi Pelatihan
 
-Admin SDM/HR dapat memverifikasi dan mencatat hasil pelatihan.
+Admin SDM/HR memverifikasi pengajuan yang berasal dari Pegawai, memantau rekomendasi yang dibuat Atasan, dan mencatat hasil pelatihan dari kedua jalur.
 
 ### FR-KAR-09 — Mentoring
 
@@ -392,9 +393,10 @@ Atasan dapat mencatat:
 3. Sistem membandingkan kompetensi Pegawai dengan jabatan tujuan.
 4. Sistem menampilkan kesenjangan kompetensi.
 5. Sistem memberikan rekomendasi pelatihan atau mentoring.
-6. Pegawai mengajukan pelatihan atau mentoring.
-7. Atasan memberikan persetujuan.
-8. Admin SDM/HR mencatat hasil pengembangan.
+6. Pegawai dapat mengajukan pelatihan; Atasan menyetujui atau menolak, lalu HR memverifikasi pengajuan yang disetujui.
+7. Atasan dapat memilih hasil merit bawahan dan langsung merekomendasikan pelatihan tanpa antrean verifikasi HR.
+8. Pegawai melihat pelatihan yang sudah disetujui dari kedua jalur.
+9. Admin SDM/HR mencatat hasil pengembangan.
 
 **Alur singkat:**
 
@@ -425,7 +427,6 @@ Atasan dapat mencatat:
 * Ditolak;
 * Menunggu Verifikasi HR;
 * Disetujui;
-* Sedang Berlangsung;
 * Selesai.
 
 ## 6.4 Status Mentoring
@@ -490,7 +491,7 @@ Sistem harus melakukan pencadangan data secara berkala.
 8. Radius geofencing ditentukan oleh Admin SDM/HR.
 9. KPI ditetapkan dan diverifikasi oleh Atasan.
 10. Skor merit dipublikasikan setelah diverifikasi.
-11. Pengajuan pelatihan harus mendapat persetujuan Atasan.
+11. Pengajuan pelatihan oleh Pegawai harus mendapat persetujuan Atasan; rekomendasi yang dibuat Atasan langsung berstatus Disetujui.
 12. Hasil penilaian 360 derajat ditampilkan dalam bentuk akumulasi.
 
 ---

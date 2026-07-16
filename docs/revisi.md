@@ -5,8 +5,8 @@
 ## 1. Latar Belakang
 
 Saat ini, pelatihan hanya dapat diajukan oleh Pegawai melalui menu **Pengajuan Pelatihan**.
-Atasan hanya berperan menyetujui atau menolak. Pegawai belum memiliki akses melihat merit score
-bawahannya dan belum bisa merekomendasikan pelatihan berdasarkan pencapaian merit.
+Atasan hanya berperan menyetujui atau menolak. Atasan belum memiliki akses melihat rincian merit
+bawahannya saat merekomendasikan pelatihan berdasarkan pencapaian merit.
 
 Tujuan revisi: **Atasan dapat merekomendasikan pelatihan untuk pegawai berdasarkan merit score**.
 
@@ -27,14 +27,18 @@ Manager lihat merit pegawai (manual decide cukup)
   → Manager create TrainingRequest untuk employee via button "Rekomendasi Pelatihan"
     → status langsung Approved
       → Employee lihat di panel-nya
-        → HR complete (setelah selesai)
+        → HR pantau tanpa antrean verifikasi
+          → HR complete (setelah selesai)
 ```
 
 **Poin penting:**
 - Threshold merit tidak di-enforce oleh sistem. Atasan lihat score merit pegawai lalu decide manual.
 - Manager create langsung `Approved` — tidak perlu manager approve step (karena dia yang buat).
-- Tidak perlu verifikasi HR dulu. HR hanya complete setelah training selesai.
+- Tidak perlu verifikasi HR. `hr_verified_by` dan `hr_verified_at` tetap `null`; HR hanya memantau dan complete setelah training selesai.
+- Counter HR hanya menghitung `PendingHr`, sehingga rekomendasi Atasan tidak menambah antrean verifikasi.
 - Employee lihat training langsung di daftar "Pengajuan Pelatihan" miliknya.
+- Alur lama tetap berlaku untuk pengajuan yang dibuat Pegawai.
+- Revisi ini menggantikan ketentuan BRD lama yang mewajibkan verifikasi HR untuk semua jalur pelatihan.
 
 ---
 
@@ -47,20 +51,25 @@ Manager lihat merit pegawai (manual decide cukup)
 | Model kolom TrainingRequest | ✅ Pakai existing fields (`manager_id`, `status`, `manager_decided_at`) |
 | Tabel database | ✅ Tidak ada migrasi baru |
 | Employee panel | ✅ Tidak ada perubahan UI |
-| HR panel | ✅ Tidak ada perubahan (tetap bisa `complete`) |
+| HR panel | ✅ Aksi existing `complete()` dipakai; rekomendasi tidak menampilkan aksi verifikasi HR |
 | TrainingRequestStatus enum | ✅ `Approved` sudah ada |
-| ActivityLog | ✅ Cuma tambah action key baru `training.recommended` |
+| ActivityLog schema | ✅ Pakai kolom `action` dan JSON `data` existing; tidak perlu migrasi |
 | Flow employee request | ✅ Tidak berubah — employee tetap bisa request sendiri |
-| Existing tests | ✅ Tidak perlu rewrite |
+| Existing tests | ✅ Alur Pegawai tetap; tambah test flow rekomendasi dan audit |
 
 ### 3.2. Berubah
 
 | # | File | Perubahan |
 |---|------|-----------|
-| 1 | `app/Models/TrainingRequest.php` | Modifikasi `booted()` creating handler — izinkan Manager create untuk bawahan. Tambah method `recommendByManager()`. |
-| 2 | `app/Filament/Resources/TrainingRequests/TrainingRequestResource.php` | (Manager panel) Tambah halaman create khusus Manager untuk rekomendasi, atau custom action di halaman list karyawan. |
-| 3 | `app/Providers/Filament/ManagerPanelProvider.php` | Pastikan resource TrainingRequest terdaftar. |
-| 4 | `tests/Feature/CareerDevelopmentTest.php` | Tambah test untuk flow rekomendasi atasan. |
+| 1 | `app/Models/TrainingRequest.php` | Tambah jalur domain `recommendByManager()`, direct `Approved`, guard status, audit snapshot tunggal. |
+| 2 | `app/Models/MeritResult.php` | Tambah breakdown terotorisasi berdasarkan periode dari row merit. |
+| 3 | `app/Filament/Resources/MeritResults/Tables/MeritResultsTable.php` | Tambah row action dan modal rekomendasi. |
+| 4 | `resources/views/filament/resources/merit-results/recommend-training-breakdown.blade.php` | Render breakdown merit, KPI, review, disiplin, dan riwayat KPI. |
+| 5 | `app/Models/EmployeeKpi.php` | Catat `kpi.created`, `kpi.updated`, dan `kpi.deleted`. |
+| 6 | `app/Models/PerformanceReview.php` | Enforce review terkirim tidak dapat diubah/dihapus. |
+| 7 | `tests/Feature/CareerDevelopmentTest.php`, `tests/Feature/MeritSystemTest.php` | Test rekomendasi, otorisasi, audit, dan regresi. |
+
+`ManagerPanelProvider` tidak berubah karena `MeritResultResource` dan `TrainingRequestResource` sudah terdaftar.
 
 ---
 
@@ -68,106 +77,69 @@ Manager lihat merit pegawai (manual decide cukup)
 
 ### 4.1. Model — `app/Models/TrainingRequest.php`
 
-**Modifikasi `booted()`:**
-
-```php
-static::creating(function (self $request): void {
-    $request->status ??= TrainingRequestStatus::PendingManager;
-    $request->requested_at ??= now();
-
-    // Employee hanya bisa buat untuk dirinya sendiri
-    if (auth()->user()?->role === UserRole::Employee && $request->user_id !== auth()->id()) {
-        throw new DomainException('Pegawai hanya dapat mengajukan pelatihan untuk dirinya sendiri.');
-    }
-
-    // Validasi relasi: user_id adalah Employee, manager_id adalah Manager, training aktif
-    if (User::whereKey($request->user_id)->where('role', UserRole::Employee)->where('manager_id', $request->manager_id)->doesntExist()
-        || User::whereKey($request->manager_id)->where('role', UserRole::Manager)->doesntExist()
-        || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
-        throw new DomainException('Pengajuan pelatihan tidak valid.');
-    }
-});
-```
-
-**Method baru:**
+Semua rekomendasi wajib melewati satu jalur domain:
 
 ```php
 public static function recommendByManager(
     User $manager,
     User $employee,
     Training $training,
+    MeritResult $meritResult,
     string $reason,
-): self {
-    // Validasi
-    throw_unless(
-        $manager->role === UserRole::Manager
-        && $employee->manager_id === $manager->id
-        && $employee->role === UserRole::Employee,
-        DomainException::class,
-        'Hanya Atasan yang dapat merekomendasikan pelatihan untuk bawahannya.',
-    );
-
-    throw_unless(
-        $training->is_active,
-        DomainException::class,
-        'Pelatihan tidak aktif.',
-    );
-
-    $request = static::create([
-        'user_id' => $employee->id,
-        'training_id' => $training->id,
-        'manager_id' => $manager->id,
-        'status' => TrainingRequestStatus::Approved,
-        'reason' => $reason,
-        'requested_at' => now(),
-        'manager_decided_at' => now(),
-    ]);
-
-    ActivityLog::record('training.recommended', $request, $manager);
-
-    return $request;
-}
+): self;
 ```
+
+Contract method:
+
+- Manager dan employee wajib aktif; employee wajib bawahan langsung manager.
+- Training wajib aktif dan belum pernah diajukan/direkomendasikan untuk employee tersebut.
+- `MeritResult` wajib milik employee yang dipilih; periode tidak ditebak dari record terbaru.
+- Reason wajib terisi.
+- Pembuatan request dan activity log berjalan dalam satu transaksi.
+- Status awal `Approved`, `manager_decided_at` terisi, sedangkan field verifikasi HR tetap `null`.
+- Satu log `training.recommended` menyimpan snapshot semua komponen merit. Event `training.requested` tidak dibuat untuk jalur ini.
+- Direct create dengan status `Approved` di luar method ditolak oleh model.
 
 ### 4.2. Manager Panel — Custom Action
 
-**Di halaman daftar pegawai (atau halaman KPI Pegawai):**
-
-Tambah tombol "Rekomendasi Pelatihan" per baris pegawai yang merupakan bawahan langsung.
+Tambahkan tombol **Rekomendasikan Pelatihan** pada setiap row `MeritResultsTable` milik bawahan langsung. Row menjadi sumber employee, periode, dan snapshot merit; tidak ada halaman create umum.
 
 **Modal form:**
-- Employee (readonly, dari row context)
-- Current merit score (readonly, dari `meritResults()->latest()->first()?->total_score`)
-- Training (select dari katalog aktif)
-- Reason (textarea)
 
-**Submit →** `TrainingRequest::recommendByManager($manager, $employee, $training, $reason)`
+- Employee dan periode dari row context.
+- Total score, bobot, dan semua komponen merit.
+- Detail KPI beserta `kpi.created`/`kpi.updated`.
+- Detail review dan dinas yang benar-benar masuk formula disiplin.
+- Training aktif yang belum pernah diajukan employee.
+- Reason wajib.
 
-Alternatif: buat halaman create di resource `TrainingRequests` panel Manager dengan field employee (filtered ke bawahan), training, reason.
+Submit memanggil `TrainingRequest::recommendByManager($manager, $employee, $training, $meritResult, $reason)`.
 
 ### 4.3. Employee Panel — Tanpa Perubahan
 
-Employee lihat training `Approved` di list "Pengajuan Pelatihan" seperti biasa.
-Resource `TrainingRequestResource` scope `visibleTo()` sudah handle.
+Employee langsung melihat rekomendasi berstatus `Approved` pada daftar "Pengajuan Pelatihan". Scope `visibleTo()` existing sudah menangani akses.
 
-### 4.4. HR Panel — Tanpa Perubahan
+### 4.4. HR Panel — Tidak Ada Antrean Approval Baru
 
-HR tetap bisa `complete()` training yang sudah `Approved`.
+HR melihat rekomendasi pada daftar global, tetapi tidak mendapat aksi **Verifikasi HR** karena status sudah `Approved`. Aksi existing `complete()` tetap dipakai untuk mencatat hasil. Counter `PendingHr` tidak bertambah.
 
 ---
 
 ## 5. Files yang Kena Dampak
 
 ```
-app/Models/TrainingRequest.php           — +recommendByManager(), edit booted()
-app/Filament/Resources/TrainingRequests/
-    ├── TrainingRequestResource.php      — +halaman create (Manager custom)
-    ├── Pages/
-    │   ├── ListTrainingRequests.php     — +custom action (opsional)
-    │   └── CreateTrainingRequest.php    — +form untuk manager (baru)
-    └── Schemas/
-        └── TrainingRequestForm.php      — +schema baru untuk manager
-tests/Feature/CareerDevelopmentTest.php  — +test rekomendasi atasan
+app/Models/TrainingRequest.php
+app/Models/MeritResult.php
+app/Models/EmployeeKpi.php
+app/Models/PerformanceReview.php
+app/Filament/Resources/MeritResults/Tables/MeritResultsTable.php
+resources/views/filament/resources/merit-results/recommend-training-breakdown.blade.php
+tests/Feature/CareerDevelopmentTest.php
+tests/Feature/MeritSystemTest.php
+docs/brd.md
+docs/panel-atasan.md
+docs/panel-pegawai.md
+docs/panel-hr.md
 ```
 
 ---
@@ -176,23 +148,29 @@ tests/Feature/CareerDevelopmentTest.php  — +test rekomendasi atasan
 
 | # | Skenario | Langkah | Ekspektasi |
 |---|----------|---------|------------|
-| 1 | Manager rekomendasi training — valid | Manager buat TrainingRequest untuk bawahan, training aktif | Status `Approved`, `manager_decided_at` terisi, activity log tercatat |
+| 1 | Manager rekomendasi training — valid | Manager pilih row merit bawahan dan training aktif | Status `Approved`, `manager_decided_at` terisi, field verifikasi HR `null` |
 | 2 | Manager rekomendasi — bukan bawahan | Manager create untuk employee bukan bawahannya | Error |
 | 3 | Manager rekomendasi — training nonaktif | Pilih training dengan `is_active=false` | Error |
 | 4 | Employee lihat rekomendasi | Employee login, buka daftar training request | Training rekomendasi muncul |
 | 5 | HR complete training rekomendasi | HR complete training yg direkomendasi | Status `Completed` |
 | 6 | Employee request sendiri — masih jalan | Employee create request sendiri | Status `PendingManager` (tidak berubah) |
+| 7 | Antrean HR | Manager membuat rekomendasi | Tidak ada request `PendingHr` baru |
+| 8 | Audit | Manager membuat rekomendasi | Tepat satu `training.recommended`, tanpa `training.requested`, snapshot merit tersimpan |
+| 9 | Duplikat | Training sama pernah diajukan employee | Domain error yang jelas |
+| 10 | Audit KPI | KPI dibuat lalu capaian diubah | Log old/new tampil pada modal |
+| 11 | Otorisasi modal | Atasan lain membuka breakdown | Error |
 
 ---
 
 ## 7. Urutan Implementasi
 
 ```
-1. Model: Tambah recommendByManager() + edit creating handler
-2. Test: Tulis test untuk flow baru dulu (TDD)
-3. Filament: Buat halaman/action untuk Manager panel
-4. Test: Run all tests → green
-5. Manual test: Simulasi 3 role di browser
+1. Model + invariant rekomendasi
+2. Test flow dan antrean HR
+3. Breakdown + audit KPI
+4. Row action dan modal Filament
+5. Sinkronisasi BRD dan dokumentasi panel
+6. Focused test, full test, lalu simulasi tiga role
 ```
 
 ---
@@ -289,7 +267,7 @@ Score dari rekan = 3
 review_360_score = 3 / 5 × 100 = 60
 ```
 
-#### 8.1.5. Total Score (0-100)
+#### 8.1.5. Total Score (tidak di-clamp)
 
 ```
 total_score = (
@@ -301,6 +279,8 @@ total_score = (
 ```
 
 **Sumber data:** Bobot dari `review_periods`, nilai dari perhitungan di atas
+
+KPI dapat mencapai 120 dan implementasi tidak melakukan clamp total. Dengan bobot default 40/20/20/20, rentang total adalah 0-108. Formula maksimum umum: `100 + (0.2 × kpi_weight)`. Karena itu estimated bonus juga dapat melebihi base bonus. Jika kebijakan menghendaki batas 100, perubahan formula harus menjadi revisi terpisah.
 
 **Contoh (bobot default 40/20/20/20):**
 ```
@@ -336,7 +316,7 @@ kpi_indicators.weight        ─┘
                                                                     
 duty_trips.status            ─┐──→ Discipline Score (0-100)    
 attendances.status           ─┘                                   
-                                                            ──→ TOTAL SCORE (0-100)
+                                                            ──→ TOTAL SCORE (tidak di-clamp)
 performance_reviews.score    ─┐──→ Manager Score (0-100)       
 (type=manager_to_employee)   ─┘                                   
                                                                     
@@ -365,6 +345,8 @@ Dari `tests/Feature/MeritSystemTest.php`:
 ## 9. Audit Trail untuk Manager Decision
 
 Saat modal "Rekomendasi Pelatihan" dibuka, manager perlu lihat **bukan hanya angka jadi** tapi juga **riwayat perubahan** tiap komponen.
+
+Riwayat KPI mulai tersedia setelah logging `kpi.*` diterapkan. `updated_at` lama tidak menyimpan old/new value, sehingga perubahan sebelum revisi ini tidak dapat direkonstruksi.
 
 ### 9.1. Data yang Ditampilkan di Modal
 
@@ -420,68 +402,26 @@ Saat modal "Rekomendasi Pelatihan" dibuka, manager perlu lihat **bukan hanya ang
 
 | Komponen | Riwayat dari | Tabel |
 |----------|-------------|-------|
-| KPI target/achievement | `activity_logs` action `kpi.*` + `employee_kpis.updated_at` | `employee_kpis`, `activity_logs` |
+| KPI target/achievement | `activity_logs` action `kpi.created`, `kpi.updated`, `kpi.deleted` dengan payload old/new | `employee_kpis`, `activity_logs` |
 | Manager review | `performance_reviews` (immutable setelah submit) | `performance_reviews` |
 | 360 review | `performance_reviews` (immutable setelah submit) | `performance_reviews` |
 | Attendance status | `attendances.status` | `attendances` |
 | Merit publish | `activity_logs` action `merit.*` | `activity_logs` |
+| Keputusan rekomendasi | `training.recommended` dengan snapshot komponen merit | `training_requests`, `activity_logs` |
 
 ### 9.3. Implementasi — Method di Model
 
-**`app/Models/User.php` — method baru:**
+**`app/Models/MeritResult.php` — method baru:**
 
 ```php
-public function meritBreakdownForManager(?ReviewPeriod $period = null): array
-{
-    $period ??= ReviewPeriod::where('is_active', true)->latest('starts_at')->first();
-    if (! $period) return [];
-
-    $result = $this->meritResults()->where('review_period_id', $period->id)->first();
-
-    return [
-        'period' => $period->name,
-        'kpi_score' => $result?->kpi_score,
-        'discipline_score' => $result?->discipline_score,
-        'manager_score' => $result?->manager_score,
-        'review_360_score' => $result?->review_360_score,
-        'total_score' => $result?->total_score,
-        'estimated_bonus' => $result?->estimated_bonus,
-        'kpi_details' => EmployeeKpi::with('indicator')
-            ->where('employee_id', $this->id)
-            ->where('review_period_id', $period->id)
-            ->get()
-            ->map(fn ($kpi) => [
-                'indicator' => $kpi->indicator->name,
-                'target' => $kpi->target,
-                'achievement' => $kpi->achievement,
-                'weight' => $kpi->indicator->weight,
-            ]),
-        'reviews' => PerformanceReview::with('reviewer')
-            ->where('reviewee_id', $this->id)
-            ->where('review_period_id', $period->id)
-            ->get()
-            ->map(fn ($review) => [
-                'reviewer' => $review->reviewer->name,
-                'type' => $review->type->label(),
-                'score' => $review->score,
-                'submitted_at' => $review->submitted_at,
-            ]),
-        'discipline_details' => DutyTrip::where('employee_id', $this->id)
-            ->whereBetween('starts_at', [$period->starts_at->startOfDay(), $period->ends_at->endOfDay()])
-            ->with('attendance')
-            ->get()
-            ->map(fn ($trip) => [
-                'destination' => $trip->destination,
-                'starts_at' => $trip->starts_at,
-                'attendance_status' => $trip->attendance?->status?->label() ?? 'Tidak hadir',
-            ]),
-    ];
-}
+public function breakdownForManager(User $manager): array;
 ```
+
+Method memakai periode milik row `MeritResult`, memverifikasi bahwa employee adalah bawahan langsung manager, membaca log KPI, dan memakai filter dinas identik dengan `MeritCalculator`: `Completed` atau `Approved` yang sudah berakhir. Ini mencegah modal menampilkan data yang tidak ikut membentuk score.
 
 ### 9.4. Filament — Modal Breakdown View
 
-Di modal "Rekomendasi Pelatihan", panggil `$employee->meritBreakdownForManager()`.
+Di modal "Rekomendasi Pelatihan", panggil `$meritResult->breakdownForManager($manager)`.
 Render sebagai tabel read-only + section collapsible per komponen.
 
 **Data untuk manager:**
@@ -496,7 +436,7 @@ Render sebagai tabel read-only + section collapsible per komponen.
 
 | Komponen | Ditampilkan | Tujuan |
 |----------|------------|--------|
-| TOTAL SCORE | Angka besar (0-100) | Acuan utama: apakah merit cukup |
+| TOTAL SCORE | Angka besar; maksimum 108 pada bobot default | Acuan utama: apakah merit cukup |
 | KPI breakdown | Per-indicator: target, capaian, bobot | Manager evaluasi: KPI mana yg kurang |
 | Review breakdown | Per-review: siapa, nilai, tipe | Manager lihat: penilaian 360 fair? |
 | Disiplin breakdown | Per-dinas: status absensi | Manager lihat: catatan disiplin |

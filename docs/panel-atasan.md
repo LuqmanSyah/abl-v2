@@ -134,6 +134,8 @@ Menu ini menampilkan hasil merit bawahan langsung, termasuk hasil yang belum dit
 - estimasi bonus;
 - informasi verifikasi atasan, verifikasi HR, dan penerbitan.
 
+Setiap hasil merit bawahan menyediakan aksi **Rekomendasikan Pelatihan**. Modal menampilkan periode, total dan komponen skor, detail KPI beserta riwayat perubahannya, detail penilaian, serta disiplin. Atasan memilih pelatihan aktif dan mengisi alasan. Rekomendasi langsung berstatus **Disetujui** dan tidak masuk antrean verifikasi HR.
+
 Pada hasil yang belum diverifikasi atasan, halaman detail menyediakan aksi **Verifikasi Atasan** dengan konfirmasi. Setelah verifikasi:
 
 1. data menunggu verifikasi HR;
@@ -182,14 +184,14 @@ Atasan hanya dapat melihat dan mencari katalog. Pembuatan dan perubahan data pel
 
 ### 5.4 Pengajuan Pelatihan
 
-Menu ini menampilkan pengajuan pelatihan dari bawahan langsung. Daftar berisi pegawai, pelatihan, status, alasan, catatan atasan, hasil pelatihan, dan waktu pengajuan.
+Menu ini menampilkan pengajuan Pegawai dan rekomendasi Atasan untuk bawahan langsung. Daftar berisi pegawai, pelatihan, status, alasan, catatan atasan, hasil pelatihan, dan waktu pengajuan.
 
 Pengajuan berstatus menunggu atasan menyediakan dua aksi:
 
 - **Setujui**: catatan bersifat opsional. Pengajuan diteruskan kepada HR.
 - **Tolak**: alasan wajib diisi. Pengajuan dikembalikan kepada pegawai dan dapat diajukan ulang.
 
-Setelah disetujui atasan, HR menangani verifikasi dan pencatatan hasil pelatihan. Atasan dapat terus memantau perubahan status, tetapi tidak dapat membuat, mengubah, atau menghapus pengajuan.
+Setelah pengajuan Pegawai disetujui Atasan, HR menangani verifikasi dan pencatatan hasil. Rekomendasi yang dibuat melalui Hasil Merit langsung berstatus **Disetujui**; HR hanya memantau dan mencatat hasilnya. Atasan dapat terus memantau perubahan status, tetapi tidak dapat mengubah atau menghapus data yang sudah dibuat.
 
 ### 5.5 Mentoring
 
@@ -215,7 +217,8 @@ Menu akun dipakai untuk melihat akun yang sedang aktif dan keluar dari aplikasi.
 - **Buat dan kelola dengan syarat:** Perintah Dinas dan KPI Pegawai.
 - **Buat dan lihat:** Penilaian 360 untuk bawahan.
 - **Verifikasi:** Hasil Merit bawahan.
-- **Setujui atau tolak:** Pengajuan Pelatihan bawahan.
+- **Setujui atau tolak:** Pengajuan Pelatihan dari bawahan.
+- **Rekomendasikan:** Pelatihan bagi bawahan berdasarkan Hasil Merit, langsung berstatus Disetujui.
 - **Jadwalkan, tolak, dan selesaikan:** Mentoring bawahan.
 - **Hanya lihat:** Riwayat Absensi, Kompetensi Pegawai, Target Karier, dan Katalog Pelatihan.
 - **Lingkup data:** hanya data bawahan langsung atau data yang terkait dengan tindakan atasan yang sedang masuk.

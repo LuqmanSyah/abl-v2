@@ -33,6 +33,9 @@ class PerformanceReview extends Model
                 throw new DomainException('Hubungan penilai dan pegawai tidak valid.');
             }
         });
+
+        static::updating(fn () => throw new DomainException('Penilaian yang telah dikirim tidak dapat diubah.'));
+        static::deleting(fn () => throw new DomainException('Penilaian yang telah dikirim tidak dapat dihapus.'));
     }
 
     public function reviewPeriod(): BelongsTo

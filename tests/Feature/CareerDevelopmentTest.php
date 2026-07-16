@@ -5,20 +5,25 @@ namespace Tests\Feature;
 use App\Enums\MentoringStatus;
 use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
+use App\Filament\Resources\MeritResults\Pages\ListMeritResults;
 use App\Models\ActivityLog;
 use App\Models\CareerGoal;
 use App\Models\Competency;
 use App\Models\EmployeeCompetency;
 use App\Models\Mentoring;
+use App\Models\MeritResult;
 use App\Models\Position;
 use App\Models\PositionCompetency;
+use App\Models\ReviewPeriod;
 use App\Models\Training;
 use App\Models\TrainingRequest;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\CareerGapService;
 use DomainException;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CareerDevelopmentTest extends TestCase
@@ -78,6 +83,110 @@ class CareerDevelopmentTest extends TestCase
 
         $this->assertSame(MentoringStatus::Completed, $mentoring->fresh()->status);
         $this->assertSame(7, ActivityLog::count());
+    }
+
+    public function test_manager_recommendation_is_approved_without_hr_queue(): void
+    {
+        [$employee, $manager, $hr] = $this->organization();
+        $training = Training::create(['name' => 'Komunikasi Lanjutan', 'type' => 'internal', 'is_active' => true]);
+        $period = ReviewPeriod::create([
+            'name' => 'Semester Rekomendasi', 'starts_at' => today()->startOfMonth(), 'ends_at' => today()->endOfMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 1_000_000, 'is_active' => true,
+        ]);
+        $result = MeritResult::create([
+            'review_period_id' => $period->id, 'employee_id' => $employee->id,
+            'kpi_score' => 80, 'discipline_score' => 90, 'manager_score' => 75,
+            'review_360_score' => 70, 'total_score' => 79, 'estimated_bonus' => 790_000,
+        ]);
+
+        $this->actingAs($manager);
+        Filament::setCurrentPanel(Filament::getPanel('manager'));
+        Livewire::test(ListMeritResults::class)
+            ->assertTableActionVisible('recommend_training', $result)
+            ->callTableAction('recommend_training', $result, [
+                'training_id' => $training->id,
+                'reason' => 'Dibutuhkan untuk penguatan komunikasi tim.',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $request = TrainingRequest::sole();
+        $this->assertSame(TrainingRequestStatus::Approved, $request->status);
+        $this->assertNotNull($request->manager_decided_at);
+        $this->assertNull($request->hr_verified_at);
+        $this->assertTrue(TrainingRequest::visibleTo($employee)->whereKey($request)->exists());
+        $this->assertFalse(TrainingRequest::where('status', TrainingRequestStatus::PendingHr)->exists());
+
+        $log = ActivityLog::where('action', 'training.recommended')->sole();
+        $this->assertSame($result->id, $log->data['merit_result_id']);
+        $this->assertEquals(79, $log->data['total_score']);
+        $this->assertFalse(ActivityLog::where('action', 'training.requested')->where('subject_id', $request->id)->exists());
+
+        $this->actingAs($hr);
+        $request->complete($hr, 'Lulus');
+        $this->assertSame(TrainingRequestStatus::Completed, $request->fresh()->status);
+    }
+
+    public function test_manager_recommendation_rejects_invalid_or_duplicate_data(): void
+    {
+        [$employee, $manager] = $this->organization();
+        $otherManager = User::factory()->create(['role' => UserRole::Manager]);
+        $otherEmployee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $otherManager->id]);
+        $inactiveEmployee = User::factory()->create([
+            'role' => UserRole::Employee, 'manager_id' => $manager->id, 'is_active' => false,
+        ]);
+        $training = Training::create(['name' => 'Aktif', 'type' => 'internal', 'is_active' => true]);
+        $inactiveTraining = Training::create(['name' => 'Nonaktif', 'type' => 'internal', 'is_active' => false]);
+        $period = ReviewPeriod::create([
+            'name' => 'Validasi Rekomendasi', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0,
+        ]);
+        $result = MeritResult::create([
+            'review_period_id' => $period->id, 'employee_id' => $employee->id,
+            'kpi_score' => 0, 'discipline_score' => 100, 'manager_score' => 0,
+            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0,
+        ]);
+        $inactiveResult = MeritResult::create([
+            'review_period_id' => $period->id, 'employee_id' => $inactiveEmployee->id,
+            'kpi_score' => 0, 'discipline_score' => 100, 'manager_score' => 0,
+            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0,
+        ]);
+
+        foreach ([
+            fn () => TrainingRequest::recommendByManager($manager, $otherEmployee, $training, $result, 'Bukan bawahan'),
+            fn () => TrainingRequest::recommendByManager($manager, $inactiveEmployee, $training, $inactiveResult, 'Pegawai nonaktif'),
+            fn () => TrainingRequest::recommendByManager($manager, $employee, $inactiveTraining, $result, 'Training nonaktif'),
+        ] as $invalidRecommendation) {
+            try {
+                $invalidRecommendation();
+                $this->fail('Rekomendasi tidak valid harus ditolak.');
+            } catch (DomainException $exception) {
+                $this->assertSame('Rekomendasi pelatihan tidak valid.', $exception->getMessage());
+            }
+        }
+
+        TrainingRequest::recommendByManager($manager, $employee, $training, $result, 'Rekomendasi valid');
+
+        try {
+            TrainingRequest::recommendByManager($manager, $employee, $training, $result, 'Rekomendasi duplikat');
+            $this->fail('Rekomendasi duplikat harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Pelatihan ini sudah pernah diajukan atau direkomendasikan untuk pegawai tersebut.', $exception->getMessage());
+        }
+
+        $secondTraining = Training::create(['name' => 'Lain', 'type' => 'internal', 'is_active' => true]);
+        try {
+            TrainingRequest::create([
+                'user_id' => $employee->id, 'training_id' => $secondTraining->id, 'manager_id' => $manager->id,
+                'status' => TrainingRequestStatus::Approved, 'reason' => 'Lewati jalur domain', 'requested_at' => now(),
+            ]);
+            $this->fail('Status Approved langsung harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Rekomendasi pelatihan Atasan harus dibuat melalui aksi rekomendasi.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('training_requests', 1);
     }
 
     public function test_employee_cannot_create_development_record_for_colleague(): void

@@ -14,7 +14,7 @@ Dasbor menampilkan enam kartu statistik:
 - **Dinas aktif**: jumlah dinas berstatus disetujui. Kartu membuka Monitoring Dinas.
 - **Absensi hari ini**: jumlah absensi yang tercatat pada hari berjalan. Kartu membuka Riwayat Absensi.
 - **Merit perlu verifikasi HR**: jumlah hasil merit yang sudah diverifikasi atasan tetapi belum diverifikasi HR. Kartu membuka Hasil Merit.
-- **Pelatihan perlu verifikasi**: jumlah pengajuan pelatihan yang menunggu keputusan HR. Kartu membuka Pengajuan Pelatihan.
+- **Pelatihan perlu verifikasi**: jumlah pengajuan dari Pegawai yang berstatus Menunggu HR. Rekomendasi Atasan yang langsung Disetujui tidak masuk hitungan. Kartu membuka Pengajuan Pelatihan.
 - **Mentoring aktif**: jumlah mentoring berstatus dijadwalkan. Kartu membuka Mentoring.
 
 Dasbor juga memuat kartu akun untuk melihat identitas pengguna yang sedang masuk.
@@ -267,7 +267,7 @@ Waktu selesai harus setelah waktu mulai. HR dapat membuat dan mengubah pelatihan
 
 ### 6.6 Pengajuan Pelatihan
 
-Menu ini memantau seluruh pengajuan pelatihan pegawai. Daftar berisi pegawai, pelatihan, status, alasan pengajuan, catatan atasan, hasil pelatihan, dan waktu pengajuan.
+Menu ini memantau seluruh pengajuan Pegawai dan rekomendasi Atasan. Daftar berisi pegawai, pelatihan, status, alasan, catatan atasan, hasil pelatihan, dan waktu pengajuan.
 
 Alur pengajuan:
 
@@ -276,6 +276,12 @@ Alur pengajuan:
 3. Pengajuan yang disetujui atasan berstatus **Menunggu HR**.
 4. Aksi **Verifikasi HR** meminta konfirmasi lalu mengubah status menjadi **Disetujui**.
 5. Setelah pelatihan berjalan, aksi **Catat Hasil** mewajibkan isi hasil pelatihan lalu mengubah status menjadi **Selesai**.
+
+Alur rekomendasi Atasan:
+
+1. Atasan memilih hasil merit bawahan, pelatihan aktif, dan mengisi alasan.
+2. Rekomendasi langsung berstatus **Disetujui** tanpa aksi **Verifikasi HR** dan tanpa menambah antrean Pelatihan perlu verifikasi.
+3. HR memantau rekomendasi dan memakai aksi **Catat Hasil** setelah pelatihan selesai.
 
 HR tidak dapat membuat, mengubah, atau menghapus pengajuan secara langsung. Tindakan HR hanya tersedia sesuai status baris.
 
@@ -331,6 +337,6 @@ Menu akun dipakai untuk melihat akun aktif dan keluar dari aplikasi. Hanya akun 
 
 - **Kelola penuh:** Pegawai tanpa penghapusan akun, Unit Kerja, Jabatan, Lokasi Dinas, Kompetensi, Standar Kompetensi Jabatan, dan Kompetensi Pegawai.
 - **Kelola dengan batas proses:** Periode Penilaian, Indikator KPI, Katalog Pelatihan, dan Hasil Merit.
-- **Proses sesuai status:** verifikasi Pengajuan Pelatihan, catat hasil pelatihan, serta verifikasi dan publikasi Hasil Merit.
+- **Proses sesuai status:** verifikasi Pengajuan Pelatihan dari Pegawai, pantau rekomendasi Atasan, catat hasil kedua jalur pelatihan, serta verifikasi dan publikasi Hasil Merit.
 - **Hanya lihat atau monitor:** Monitoring Dinas, Riwayat Absensi, KPI Pegawai, Penilaian 360, Target Karier, Mentoring, dan Riwayat Aktivitas.
 - **Laporan:** filter ringkasan SDM dan ekspor hasil ke CSV.

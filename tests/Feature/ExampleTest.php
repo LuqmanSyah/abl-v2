@@ -17,13 +17,18 @@ class ExampleTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_login_page_uses_primary_heading_and_contrasting_eyebrow(): void
+    public function test_login_page_is_simple_responsive_and_hides_role_explanation(): void
     {
         $this->get(route('login'))
             ->assertOk()
             ->assertSee('<h1>Masuk ke akun</h1>', false)
             ->assertDontSee('<h2>Masuk ke akun</h2>', false)
-            ->assertSee('main .eyebrow { color: #1d4ed8; }', false);
+            ->assertSee('Gunakan email dan kata sandi kantor.')
+            ->assertSee('data-password-toggle', false)
+            ->assertSee('@media (max-width: 520px)', false)
+            ->assertDontSee('Aktivitas dan pengembangan')
+            ->assertDontSee('Tim dan persetujuan')
+            ->assertDontSee('Organisasi dan laporan');
     }
 
     public function test_login_validation_messages_are_in_indonesian(): void

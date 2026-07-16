@@ -34,6 +34,8 @@ class OperationsReportTest extends TestCase
         $this->actingAs($hr)
             ->get(route('hr.reports.index', ['unit_id' => $firstUnit->id]))
             ->assertOk()
+            ->assertSee('Kembali ke Panel HR')
+            ->assertDontSee('← Kembali ke panel HR')
             ->assertSee($first->name)
             ->assertDontSee($second->name);
 

@@ -6,110 +6,268 @@
     <meta name="color-scheme" content="light">
     <title>Masuk · {{ config('app.name') }}</title>
     <style>
-        :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at top left, #dbeafe 0, transparent 34rem), #f8fafc; color: #0f172a; }
-        .shell { width: min(960px, 100%); display: grid; grid-template-columns: 1.05fr .95fr; overflow: hidden; border: 1px solid #dbe4f0; border-radius: 24px; background: white; box-shadow: 0 28px 70px rgba(15, 23, 42, .14); }
-        .intro { display: flex; min-height: 610px; flex-direction: column; justify-content: space-between; padding: 48px; background: linear-gradient(145deg, #1d4ed8, #1e3a8a); color: white; }
-        .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.02em; }
-        .brand-mark { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #ffffff55; border-radius: 13px; background: #ffffff1a; font-size: 13px; letter-spacing: .04em; }
-        .eyebrow { margin: 0 0 12px; color: #bfdbfe; font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-        .intro-title { max-width: 12ch; margin: 0; font-size: clamp(34px, 5vw, 52px); font-weight: 700; line-height: 1.05; letter-spacing: -.045em; }
-        .intro-copy { max-width: 42ch; margin: 22px 0 0; color: #dbeafe; font-size: 17px; line-height: 1.65; }
-        .features { display: grid; gap: 12px; margin: 32px 0 0; padding: 0; list-style: none; color: #eff6ff; }
-        .features li { display: flex; align-items: center; gap: 10px; }
-        .features li::before { content: ""; width: 8px; height: 8px; flex: 0 0 auto; border-radius: 999px; background: #93c5fd; box-shadow: 0 0 0 4px #ffffff18; }
-        .copyright { margin: 0; color: #bfdbfe; font-size: 13px; }
-        main { display: flex; flex-direction: column; justify-content: center; padding: 48px; }
-        main .eyebrow { color: #1d4ed8; }
-        main h1 { margin: 0; font-size: 32px; letter-spacing: -.035em; }
-        .lead { margin: 10px 0 30px; color: #64748b; line-height: 1.6; }
-        .field { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
-        input[type="email"], input[type="password"] { width: 100%; min-height: 48px; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 11px; background: #fff; color: inherit; font: inherit; transition: border-color .15s, box-shadow .15s; }
-        input:hover { border-color: #94a3b8; }
-        input:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 4px #dbeafe; }
-        .remember { display: flex; align-items: center; gap: 9px; margin: 2px 0 24px; color: #475569; font-weight: 500; }
-        .remember input { width: 17px; height: 17px; margin: 0; accent-color: #2563eb; }
-        .error { margin-top: 7px; color: #b91c1c; font-size: 14px; line-height: 1.45; }
-        button { width: 100%; min-height: 49px; border: 0; border-radius: 11px; background: #2563eb; color: white; font: inherit; font-weight: 800; cursor: pointer; box-shadow: 0 8px 18px #2563eb33; transition: background .15s, transform .15s; }
-        button:hover { background: #1d4ed8; }
-        button:active { transform: translateY(1px); }
-        button:disabled { cursor: wait; opacity: .72; }
-        details { margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 18px; color: #64748b; font-size: 13px; }
-        summary { cursor: pointer; color: #334155; font-weight: 700; }
-        details p { margin: 10px 0 0; line-height: 1.7; }
-        code { border-radius: 5px; background: #f1f5f9; padding: 2px 5px; color: #0f172a; }
-        @media (max-width: 760px) {
-            body { align-items: start; padding: 0; background: white; }
-            .shell { display: block; border: 0; border-radius: 0; box-shadow: none; }
-            .intro { min-height: auto; padding: 28px 24px; }
-            .intro > div:nth-child(2), .copyright { display: none; }
-            main { padding: 36px 24px 48px; }
+        :root {
+            color-scheme: light;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --blue: #2563eb;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --border: #dbe4f0;
         }
-        @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(147, 197, 253, .38), transparent 24rem),
+                radial-gradient(circle at 85% 90%, rgba(191, 219, 254, .42), transparent 26rem),
+                #f1f5f9;
+            color: var(--ink);
+        }
+
+        main {
+            width: min(480px, 100%);
+            padding: clamp(28px, 5vw, 42px);
+            border: 1px solid rgba(203, 213, 225, .9);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, .96);
+            box-shadow: 0 24px 65px rgba(15, 23, 42, .13);
+            backdrop-filter: blur(14px);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 34px;
+            font-weight: 800;
+            letter-spacing: -.025em;
+        }
+
+        .brand-mark {
+            display: grid;
+            width: 44px;
+            height: 44px;
+            place-items: center;
+            border-radius: 14px;
+            background: linear-gradient(145deg, #2563eb, #1e40af);
+            color: white;
+            box-shadow: 0 9px 20px rgba(37, 99, 235, .25);
+            font-size: 12px;
+            letter-spacing: .05em;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(29px, 7vw, 36px);
+            line-height: 1.15;
+            letter-spacing: -.04em;
+        }
+
+        .lead {
+            margin: 10px 0 30px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .field { margin-bottom: 20px; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            min-height: 50px;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: white;
+            color: inherit;
+            font: inherit;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        input:hover { border-color: #94a3b8; }
+
+        input:focus {
+            outline: 0;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 4px #dbeafe;
+        }
+
+        .password-wrap { position: relative; }
+        .password-wrap input { padding-right: 78px; }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            border: 0;
+            background: transparent;
+            color: #475569;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 750;
+            cursor: pointer;
+            transform: translateY(-50%);
+        }
+
+        .password-toggle:hover { color: var(--blue); }
+
+        .password-toggle:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 3px;
+            border-radius: 4px;
+        }
+
+        .remember {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 2px 0 24px;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .remember input {
+            width: 17px;
+            height: 17px;
+            margin: 0;
+            accent-color: var(--blue);
+        }
+
+        .error {
+            margin-top: 7px;
+            color: #b91c1c;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .submit {
+            width: 100%;
+            min-height: 51px;
+            border: 0;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, .25);
+            transition: box-shadow .15s, transform .15s;
+        }
+
+        .submit:hover {
+            box-shadow: 0 13px 28px rgba(37, 99, 235, .32);
+            transform: translateY(-1px);
+        }
+
+        .submit:active { transform: translateY(0); }
+        .submit:disabled { cursor: wait; opacity: .72; transform: none; }
+
+        details {
+            margin-top: 22px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 17px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        summary {
+            cursor: pointer;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        details p { margin: 9px 0 0; line-height: 1.7; }
+        code { border-radius: 5px; background: #f1f5f9; padding: 2px 5px; color: var(--ink); }
+
+        @media (max-width: 520px) {
+            body { padding: 0; background: white; }
+            main {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 28px 20px 40px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { scroll-behavior: auto !important; transition: none !important; }
+        }
     </style>
 </head>
 <body>
-    <div class="shell">
-        <aside class="intro" aria-label="Tentang portal">
-            <div class="brand">
-                <span class="brand-mark" aria-hidden="true">SDM</span>
-                <span>{{ config('app.name') }}</span>
+    <main>
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">SDM</span>
+            <span>{{ config('app.name') }}</span>
+        </div>
+
+        <h1>Masuk ke akun</h1>
+        <p class="lead">Gunakan email dan kata sandi kantor.</p>
+
+        <form method="POST" action="{{ route('login.store') }}" data-login-form>
+            @csrf
+
+            <div class="field">
+                <label for="email">Email kantor</label>
+                <input id="email" name="email" type="email" value="{{ old('email') }}" placeholder="nama@perusahaan.com" required autofocus autocomplete="username"
+                       @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+                @error('email') <div id="email-error" class="error" role="alert">{{ $message }}</div> @enderror
             </div>
-            <div>
-                <p class="eyebrow">Ruang kerja karyawan</p>
-                <p class="intro-title">Urus pekerjaan, bukan formulir.</p>
-                <p class="intro-copy">Dinas, kinerja, dan pengembangan karier tersedia dalam satu akun sesuai peran Anda.</p>
-                <ul class="features">
-                    <li>Absensi dinas berbasis lokasi</li>
-                    <li>Target dan hasil kinerja yang jelas</li>
-                    <li>Pelatihan serta mentoring terpantau</li>
-                </ul>
-            </div>
-            <p class="copyright">Akses khusus pegawai dan pengelola SDM.</p>
-        </aside>
 
-        <main>
-            <p class="eyebrow">Selamat datang</p>
-            <h1>Masuk ke akun</h1>
-            <p class="lead">Gunakan email dan kata sandi kantor. Portal akan membuka menu sesuai peran Anda.</p>
-
-            <form method="POST" action="{{ route('login.store') }}" data-login-form>
-                @csrf
-
-                <div class="field">
-                    <label for="email">Email kantor</label>
-                    <input id="email" name="email" type="email" value="{{ old('email') }}" required autofocus autocomplete="username"
-                           @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
-                    @error('email') <div id="email-error" class="error" role="alert">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="field">
-                    <label for="password">Kata sandi</label>
+            <div class="field">
+                <label for="password">Kata sandi</label>
+                <div class="password-wrap">
                     <input id="password" name="password" type="password" required autocomplete="current-password"
                            @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
-                    @error('password') <div id="password-error" class="error" role="alert">{{ $message }}</div> @enderror
+                    <button class="password-toggle" type="button" data-password-toggle aria-controls="password" aria-pressed="false">Lihat</button>
                 </div>
+                @error('password') <div id="password-error" class="error" role="alert">{{ $message }}</div> @enderror
+            </div>
 
-                <label class="remember">
-                    <input name="remember" type="checkbox" value="1" @checked(old('remember'))>
-                    Tetap masuk di perangkat ini
-                </label>
+            <label class="remember">
+                <input name="remember" type="checkbox" value="1" @checked(old('remember'))>
+                Tetap masuk di perangkat ini
+            </label>
 
-                <button type="submit" data-submit>Masuk ke portal</button>
-            </form>
+            <button class="submit" type="submit" data-submit>Masuk</button>
+        </form>
 
-            @env('local')
-                <details>
-                    <summary>Akun demo lokal</summary>
-                    <p><code>pegawai@example.com</code>, <code>atasan@example.com</code>, atau <code>hr@example.com</code><br>Kata sandi: <code>password</code></p>
-                </details>
-            @endenv
-        </main>
-    </div>
+        @env('local')
+            <details>
+                <summary>Akun demo lokal</summary>
+                <p><code>pegawai@example.com</code>, <code>atasan@example.com</code>, atau <code>hr@example.com</code><br>Kata sandi: <code>password</code></p>
+            </details>
+        @endenv
+    </main>
 
     <script>
+        const password = document.querySelector('#password');
+        const passwordToggle = document.querySelector('[data-password-toggle]');
+
+        passwordToggle.addEventListener('click', () => {
+            const showing = password.type === 'text';
+            password.type = showing ? 'password' : 'text';
+            passwordToggle.textContent = showing ? 'Lihat' : 'Sembunyikan';
+            passwordToggle.setAttribute('aria-pressed', String(! showing));
+        });
+
         document.querySelector('[data-login-form]').addEventListener('submit', () => {
             const button = document.querySelector('[data-submit]');
             button.disabled = true;

@@ -10,6 +10,8 @@
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px #0002; }
         .head, form { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
         .head { justify-content: space-between; margin-bottom: 20px; }
+        .back { display: inline-flex; margin-bottom: 12px; color: #92400e; font-weight: 700; text-decoration: none; }
+        .back:hover { text-decoration: underline; }
         h1 { margin: 0 0 6px; }
         .subtitle { margin: 0; color: #6b7280; }
         label { display: grid; gap: 6px; font-weight: 600; }
@@ -26,7 +28,7 @@
 <main>
     <div class="card">
         <div class="head">
-            <div><a href="{{ url('/hr') }}">← Kembali ke panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.</p></div>
+            <div><a class="back" href="{{ url('/hr') }}">Kembali ke Panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.</p></div>
             <a class="button primary" href="{{ route('hr.reports.export', array_filter($filters)) }}">Unduh CSV</a>
         </div>
         <form method="get">

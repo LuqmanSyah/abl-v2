@@ -2,9 +2,11 @@
 
 namespace App\Filament\Resources\ReviewPeriods\Schemas;
 
+use Closure;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 class ReviewPeriodForm
@@ -26,23 +28,41 @@ class ReviewPeriodForm
                 TextInput::make('kpi_weight')
                     ->label('Bobot KPI (%)')
                     ->required()
-                    ->numeric()
+                    ->integer()
                     ->minValue(0)->maxValue(100)
                     ->default(40),
                 TextInput::make('discipline_weight')
                     ->label('Bobot kedisiplinan (%)')
                     ->required()
-                    ->numeric()->minValue(0)->maxValue(100)
+                    ->integer()->minValue(0)->maxValue(100)
                     ->default(20),
                 TextInput::make('manager_weight')
                     ->label('Bobot penilaian Atasan (%)')
                     ->required()
-                    ->numeric()->minValue(0)->maxValue(100)
+                    ->integer()->minValue(0)->maxValue(100)
                     ->default(20),
                 TextInput::make('review_360_weight')
                     ->label('Bobot umpan balik kinerja (%)')
                     ->required()
-                    ->numeric()->minValue(0)->maxValue(100)
+                    ->integer()->minValue(0)->maxValue(100)
+                    ->rules([
+                        fn (Get $get): Closure => function (string $attribute, mixed $value, Closure $fail) use ($get): void {
+                            $weights = [
+                                $get('kpi_weight'),
+                                $get('discipline_weight'),
+                                $get('manager_weight'),
+                                $value,
+                            ];
+
+                            if (in_array(null, $weights, true) || in_array('', $weights, true)) {
+                                return;
+                            }
+
+                            if (array_sum(array_map('intval', $weights)) !== 100) {
+                                $fail('Total bobot merit wajib 100%.');
+                            }
+                        },
+                    ])
                     ->default(20),
                 TextInput::make('base_bonus')
                     ->label('Dasar estimasi bonus')

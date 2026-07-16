@@ -18,7 +18,16 @@ class ReviewPeriod extends Model
 
     protected function casts(): array
     {
-        return ['starts_at' => 'date', 'ends_at' => 'date', 'base_bonus' => 'decimal:2', 'is_active' => 'boolean'];
+        return [
+            'starts_at' => 'date',
+            'ends_at' => 'date',
+            'kpi_weight' => 'integer',
+            'discipline_weight' => 'integer',
+            'manager_weight' => 'integer',
+            'review_360_weight' => 'integer',
+            'base_bonus' => 'decimal:2',
+            'is_active' => 'boolean',
+        ];
     }
 
     protected static function booted(): void

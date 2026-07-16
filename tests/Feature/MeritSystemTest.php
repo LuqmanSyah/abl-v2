@@ -8,6 +8,7 @@ use App\Enums\ReviewType;
 use App\Enums\UserRole;
 use App\Filament\Resources\EmployeeKpis\EmployeeKpiResource;
 use App\Filament\Resources\KpiIndicators\KpiIndicatorResource;
+use App\Filament\Resources\ReviewPeriods\Pages\ListReviewPeriods;
 use App\Filament\Resources\ReviewPeriods\ReviewPeriodResource;
 use App\Models\ActivityLog;
 use App\Models\Attendance;
@@ -20,7 +21,9 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\MeritCalculator;
 use DomainException;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class MeritSystemTest extends TestCase
@@ -107,6 +110,17 @@ class MeritSystemTest extends TestCase
             'kpi_weight' => 50, 'discipline_weight' => 20, 'manager_weight' => 20,
             'review_360_weight' => 20, 'base_bonus' => 0,
         ]);
+    }
+
+    public function test_merit_weights_accept_numeric_form_values_totalling_one_hundred(): void
+    {
+        $period = ReviewPeriod::create([
+            'name' => 'Valid', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40.0, 'discipline_weight' => 20.0, 'manager_weight' => 20.0,
+            'review_360_weight' => 20.0, 'base_bonus' => 0,
+        ]);
+
+        $this->assertSame(100, $period->kpi_weight + $period->discipline_weight + $period->manager_weight + $period->review_360_weight);
     }
 
     public function test_kpi_target_and_achievement_must_be_non_negative(): void
@@ -222,6 +236,12 @@ class MeritSystemTest extends TestCase
         $this->actingAs($hr);
         $this->assertFalse(ReviewPeriodResource::canEdit($period));
         $this->assertFalse(KpiIndicatorResource::canEdit($indicator));
+        Filament::setCurrentPanel(Filament::getPanel('hr'));
+        Livewire::test(ListReviewPeriods::class)
+            ->assertTableActionHidden('calculate', $period);
+        $this->get("/hr/review-periods/{$period->id}/edit")
+            ->assertRedirect('/hr')
+            ->assertSessionHas('filament.notifications');
 
         foreach ([
             [fn () => $period->update(['base_bonus' => 2_000_000]), 'Periode dengan hasil merit terpublikasi tidak dapat diubah.'],

@@ -264,7 +264,8 @@ class DutyAttendanceTest extends TestCase
 
         $this->actingAs($employee)
             ->get('/pegawai/duty-trips/create')
-            ->assertForbidden();
+            ->assertRedirect('/pegawai')
+            ->assertSessionHas('filament.notifications');
 
         $this->actingAs($employee)
             ->get(route('attendance.capture', $trip))

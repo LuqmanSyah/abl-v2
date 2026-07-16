@@ -193,6 +193,10 @@ class FilamentAccessTest extends TestCase
         $this->assertFalse($manager->canAccessPanel(filament()->getPanel('hr')));
         $this->assertTrue($hr->canAccessPanel(filament()->getPanel('hr')));
         $this->assertFalse($hr->canAccessPanel(filament()->getPanel('employee')));
+
+        $this->actingAs($employee)->get('/hr')
+            ->assertRedirect('/pegawai')
+            ->assertSessionHas('filament.notifications');
     }
 
     public function test_panels_only_register_resources_needed_by_the_role(): void
@@ -445,7 +449,9 @@ class FilamentAccessTest extends TestCase
 
         $this->actingAs($employee)->get('/pegawai')->assertOk()->assertSee('portal-filament.css', false);
         $this->assertContains(EmployeeStats::class, filament()->getPanel('employee')->getWidgets());
-        $this->actingAs($employee)->get('/pegawai/duty-trips/create')->assertForbidden();
+        $this->actingAs($employee)->get('/pegawai/duty-trips/create')
+            ->assertRedirect('/pegawai')
+            ->assertSessionHas('filament.notifications');
         $this->actingAs($employee)->get('/pegawai/employee-kpis')->assertOk();
         $this->actingAs($employee)->get('/pegawai/performance-reviews/create')->assertOk();
         $this->actingAs($employee)->get('/pegawai/merit-results')->assertOk();

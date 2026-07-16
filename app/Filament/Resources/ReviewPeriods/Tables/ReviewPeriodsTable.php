@@ -4,9 +4,12 @@ namespace App\Filament\Resources\ReviewPeriods\Tables;
 
 use App\Enums\UserRole;
 use App\Models\EmployeeKpi;
+use App\Models\ReviewPeriod;
 use App\Services\MeritCalculator;
+use DomainException;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -64,14 +67,29 @@ class ReviewPeriodsTable
                     ->modalDescription('Seluruh hasil merit Pegawai pada periode ini akan dihitung dari data terbaru.')
                     ->modalSubmitActionLabel('Hitung Merit')
                     ->modalWidth('md')
-                    ->visible(fn (): bool => auth()->user()?->role === UserRole::Hr)
-                    ->action(function ($record): void {
-                        $employees = EmployeeKpi::with('employee')->where('review_period_id', $record->id)
-                            ->get()->pluck('employee')->unique('id');
-                        foreach ($employees as $employee) {
-                            app(MeritCalculator::class)->calculate($record, $employee);
+                    ->visible(fn (ReviewPeriod $record): bool => auth()->user()?->role === UserRole::Hr
+                        && ! $record->hasPublishedMeritResults())
+                    ->action(function (Action $action, ReviewPeriod $record): void {
+                        try {
+                            if ($record->fresh()->hasPublishedMeritResults()) {
+                                throw new DomainException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
+                            }
+
+                            $employees = EmployeeKpi::with('employee')->where('review_period_id', $record->id)
+                                ->get()->pluck('employee')->unique('id');
+                            foreach ($employees as $employee) {
+                                app(MeritCalculator::class)->calculate($record, $employee);
+                            }
+                        } catch (DomainException $exception) {
+                            Notification::make()
+                                ->title('Merit tidak dapat dihitung')
+                                ->body($exception->getMessage())
+                                ->warning()
+                                ->send();
+                            $action->failure();
                         }
-                    }),
+                    })
+                    ->successNotificationTitle('Merit berhasil dihitung'),
                 EditAction::make(),
             ]);
     }

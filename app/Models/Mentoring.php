@@ -4,8 +4,8 @@ namespace App\Models;
 
 use App\Enums\MentoringStatus;
 use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use Carbon\CarbonImmutable;
-use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,16 +37,16 @@ class Mentoring extends Model
 
             if ($mentoring->status === MentoringStatus::Pending
                 && (! $mentoring->requested_at || $mentoring->requested_at->isPast())) {
-                throw new DomainException('Jadwal mentoring yang diajukan tidak boleh lampau.');
+                throw new BusinessRuleException('Jadwal mentoring yang diajukan tidak boleh lampau.');
             }
 
             if (auth()->user()?->role === UserRole::Employee && $mentoring->employee_id !== auth()->id()) {
-                throw new DomainException('Pegawai hanya dapat mengajukan mentoring untuk dirinya sendiri.');
+                throw new BusinessRuleException('Pegawai hanya dapat mengajukan mentoring untuk dirinya sendiri.');
             }
 
             if (User::whereKey($mentoring->employee_id)->where('role', UserRole::Employee)->where('manager_id', $mentoring->manager_id)->doesntExist()
                 || User::whereKey($mentoring->manager_id)->where('role', UserRole::Manager)->doesntExist()) {
-                throw new DomainException('Mentoring harus diajukan kepada Atasan langsung.');
+                throw new BusinessRuleException('Mentoring harus diajukan kepada Atasan langsung.');
             }
         });
         static::created(fn (self $mentoring) => ActivityLog::record('mentoring.requested', $mentoring));
@@ -67,7 +67,7 @@ class Mentoring extends Model
         $this->guardManager($manager, MentoringStatus::Pending);
         $scheduledAt = CarbonImmutable::parse($scheduledAt);
         if ($scheduledAt->isPast()) {
-            throw new DomainException('Jadwal mentoring yang disetujui tidak boleh lampau.');
+            throw new BusinessRuleException('Jadwal mentoring yang disetujui tidak boleh lampau.');
         }
         $this->update([
             'status' => MentoringStatus::Approved,
@@ -108,7 +108,7 @@ class Mentoring extends Model
     private function guardManager(User $manager, MentoringStatus $status): void
     {
         if ($manager->role !== UserRole::Manager || $this->manager_id !== $manager->id || $this->status !== $status) {
-            throw new DomainException('Mentoring tidak dapat diproses pengguna ini.');
+            throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
         }
     }
 }

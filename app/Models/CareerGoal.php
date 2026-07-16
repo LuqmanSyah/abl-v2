@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use App\Services\CareerGapService;
-use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,14 +20,14 @@ class CareerGoal extends Model
     {
         static::saving(function (self $goal): void {
             if (auth()->user()?->role === UserRole::Employee && $goal->user_id !== auth()->id()) {
-                throw new DomainException('Pegawai hanya dapat mengubah target karier sendiri.');
+                throw new BusinessRuleException('Pegawai hanya dapat mengubah target karier sendiri.');
             }
 
             $employee = User::with('position')->find($goal->user_id);
             $target = Position::find($goal->target_position_id);
 
             if ($employee?->role !== UserRole::Employee || ! $employee->position || ! $target || $target->level <= $employee->position->level) {
-                throw new DomainException('Jabatan tujuan harus lebih tinggi dari jabatan Pegawai saat ini.');
+                throw new BusinessRuleException('Jabatan tujuan harus lebih tinggi dari jabatan Pegawai saat ini.');
             }
         });
     }

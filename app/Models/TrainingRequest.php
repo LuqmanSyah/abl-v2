@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -41,17 +41,17 @@ class TrainingRequest extends Model
 
             if (auth()->user()?->role === UserRole::Employee
                 && ($request->user_id !== auth()->id() || $request->status !== TrainingRequestStatus::PendingManager)) {
-                throw new DomainException('Pegawai hanya dapat mengajukan pelatihan untuk dirinya sendiri.');
+                throw new BusinessRuleException('Pegawai hanya dapat mengajukan pelatihan untuk dirinya sendiri.');
             }
 
             if ($request->status === TrainingRequestStatus::Approved && ! $request->managerRecommendation) {
-                throw new DomainException('Rekomendasi pelatihan Atasan harus dibuat melalui aksi rekomendasi.');
+                throw new BusinessRuleException('Rekomendasi pelatihan Atasan harus dibuat melalui aksi rekomendasi.');
             }
 
             if (User::whereKey($request->user_id)->where('role', UserRole::Employee)->where('is_active', true)->where('manager_id', $request->manager_id)->doesntExist()
                 || User::whereKey($request->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
                 || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
-                throw new DomainException('Pengajuan pelatihan tidak valid.');
+                throw new BusinessRuleException('Pengajuan pelatihan tidak valid.');
             }
         });
         static::created(function (self $request): void {
@@ -90,12 +90,12 @@ class TrainingRequest extends Model
             || User::whereKey($employee->id)->where('role', UserRole::Employee)->where('is_active', true)->where('manager_id', $manager->id)->doesntExist()
             || Training::whereKey($training->id)->where('is_active', true)->doesntExist()
             || MeritResult::whereKey($meritResult->id)->where('employee_id', $employee->id)->doesntExist()) {
-            throw new DomainException('Rekomendasi pelatihan tidak valid.');
+            throw new BusinessRuleException('Rekomendasi pelatihan tidak valid.');
         }
 
         return DB::transaction(function () use ($manager, $employee, $training, $meritResult, $reason): self {
             if (self::where('user_id', $employee->id)->where('training_id', $training->id)->exists()) {
-                throw new DomainException('Pelatihan ini sudah pernah diajukan atau direkomendasikan untuk pegawai tersebut.');
+                throw new BusinessRuleException('Pelatihan ini sudah pernah diajukan atau direkomendasikan untuk pegawai tersebut.');
             }
 
             $request = new self([
@@ -131,7 +131,7 @@ class TrainingRequest extends Model
     {
         $this->transition(function (self $request) use ($manager, $notes): void {
             if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
-                throw new DomainException('Pengajuan pelatihan tidak dapat disetujui pengguna ini.');
+                throw new BusinessRuleException('Pengajuan pelatihan tidak dapat disetujui pengguna ini.');
             }
 
             $request->update([
@@ -150,7 +150,7 @@ class TrainingRequest extends Model
                 || $request->status !== TrainingRequestStatus::Rejected || ! $employee->manager_id
                 || User::whereKey($employee->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
                 || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
-                throw new DomainException('Pengajuan pelatihan ini tidak dapat diajukan ulang.');
+                throw new BusinessRuleException('Pengajuan pelatihan ini tidak dapat diajukan ulang.');
             }
 
             $request->update([
@@ -169,7 +169,7 @@ class TrainingRequest extends Model
     {
         $this->transition(function (self $request) use ($manager, $notes): void {
             if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
-                throw new DomainException('Pengajuan pelatihan tidak dapat ditolak pengguna ini.');
+                throw new BusinessRuleException('Pengajuan pelatihan tidak dapat ditolak pengguna ini.');
             }
 
             $request->update([
@@ -185,7 +185,7 @@ class TrainingRequest extends Model
     {
         $this->transition(function (self $request) use ($hr): void {
             if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::PendingHr) {
-                throw new DomainException('Pengajuan pelatihan belum dapat diverifikasi HR.');
+                throw new BusinessRuleException('Pengajuan pelatihan belum dapat diverifikasi HR.');
             }
 
             $request->update([
@@ -201,7 +201,7 @@ class TrainingRequest extends Model
     {
         $this->transition(function (self $request) use ($hr, $result): void {
             if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::Approved) {
-                throw new DomainException('Pelatihan belum dapat diselesaikan.');
+                throw new BusinessRuleException('Pelatihan belum dapat diselesaikan.');
             }
 
             $request->update([

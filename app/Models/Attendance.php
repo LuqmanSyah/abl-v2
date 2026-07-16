@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,7 +43,7 @@ class Attendance extends Model
             $attendance = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($hr->role !== UserRole::Hr || $attendance->status !== AttendanceStatus::NeedsReview) {
-                throw new DomainException('Absensi tidak dapat diverifikasi pengguna ini.');
+                throw new BusinessRuleException('Absensi tidak dapat diverifikasi pengguna ini.');
             }
 
             $attendance->update(['status' => AttendanceStatus::Valid]);

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -24,10 +24,10 @@ class EmployeeCompetency extends Model
     {
         static::saving(function (self $competency): void {
             if ($competency->level < 1 || $competency->level > 5) {
-                throw new DomainException('Level kompetensi Pegawai harus 1 sampai 5.');
+                throw new BusinessRuleException('Level kompetensi Pegawai harus 1 sampai 5.');
             }
             if (User::whereKey($competency->user_id)->where('role', UserRole::Employee)->doesntExist()) {
-                throw new DomainException('Kompetensi hanya dapat dicatat untuk Pegawai.');
+                throw new BusinessRuleException('Kompetensi hanya dapat dicatat untuk Pegawai.');
             }
         });
     }

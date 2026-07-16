@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,7 +55,7 @@ class MeritResult extends Model
     public function breakdownForManager(User $manager): array
     {
         if ($manager->role !== UserRole::Manager || $this->employee->manager_id !== $manager->id) {
-            throw new DomainException('Rincian merit tidak dapat dilihat pengguna ini.');
+            throw new BusinessRuleException('Rincian merit tidak dapat dilihat pengguna ini.');
         }
 
         $period = $this->reviewPeriod;
@@ -147,7 +147,7 @@ class MeritResult extends Model
 
             if ($result->employee->manager_id !== $manager->id || $manager->role !== UserRole::Manager
                 || $result->manager_verified_at || $result->published_at) {
-                throw new DomainException('Hasil merit tidak dapat diverifikasi pengguna ini.');
+                throw new BusinessRuleException('Hasil merit tidak dapat diverifikasi pengguna ini.');
             }
 
             $result->update(['manager_verified_by' => $manager->id, 'manager_verified_at' => now()]);
@@ -162,7 +162,7 @@ class MeritResult extends Model
             $result = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($hr->role !== UserRole::Hr || ! $result->manager_verified_at || $result->published_at) {
-                throw new DomainException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
+                throw new BusinessRuleException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
             }
 
             $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);

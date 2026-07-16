@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
+use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
@@ -12,7 +13,6 @@ use App\Models\MeritResult;
 use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
-use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class MeritCalculator
@@ -25,7 +25,7 @@ class MeritCalculator
             $result = MeritResult::where($identity)->lockForUpdate()->first();
 
             if ($result?->published_at) {
-                throw new DomainException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
+                throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();

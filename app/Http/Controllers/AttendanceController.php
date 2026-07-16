@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Services\AttendanceRecorder;
-use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -53,7 +53,7 @@ class AttendanceController extends Controller
 
         try {
             $attendance = $recorder->record($dutyTrip, $request->user(), $data, $photoPath);
-        } catch (DomainException $exception) {
+        } catch (BusinessRuleException $exception) {
             Storage::disk('local')->delete($photoPath);
 
             return response()->json(['message' => $exception->getMessage()], 422);

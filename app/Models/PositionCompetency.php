@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,7 +19,7 @@ class PositionCompetency extends Model
     {
         static::saving(function (self $standard): void {
             if ($standard->required_level < 1 || $standard->required_level > 5) {
-                throw new DomainException('Level kompetensi jabatan harus 1 sampai 5.');
+                throw new BusinessRuleException('Level kompetensi jabatan harus 1 sampai 5.');
             }
         });
     }

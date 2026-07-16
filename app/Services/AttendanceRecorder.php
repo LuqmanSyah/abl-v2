@@ -4,13 +4,13 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
+use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\User;
 use App\Support\GeoDistance;
 use Carbon\CarbonImmutable;
-use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceRecorder
@@ -22,12 +22,12 @@ class AttendanceRecorder
             $trip = DutyTrip::query()->lockForUpdate()->findOrFail($trip->getKey());
 
             if ($trip->employee_id !== $employee->id) {
-                throw new DomainException('Absensi hanya tersedia untuk pegawai yang ditugaskan.');
+                throw new BusinessRuleException('Absensi hanya tersedia untuk pegawai yang ditugaskan.');
             }
 
             if ($existing = Attendance::where('client_uuid', $data['client_uuid'])->first()) {
                 if ($existing->duty_trip_id !== $trip->id || $existing->employee_id !== $employee->id) {
-                    throw new DomainException('ID sinkronisasi telah digunakan.');
+                    throw new BusinessRuleException('ID sinkronisasi telah digunakan.');
                 }
 
                 return $existing;
@@ -38,13 +38,13 @@ class AttendanceRecorder
             }
 
             if ($trip->status !== DutyTripStatus::Approved) {
-                throw new DomainException('Absensi hanya tersedia untuk dinas aktif.');
+                throw new BusinessRuleException('Absensi hanya tersedia untuk dinas aktif.');
             }
 
             $capturedAt = CarbonImmutable::parse($data['captured_at']);
             $receivedAt = CarbonImmutable::now();
             if ($receivedAt->isBefore($trip->starts_at) || $capturedAt->isBefore($trip->starts_at)) {
-                throw new DomainException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
+                throw new BusinessRuleException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
             }
 
             $distance = GeoDistance::meters(

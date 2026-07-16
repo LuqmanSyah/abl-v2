@@ -2,14 +2,21 @@
 
 namespace App\Providers;
 
+use App\Exceptions\BusinessRuleException;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\ServiceProvider;
+use Throwable;
+
+use function Livewire\on;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +33,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        on('exception', function (mixed $component, Throwable $exception, Closure $stopPropagation): void {
+            if (! $component instanceof Page || ! $exception instanceof BusinessRuleException) {
+                return;
+            }
+
+            Notification::make()
+                ->title('Tindakan tidak dapat diproses')
+                ->body($exception->getMessage())
+                ->warning()
+                ->send();
+
+            $stopPropagation();
+        });
+
         Action::configureUsing(fn (Action $action) => $action
             ->modalAlignment(Alignment::Start)
             ->modalFooterActionsAlignment(Alignment::End)

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -34,15 +34,15 @@ class ReviewPeriod extends Model
     {
         static::saving(function (self $period): void {
             if ($period->exists && $period->isDirty($period->getFillable()) && $period->hasPublishedMeritResults()) {
-                throw new DomainException('Periode dengan hasil merit terpublikasi tidak dapat diubah.');
+                throw new BusinessRuleException('Periode dengan hasil merit terpublikasi tidak dapat diubah.');
             }
 
             $total = $period->kpi_weight + $period->discipline_weight + $period->manager_weight + $period->review_360_weight;
             if ($total !== 100) {
-                throw new DomainException('Total bobot merit wajib 100%.');
+                throw new BusinessRuleException('Total bobot merit wajib 100%.');
             }
             if ($period->ends_at->isBefore($period->starts_at)) {
-                throw new DomainException('Tanggal selesai harus setelah tanggal mulai.');
+                throw new BusinessRuleException('Tanggal selesai harus setelah tanggal mulai.');
             }
         });
     }

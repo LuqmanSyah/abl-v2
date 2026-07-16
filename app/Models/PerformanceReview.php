@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ReviewType;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,12 +30,12 @@ class PerformanceReview extends Model
                 ReviewType::Peer => $reviewer->id !== $reviewee->id && $reviewer->unit_id !== null && $reviewer->unit_id === $reviewee->unit_id,
             };
             if (! $valid) {
-                throw new DomainException('Hubungan penilai dan pegawai tidak valid.');
+                throw new BusinessRuleException('Hubungan penilai dan pegawai tidak valid.');
             }
         });
 
-        static::updating(fn () => throw new DomainException('Penilaian yang telah dikirim tidak dapat diubah.'));
-        static::deleting(fn () => throw new DomainException('Penilaian yang telah dikirim tidak dapat dihapus.'));
+        static::updating(fn () => throw new BusinessRuleException('Penilaian yang telah dikirim tidak dapat diubah.'));
+        static::deleting(fn () => throw new BusinessRuleException('Penilaian yang telah dikirim tidak dapat dihapus.'));
     }
 
     public function reviewPeriod(): BelongsTo

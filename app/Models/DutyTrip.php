@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +39,7 @@ class DutyTrip extends Model
                 ->exists();
 
             if (! $validManager || ! $validEmployee) {
-                throw new DomainException('Pegawai harus merupakan bawahan langsung Atasan pemberi tugas.');
+                throw new BusinessRuleException('Pegawai harus merupakan bawahan langsung Atasan pemberi tugas.');
             }
         };
 
@@ -57,7 +57,7 @@ class DutyTrip extends Model
 
             if (($trip->getRawOriginal('status') === DutyTripStatus::Completed->value || $trip->attendance()->exists())
                 && $trip->isDirty($locked)) {
-                throw new DomainException('Lokasi dinas yang telah selesai tidak dapat diubah.');
+                throw new BusinessRuleException('Lokasi dinas yang telah selesai tidak dapat diubah.');
             }
         });
     }
@@ -94,7 +94,7 @@ class DutyTrip extends Model
     public function cancel(User $manager): void
     {
         if (! $this->canBeChangedBy($manager)) {
-            throw new DomainException('Perintah dinas tidak dapat dibatalkan pengguna ini.');
+            throw new BusinessRuleException('Perintah dinas tidak dapat dibatalkan pengguna ini.');
         }
 
         $this->update(['status' => DutyTripStatus::Cancelled]);

@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
-use DomainException;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -25,20 +25,20 @@ class EmployeeKpi extends Model
         static::saving(function (self $kpi): void {
             if (($kpi->hasPublishedMeritResult() || ($kpi->exists && $kpi->hasPublishedMeritResult(true)))
                 && (! $kpi->exists || $kpi->isDirty($kpi->getFillable()))) {
-                throw new DomainException('KPI dengan hasil merit terpublikasi tidak dapat diubah.');
+                throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat diubah.');
             }
 
             if ((float) $kpi->target <= 0) {
-                throw new DomainException('Target KPI harus lebih dari 0.');
+                throw new BusinessRuleException('Target KPI harus lebih dari 0.');
             }
             if ((float) $kpi->achievement < 0) {
-                throw new DomainException('Capaian KPI tidak boleh negatif.');
+                throw new BusinessRuleException('Capaian KPI tidak boleh negatif.');
             }
             if (KpiIndicator::whereKey($kpi->kpi_indicator_id)->where('review_period_id', $kpi->review_period_id)->doesntExist()) {
-                throw new DomainException('Indikator KPI bukan bagian periode terpilih.');
+                throw new BusinessRuleException('Indikator KPI bukan bagian periode terpilih.');
             }
             if (User::whereKey($kpi->employee_id)->where('manager_id', $kpi->manager_id)->doesntExist()) {
-                throw new DomainException('Pegawai bukan bawahan Atasan terpilih.');
+                throw new BusinessRuleException('Pegawai bukan bawahan Atasan terpilih.');
             }
         });
 
@@ -61,7 +61,7 @@ class EmployeeKpi extends Model
 
         static::deleting(function (self $kpi): void {
             if ($kpi->hasPublishedMeritResult()) {
-                throw new DomainException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
+                throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
             }
         });
 

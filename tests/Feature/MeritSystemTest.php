@@ -8,6 +8,7 @@ use App\Enums\ReviewType;
 use App\Enums\UserRole;
 use App\Filament\Resources\EmployeeKpis\EmployeeKpiResource;
 use App\Filament\Resources\KpiIndicators\KpiIndicatorResource;
+use App\Filament\Resources\KpiIndicators\Pages\CreateKpiIndicator;
 use App\Filament\Resources\ReviewPeriods\Pages\ListReviewPeriods;
 use App\Filament\Resources\ReviewPeriods\ReviewPeriodResource;
 use App\Models\ActivityLog;
@@ -121,6 +122,35 @@ class MeritSystemTest extends TestCase
         ]);
 
         $this->assertSame(100, $period->kpi_weight + $period->discipline_weight + $period->manager_weight + $period->review_360_weight);
+    }
+
+    public function test_filament_shows_business_rule_failure_as_notification(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $period = ReviewPeriod::create([
+            'name' => 'Validasi Indikator', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0,
+        ]);
+        KpiIndicator::create([
+            'review_period_id' => $period->id,
+            'name' => 'Indikator Lama',
+            'weight' => 80,
+        ]);
+
+        $this->actingAs($hr);
+        Filament::setCurrentPanel(Filament::getPanel('hr'));
+
+        Livewire::test(CreateKpiIndicator::class)
+            ->fillForm([
+                'review_period_id' => $period->id,
+                'name' => 'Indikator Baru',
+                'weight' => 30,
+            ])
+            ->call('create')
+            ->assertNotified('Tindakan tidak dapat diproses');
+
+        $this->assertDatabaseCount('kpi_indicators', 1);
     }
 
     public function test_kpi_target_and_achievement_must_be_non_negative(): void

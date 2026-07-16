@@ -34,6 +34,16 @@ class TrainingRequestResource extends Resource
 
     protected static ?string $pluralModelLabel = 'pengajuan pelatihan';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Pengajuan Pelatihan',
+            UserRole::Manager => 'Persetujuan Pelatihan',
+            UserRole::Hr => 'Verifikasi Pelatihan',
+            default => 'Pengajuan Pelatihan',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
@@ -95,6 +105,9 @@ class TrainingRequestResource extends Resource
             ->recordActions([
                 Action::make('resubmit')->label('Ajukan Ulang')->color('primary')
                     ->icon('heroicon-o-arrow-path')
+                    ->modalHeading('Ajukan Ulang Pelatihan')
+                    ->modalDescription('Perbarui alasan pengajuan sebelum dikirim kembali kepada Atasan.')
+                    ->modalSubmitActionLabel('Kirim Ulang')
                     ->schema([Textarea::make('reason')->label('Alasan pengajuan terbaru')->required()])
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Employee
                         && $record->user_id === auth()->id()
@@ -102,17 +115,34 @@ class TrainingRequestResource extends Resource
                     ->action(fn ($record, array $data) => $record->resubmit(auth()->user(), $data['reason']))
                     ->successNotificationTitle('Pengajuan dikirim ulang kepada Atasan'),
                 Action::make('approve_manager')->label('Setujui')->color('success')
+                    ->modalHeading('Setujui Pengajuan Pelatihan')
+                    ->modalDescription('Pengajuan akan diteruskan kepada HR untuk verifikasi.')
+                    ->modalSubmitActionLabel('Setujui Pengajuan')
                     ->schema([Textarea::make('notes')->label('Catatan')])
-                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === TrainingRequestStatus::PendingManager)
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager
+                        && $record->manager_id === auth()->id()
+                        && $record->status === TrainingRequestStatus::PendingManager)
                     ->action(fn ($record, array $data) => $record->approveByManager(auth()->user(), $data['notes'] ?? null)),
                 Action::make('reject_manager')->label('Tolak')->color('danger')
+                    ->modalHeading('Tolak Pengajuan Pelatihan')
+                    ->modalDescription('Pengajuan akan dikembalikan kepada Pegawai dengan alasan penolakan.')
+                    ->modalSubmitActionLabel('Tolak Pengajuan')
                     ->schema([Textarea::make('notes')->label('Alasan')->required()])
-                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === TrainingRequestStatus::PendingManager)
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager
+                        && $record->manager_id === auth()->id()
+                        && $record->status === TrainingRequestStatus::PendingManager)
                     ->action(fn ($record, array $data) => $record->rejectByManager(auth()->user(), $data['notes'])),
                 Action::make('verify_hr')->label('Verifikasi HR')->color('success')->requiresConfirmation()
+                    ->modalHeading('Verifikasi Pengajuan Pelatihan')
+                    ->modalDescription('Pengajuan akan disetujui dan tersedia untuk ditindaklanjuti oleh HR.')
+                    ->modalSubmitActionLabel('Verifikasi Pengajuan')
+                    ->modalWidth('md')
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Hr && $record->status === TrainingRequestStatus::PendingHr)
                     ->action(fn ($record) => $record->verifyByHr(auth()->user())),
                 Action::make('complete')->label('Catat Hasil')->color('success')
+                    ->modalHeading('Selesaikan Pelatihan')
+                    ->modalDescription('Catat hasil pelatihan sebelum menandai pengajuan sebagai selesai.')
+                    ->modalSubmitActionLabel('Simpan Hasil')
                     ->schema([Textarea::make('result')->label('Hasil pelatihan')->required()])
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Hr && $record->status === TrainingRequestStatus::Approved)
                     ->action(fn ($record, array $data) => $record->complete(auth()->user(), $data['result'])),

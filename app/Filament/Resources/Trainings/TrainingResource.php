@@ -36,6 +36,15 @@ class TrainingResource extends Resource
 
     protected static ?string $pluralModelLabel = 'katalog pelatihan';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee, UserRole::Manager => 'Katalog Pelatihan',
+            UserRole::Hr => 'Pengelolaan Pelatihan',
+            default => 'Pelatihan',
+        };
+    }
+
     public static function canViewAny(): bool
     {
         return auth()->check();

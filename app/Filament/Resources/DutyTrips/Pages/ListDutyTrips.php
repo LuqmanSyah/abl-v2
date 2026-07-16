@@ -13,7 +13,9 @@ class ListDutyTrips extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()->label('Buat Perintah Dinas'),
+            CreateAction::make()
+                ->label('Buat Perintah Dinas')
+                ->visible(fn (): bool => DutyTripResource::canCreate()),
         ];
     }
 }

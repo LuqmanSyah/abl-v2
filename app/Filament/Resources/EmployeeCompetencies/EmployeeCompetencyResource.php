@@ -35,6 +35,16 @@ class EmployeeCompetencyResource extends Resource
 
     protected static ?string $pluralModelLabel = 'kompetensi pegawai';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Profil Kompetensi',
+            UserRole::Manager => 'Monitoring Kompetensi',
+            UserRole::Hr => 'Pengelolaan Kompetensi Pegawai',
+            default => 'Kompetensi Pegawai',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());

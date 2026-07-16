@@ -35,6 +35,16 @@ class MentoringResource extends Resource
 
     protected static ?string $pluralModelLabel = 'mentoring';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Pengajuan Mentoring',
+            UserRole::Manager => 'Pengelolaan Mentoring',
+            UserRole::Hr => 'Monitoring Mentoring',
+            default => 'Mentoring',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
@@ -88,22 +98,37 @@ class MentoringResource extends Resource
             ])
             ->recordActions([
                 Action::make('approve')->label('Jadwalkan')->color('success')
+                    ->modalHeading('Jadwalkan Mentoring')
+                    ->modalDescription('Tentukan jadwal mentoring dan tambahkan catatan bila diperlukan.')
+                    ->modalSubmitActionLabel('Simpan Jadwal')
                     ->schema([
                         DateTimePicker::make('scheduled_at')->label('Jadwal')->native(false)->minDate(now())->required(),
                         Textarea::make('notes')->label('Catatan'),
                     ])
-                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === MentoringStatus::Pending)
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager
+                        && $record->manager_id === auth()->id()
+                        && $record->status === MentoringStatus::Pending)
                     ->action(fn ($record, array $data) => $record->approve(auth()->user(), $data['scheduled_at'], $data['notes'] ?? null)),
                 Action::make('reject')->label('Tolak')->color('danger')
+                    ->modalHeading('Tolak Pengajuan Mentoring')
+                    ->modalDescription('Pengajuan akan ditolak. Alasan penolakan wajib diisi.')
+                    ->modalSubmitActionLabel('Tolak Pengajuan')
                     ->schema([Textarea::make('notes')->label('Alasan')->required()])
-                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === MentoringStatus::Pending)
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager
+                        && $record->manager_id === auth()->id()
+                        && $record->status === MentoringStatus::Pending)
                     ->action(fn ($record, array $data) => $record->reject(auth()->user(), $data['notes'])),
                 Action::make('complete')->label('Catat Hasil')->color('success')
+                    ->modalHeading('Selesaikan Mentoring')
+                    ->modalDescription('Catat hasil diskusi dan tindak lanjut sebelum menutup mentoring.')
+                    ->modalSubmitActionLabel('Simpan Hasil')
                     ->schema([
                         Textarea::make('result')->label('Hasil diskusi')->required(),
                         Textarea::make('follow_up')->label('Tindak lanjut')->required(),
                     ])
-                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager && $record->status === MentoringStatus::Approved)
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Manager
+                        && $record->manager_id === auth()->id()
+                        && $record->status === MentoringStatus::Approved)
                     ->action(fn ($record, array $data) => $record->complete(auth()->user(), $data['result'], $data['follow_up'])),
             ]);
     }

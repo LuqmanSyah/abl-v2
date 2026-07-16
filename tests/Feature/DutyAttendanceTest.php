@@ -5,14 +5,18 @@ namespace Tests\Feature;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
+use App\Filament\Resources\Attendances\Pages\ListAttendances;
+use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
 use App\Models\DutyTrip;
 use App\Models\User;
 use App\Services\AttendanceRecorder;
 use App\Support\GeoDistance;
 use DomainException;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DutyAttendanceTest extends TestCase
@@ -135,6 +139,64 @@ class DutyAttendanceTest extends TestCase
         ], 'attendance/backdated.jpg');
 
         $this->assertSame(AttendanceStatus::NeedsReview, $attendance->status);
+    }
+
+    public function test_only_hr_can_verify_attendance_needing_review(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862224',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 150,
+        ], 'attendance/review.jpg');
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+
+        try {
+            $attendance->verifyByHr($manager);
+            $this->fail('Atasan tidak boleh memverifikasi absensi.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Absensi tidak dapat diverifikasi pengguna ini.', $exception->getMessage());
+        }
+
+        $this->assertSame(AttendanceStatus::NeedsReview, $attendance->fresh()->status);
+
+        $attendance->verifyByHr($hr);
+
+        $this->assertSame(AttendanceStatus::Valid, $attendance->fresh()->status);
+        $this->assertDatabaseHas('activity_logs', [
+            'action' => 'attendance.verified',
+            'subject_id' => $attendance->id,
+            'user_id' => $hr->id,
+        ]);
+    }
+
+    public function test_verify_attendance_button_is_only_visible_to_hr(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862225',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 150,
+        ], 'attendance/review-button.jpg');
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+
+        filament()->setCurrentPanel('hr');
+        $this->actingAs($hr);
+        Livewire::test(ListAttendances::class)
+            ->assertActionVisible(TestAction::make('verify')->table($attendance));
+        Livewire::test(ListDutyTrips::class)
+            ->assertActionVisible(TestAction::make('verify_attendance')->table($trip));
+
+        filament()->setCurrentPanel('manager');
+        $this->actingAs($manager);
+        Livewire::test(ListAttendances::class)
+            ->assertActionHidden(TestAction::make('verify')->table($attendance));
+        Livewire::test(ListDutyTrips::class)
+            ->assertActionHidden(TestAction::make('verify_attendance')->table($trip));
     }
 
     public function test_attendance_before_start_is_rejected_without_leaking_photo(): void

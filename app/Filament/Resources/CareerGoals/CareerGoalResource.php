@@ -33,6 +33,15 @@ class CareerGoalResource extends Resource
 
     protected static ?string $pluralModelLabel = 'target karier';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Rencana Karier',
+            UserRole::Manager, UserRole::Hr => 'Monitoring Karier',
+            default => 'Target Karier',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());

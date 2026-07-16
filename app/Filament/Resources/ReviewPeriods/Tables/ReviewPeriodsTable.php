@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ReviewPeriods\Tables;
 
+use App\Enums\UserRole;
 use App\Models\EmployeeKpi;
 use App\Services\MeritCalculator;
 use Filament\Actions\Action;
@@ -34,6 +35,7 @@ class ReviewPeriodsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('review_360_weight')
+                    ->label('Bobot umpan balik (%)')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('base_bonus')
@@ -58,6 +60,11 @@ class ReviewPeriodsTable
                     ->label('Hitung Merit')
                     ->icon('heroicon-o-calculator')
                     ->requiresConfirmation()
+                    ->modalHeading('Hitung Ulang Merit')
+                    ->modalDescription('Seluruh hasil merit Pegawai pada periode ini akan dihitung dari data terbaru.')
+                    ->modalSubmitActionLabel('Hitung Merit')
+                    ->modalWidth('md')
+                    ->visible(fn (): bool => auth()->user()?->role === UserRole::Hr)
                     ->action(function ($record): void {
                         $employees = EmployeeKpi::with('employee')->where('review_period_id', $record->id)
                             ->get()->pluck('employee')->unique('id');

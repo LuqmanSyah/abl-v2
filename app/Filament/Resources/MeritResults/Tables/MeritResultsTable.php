@@ -27,15 +27,19 @@ class MeritResultsTable
                     ->label('Pegawai')
                     ->searchable(),
                 TextColumn::make('kpi_score')
+                    ->label('Nilai KPI')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('discipline_score')
+                    ->label('Nilai kedisiplinan')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('manager_score')
+                    ->label('Nilai Atasan')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('review_360_score')
+                    ->label('Nilai umpan balik')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('total_score')
@@ -48,18 +52,23 @@ class MeritResultsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('manager_verified_by')
+                    ->label('ID verifikator Atasan')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('manager_verified_at')
+                    ->label('Diverifikasi Atasan')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('hr_verified_by')
+                    ->label('ID verifikator HR')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('hr_verified_at')
+                    ->label('Diverifikasi HR')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('published_at')
+                    ->label('Dipublikasikan')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('created_at')
@@ -85,6 +94,7 @@ class MeritResultsTable
                         && $record->employee->is_active)
                     ->modalHeading(fn (MeritResult $record): string => "Rekomendasi Pelatihan — {$record->employee->name}")
                     ->modalDescription('Rekomendasi langsung disetujui tanpa antrean verifikasi HR.')
+                    ->modalWidth('5xl')
                     ->modalContent(fn (MeritResult $record) => view(
                         'filament.resources.merit-results.recommend-training-breakdown',
                         ['breakdown' => $record->breakdownForManager(auth()->user())],

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Attendances\Tables;
 
 use App\Enums\AttendanceStatus;
+use App\Enums\UserRole;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -73,6 +75,19 @@ class AttendancesTable
             ])
             ->recordActions([
                 ViewAction::make(),
+                Action::make('verify')
+                    ->label('Verifikasi')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Verifikasi Absensi')
+                    ->modalDescription('Status absensi akan diubah menjadi Valid dan dipakai dalam perhitungan kedisiplinan.')
+                    ->modalSubmitActionLabel('Verifikasi Absensi')
+                    ->modalWidth('md')
+                    ->visible(fn ($record): bool => auth()->user()?->role === UserRole::Hr
+                        && $record->status === AttendanceStatus::NeedsReview)
+                    ->action(fn ($record) => $record->verifyByHr(auth()->user()))
+                    ->successNotificationTitle('Absensi berhasil diverifikasi'),
             ])
             ->defaultSort('captured_at', 'desc');
     }

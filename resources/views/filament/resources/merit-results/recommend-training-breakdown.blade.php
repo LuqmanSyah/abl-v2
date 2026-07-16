@@ -8,8 +8,8 @@
             @foreach ([
                 'kpi' => 'KPI',
                 'discipline' => 'Disiplin',
-                'manager' => 'Manager Review',
-                'review_360' => '360 Review',
+                'manager' => 'Penilaian Atasan',
+                'review_360' => 'Umpan Balik Kinerja',
             ] as $key => $label)
                 <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
                     <div class="text-xs text-gray-500 dark:text-gray-400">

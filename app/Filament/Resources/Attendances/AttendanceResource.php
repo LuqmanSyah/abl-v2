@@ -31,6 +31,15 @@ class AttendanceResource extends Resource
 
     protected static ?string $pluralModelLabel = 'riwayat absensi';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Riwayat Absensi',
+            UserRole::Manager, UserRole::Hr => 'Monitoring Absensi',
+            default => 'Absensi',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();

@@ -34,6 +34,16 @@ class EmployeeKpiResource extends Resource
 
     protected static ?string $pluralModelLabel = 'KPI pegawai';
 
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Capaian KPI',
+            UserRole::Manager => 'Pengelolaan KPI',
+            UserRole::Hr => 'Monitoring KPI',
+            default => 'KPI',
+        };
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
@@ -65,6 +75,11 @@ class EmployeeKpiResource extends Resource
     public static function canDelete(Model $record): bool
     {
         return static::canEdit($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return auth()->user()?->role === UserRole::Manager;
     }
 
     public static function form(Schema $schema): Schema

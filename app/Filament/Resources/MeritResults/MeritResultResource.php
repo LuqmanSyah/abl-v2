@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MeritResults;
 
+use App\Enums\UserRole;
 use App\Filament\Resources\MeritResults\Pages\ListMeritResults;
 use App\Filament\Resources\MeritResults\Pages\ViewMeritResult;
 use App\Filament\Resources\MeritResults\Schemas\MeritResultInfolist;
@@ -29,6 +30,16 @@ class MeritResultResource extends Resource
     protected static ?string $modelLabel = 'hasil merit';
 
     protected static ?string $pluralModelLabel = 'hasil merit';
+
+    public static function getNavigationLabel(): string
+    {
+        return match (auth()->user()?->role) {
+            UserRole::Employee => 'Hasil Merit',
+            UserRole::Manager => 'Verifikasi Merit',
+            UserRole::Hr => 'Publikasi Merit',
+            default => 'Hasil Merit',
+        };
+    }
 
     public static function getEloquentQuery(): Builder
     {

@@ -453,3 +453,95 @@ Render sebagai tabel read-only + section collapsible per komponen.
 - Merit formula: `app/Services/MeritCalculator.php`
 - Formula test: `tests/Feature/MeritSystemTest.php` — test `test_merit_formula_and_two_stage_publication`
 - Audit trail: `app/Models/ActivityLog.php`
+
+---
+
+## 12. Revisi UI, Otorisasi Aksi, dan Verifikasi Absensi
+
+Revisi ini diterapkan pada seluruh panel Filament: Pegawai, Atasan, dan HR.
+
+### 12.1. Tombol Berdasarkan Aktor
+
+- Tombol create, edit, delete, bulk delete, dan action alur kerja mengikuti role, kepemilikan record, serta status data.
+- Action bawaan Filament memakai aturan visibilitas eksplisit dari `Resource::canCreate()`, `canEdit()`, dan `canDelete()` agar tombol tidak muncul sebelum route menolak akses.
+- Action Atasan pada mentoring, pengajuan pelatihan, merit, dan dinas hanya tampil untuk data bawahannya sendiri.
+- Bulk delete KPI hanya tersedia untuk Atasan dan tetap memeriksa otorisasi setiap record.
+- Bulk delete indikator KPI juga memeriksa otorisasi tiap record agar indikator pada periode merit terpublikasi tidak ikut terhapus.
+- Pegawai dan HR tidak melihat tombol pengelolaan KPI.
+- Tombol create dihapus dari Absensi dan Hasil Merit karena kedua resource bersifat read-only.
+- Action yang tidak sesuai status disembunyikan, bukan hanya dibuat nonaktif.
+- Validasi model tetap menjadi lapisan pengaman saat action dipanggil langsung.
+
+### 12.2. Label Sidebar Formal
+
+| Resource | Pegawai | Atasan | HR |
+|----------|---------|--------|----|
+| Dinas | Pelaksanaan Dinas | Pengelolaan Dinas | Monitoring Dinas |
+| Absensi | Riwayat Absensi | Monitoring Absensi | Monitoring Absensi |
+| KPI | Capaian KPI | Pengelolaan KPI | Monitoring KPI |
+| Merit | Hasil Merit | Verifikasi Merit | Publikasi Merit |
+| Kompetensi | Profil Kompetensi | Monitoring Kompetensi | Pengelolaan Kompetensi Pegawai |
+| Karier | Rencana Karier | Monitoring Karier | Monitoring Karier |
+| Pelatihan | Katalog Pelatihan | Katalog Pelatihan | Pengelolaan Pelatihan |
+| Pengajuan Pelatihan | Pengajuan Pelatihan | Persetujuan Pelatihan | Verifikasi Pelatihan |
+| Mentoring | Pengajuan Mentoring | Pengelolaan Mentoring | Monitoring Mentoring |
+| Performance review | Umpan Balik Kinerja | Umpan Balik Kinerja | Umpan Balik Kinerja |
+
+Istilah UI **Penilaian 360** diganti menjadi **Umpan Balik Kinerja**. Nama kolom database `review_360_score` dan `review_360_weight` tetap dipertahankan agar tidak memerlukan migrasi.
+
+### 12.3. Standar Modal Filament
+
+- Heading rata kiri, footer action rata kanan, header/footer sticky.
+- Modal create dan edit memakai lebar `2xl`.
+- Modal workflow memakai lebar `lg`.
+- Modal konfirmasi memakai lebar `md`.
+- Modal breakdown rekomendasi pelatihan memakai lebar `5xl`.
+- Heading, deskripsi dampak, dan label submit dibuat spesifik untuk tiap action.
+- Tampilan modal memakai border, radius, shadow, separator, dark mode, dan layout mobile yang konsisten.
+
+### 12.4. Verifikasi Absensi Dinas
+
+Absensi berstatus `NeedsReview` sebelumnya tidak memiliki transisi penyelesaian. HR sekarang mendapat action **Verifikasi** pada daftar/detail Dinas serta daftar/detail Absensi.
+
+Alur:
+
+1. Absensi terdeteksi memiliki GPS, akurasi, atau selisih waktu mencurigakan.
+2. Status menjadi `NeedsReview` atau **Memerlukan Pemeriksaan**.
+3. HR memeriksa detail lokasi dan foto.
+4. HR menekan **Verifikasi Absensi**.
+5. Status berubah menjadi `Valid`.
+6. Sistem mencatat activity log `attendance.verified`.
+
+Method model:
+
+```php
+public function verifyByHr(User $hr): void;
+```
+
+Method memakai transaction dan row lock. Role selain HR atau absensi dengan status selain `NeedsReview` ditolak menggunakan `DomainException`.
+
+### 12.5. Verifikasi
+
+- Test transisi `NeedsReview` menjadi `Valid`.
+- Test penolakan verifikasi oleh Atasan.
+- Test pencatatan `attendance.verified`.
+- Test tombol verifikasi terlihat untuk HR dan tersembunyi untuk Atasan.
+- Test tombol verifikasi tersedia langsung pada modul Dinas.
+- Test seluruh label sidebar berdasarkan role.
+- Test bulk delete KPI hanya tersedia untuk Atasan.
+- Test matriks visibilitas tombol create pada delapan resource lintas-role.
+- Test Absensi dan Hasil Merit tidak memiliki action create.
+- Test action edit KPI hanya terlihat untuk Atasan pemilik data.
+- Test render lima halaman detail dengan section baru.
+
+### 12.6. Tampilan Detail Terstruktur
+
+Halaman detail tidak lagi menampilkan seluruh field dalam satu daftar panjang. Informasi dibagi menjadi section responsif:
+
+- **Dinas:** informasi penugasan, lokasi absensi, lampiran, dan riwayat.
+- **Absensi:** ringkasan absensi, data GPS dan foto, serta sinkronisasi.
+- **KPI Pegawai:** informasi indikator, target, capaian, dan catatan.
+- **Umpan Balik Kinerja:** pihak yang terlibat dan hasil penilaian.
+- **Hasil Merit:** ringkasan merit, komponen nilai, status verifikasi, dan riwayat.
+
+Data teknis dan riwayat dibuat collapsible agar detail utama tetap mudah dipindai. Nama verifikator merit ditampilkan menggantikan ID pengguna.

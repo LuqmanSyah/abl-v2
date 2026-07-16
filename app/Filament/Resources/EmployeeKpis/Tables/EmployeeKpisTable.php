@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EmployeeKpis\Tables;
 
+use App\Filament\Resources\EmployeeKpis\EmployeeKpiResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -53,11 +54,12 @@ class EmployeeKpisTable
             ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record): bool => EmployeeKpiResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->authorizeIndividualRecords(),
                 ]),
             ]);
     }

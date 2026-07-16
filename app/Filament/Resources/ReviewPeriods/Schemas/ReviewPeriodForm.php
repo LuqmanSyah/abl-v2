@@ -40,7 +40,7 @@ class ReviewPeriodForm
                     ->numeric()->minValue(0)->maxValue(100)
                     ->default(20),
                 TextInput::make('review_360_weight')
-                    ->label('Bobot penilaian 360 (%)')
+                    ->label('Bobot umpan balik kinerja (%)')
                     ->required()
                     ->numeric()->minValue(0)->maxValue(100)
                     ->default(20),

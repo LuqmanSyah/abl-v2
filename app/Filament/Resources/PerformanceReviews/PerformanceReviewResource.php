@@ -29,9 +29,14 @@ class PerformanceReviewResource extends Resource
 
     protected static ?int $navigationSort = 40;
 
-    protected static ?string $modelLabel = 'penilaian 360';
+    protected static ?string $modelLabel = 'umpan balik kinerja';
 
-    protected static ?string $pluralModelLabel = 'penilaian 360';
+    protected static ?string $pluralModelLabel = 'umpan balik kinerja';
+
+    public static function getNavigationLabel(): string
+    {
+        return 'Umpan Balik Kinerja';
+    }
 
     public static function getEloquentQuery(): Builder
     {

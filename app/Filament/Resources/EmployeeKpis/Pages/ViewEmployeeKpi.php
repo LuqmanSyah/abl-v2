@@ -13,7 +13,8 @@ class ViewEmployeeKpi extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make(),
+            EditAction::make()
+                ->visible(fn (): bool => EmployeeKpiResource::canEdit($this->record)),
         ];
     }
 }

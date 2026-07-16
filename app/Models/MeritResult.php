@@ -41,6 +41,16 @@ class MeritResult extends Model
         return $this->belongsTo(User::class, 'employee_id');
     }
 
+    public function managerVerifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_verified_by');
+    }
+
+    public function hrVerifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'hr_verified_by');
+    }
+
     /** @return array<string, mixed> */
     public function breakdownForManager(User $manager): array
     {
@@ -116,7 +126,7 @@ class MeritResult extends Model
                 ];
             })->values()->all(),
             'reviews' => $reviews->map(fn (PerformanceReview $review): array => [
-                'component' => $review->type === ReviewType::ManagerToEmployee ? 'Manager Review' : '360 Review',
+                'component' => $review->type === ReviewType::ManagerToEmployee ? 'Penilaian Atasan' : 'Umpan Balik Kinerja',
                 'reviewer' => $review->reviewer?->name ?? 'Pengguna terhapus',
                 'type' => $review->type->label(),
                 'score' => $review->score,

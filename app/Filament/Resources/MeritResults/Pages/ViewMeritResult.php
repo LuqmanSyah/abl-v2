@@ -16,11 +16,25 @@ class ViewMeritResult extends ViewRecord
         return [
             Action::make('verify_manager')
                 ->label('Verifikasi Atasan')->color('success')->requiresConfirmation()
-                ->visible(fn (): bool => auth()->user()->role === UserRole::Manager && ! $this->record->manager_verified_at)
+                ->modalHeading('Verifikasi Hasil Merit')
+                ->modalDescription('Hasil merit akan diteruskan kepada HR untuk verifikasi dan publikasi.')
+                ->modalSubmitActionLabel('Verifikasi Hasil')
+                ->modalWidth('md')
+                ->visible(fn (): bool => auth()->user()->role === UserRole::Manager
+                    && $this->record->employee->manager_id === auth()->id()
+                    && ! $this->record->manager_verified_at
+                    && ! $this->record->published_at)
                 ->action(fn () => $this->record->verifyByManager(auth()->user())),
             Action::make('verify_hr')
                 ->label('Verifikasi dan Publikasikan')->color('success')->requiresConfirmation()
-                ->visible(fn (): bool => auth()->user()->role === UserRole::Hr && $this->record->manager_verified_at && ! $this->record->hr_verified_at)
+                ->modalHeading('Publikasikan Hasil Merit')
+                ->modalDescription('Hasil merit akan dikunci dan dapat dilihat Pegawai.')
+                ->modalSubmitActionLabel('Verifikasi dan Publikasikan')
+                ->modalWidth('md')
+                ->visible(fn (): bool => auth()->user()->role === UserRole::Hr
+                    && $this->record->manager_verified_at
+                    && ! $this->record->hr_verified_at
+                    && ! $this->record->published_at)
                 ->action(fn () => $this->record->verifyByHr(auth()->user())),
         ];
     }

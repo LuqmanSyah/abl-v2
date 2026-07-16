@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KpiIndicators\Tables;
 
+use App\Filament\Resources\KpiIndicators\KpiIndicatorResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -36,11 +37,13 @@ class KpiIndicatorsTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn ($record): bool => KpiIndicatorResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords(),
                 ]),
             ]);
     }

@@ -2,15 +2,48 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AttendanceStatus;
+use App\Enums\DutyTripStatus;
+use App\Enums\ReviewType;
 use App\Enums\UserRole;
+use App\Filament\Resources\Attendances\AttendanceResource;
+use App\Filament\Resources\Attendances\Pages\ListAttendances;
+use App\Filament\Resources\Attendances\Pages\ViewAttendance;
+use App\Filament\Resources\CareerGoals\CareerGoalResource;
+use App\Filament\Resources\CareerGoals\Pages\ListCareerGoals;
+use App\Filament\Resources\DutyTrips\DutyTripResource;
+use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
+use App\Filament\Resources\DutyTrips\Pages\ViewDutyTrip;
+use App\Filament\Resources\EmployeeCompetencies\EmployeeCompetencyResource;
+use App\Filament\Resources\EmployeeCompetencies\Pages\ListEmployeeCompetencies;
+use App\Filament\Resources\EmployeeKpis\EmployeeKpiResource;
+use App\Filament\Resources\EmployeeKpis\Pages\ListEmployeeKpis;
+use App\Filament\Resources\EmployeeKpis\Pages\ViewEmployeeKpi;
+use App\Filament\Resources\Mentorings\MentoringResource;
+use App\Filament\Resources\Mentorings\Pages\ListMentorings;
+use App\Filament\Resources\MeritResults\MeritResultResource;
+use App\Filament\Resources\MeritResults\Pages\ListMeritResults;
+use App\Filament\Resources\MeritResults\Pages\ViewMeritResult;
+use App\Filament\Resources\PerformanceReviews\Pages\ListPerformanceReviews;
+use App\Filament\Resources\PerformanceReviews\Pages\ViewPerformanceReview;
+use App\Filament\Resources\PerformanceReviews\PerformanceReviewResource;
 use App\Filament\Resources\Positions\PositionResource;
 use App\Filament\Resources\ReviewPeriods\ReviewPeriodResource;
+use App\Filament\Resources\TrainingRequests\Pages\ListTrainingRequests;
+use App\Filament\Resources\TrainingRequests\TrainingRequestResource;
+use App\Filament\Resources\Trainings\Pages\ListTrainings;
 use App\Filament\Resources\Trainings\TrainingResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Filament\Widgets\EmployeeStats;
 use App\Filament\Widgets\HrStats;
 use App\Filament\Widgets\ManagerStats;
+use App\Models\Attendance;
+use App\Models\DutyTrip;
+use App\Models\EmployeeKpi;
+use App\Models\KpiIndicator;
+use App\Models\MeritResult;
+use App\Models\PerformanceReview;
 use App\Models\Position;
 use App\Models\ReviewPeriod;
 use App\Models\Training;
@@ -18,6 +51,7 @@ use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class FilamentAccessTest extends TestCase
@@ -174,6 +208,233 @@ class FilamentAccessTest extends TestCase
         $this->assertTrue(Route::has('filament.hr.resources.duty-locations.index'));
         $this->assertTrue(Route::has('filament.hr.resources.review-periods.index'));
         $this->assertTrue(Route::has('filament.hr.resources.kpi-indicators.index'));
+    }
+
+    public function test_shared_resource_navigation_uses_formal_role_labels(): void
+    {
+        $expected = [
+            UserRole::Employee->value => [
+                DutyTripResource::class => 'Pelaksanaan Dinas',
+                AttendanceResource::class => 'Riwayat Absensi',
+                EmployeeKpiResource::class => 'Capaian KPI',
+                PerformanceReviewResource::class => 'Umpan Balik Kinerja',
+                MeritResultResource::class => 'Hasil Merit',
+                EmployeeCompetencyResource::class => 'Profil Kompetensi',
+                CareerGoalResource::class => 'Rencana Karier',
+                TrainingResource::class => 'Katalog Pelatihan',
+                TrainingRequestResource::class => 'Pengajuan Pelatihan',
+                MentoringResource::class => 'Pengajuan Mentoring',
+            ],
+            UserRole::Manager->value => [
+                DutyTripResource::class => 'Pengelolaan Dinas',
+                AttendanceResource::class => 'Monitoring Absensi',
+                EmployeeKpiResource::class => 'Pengelolaan KPI',
+                PerformanceReviewResource::class => 'Umpan Balik Kinerja',
+                MeritResultResource::class => 'Verifikasi Merit',
+                EmployeeCompetencyResource::class => 'Monitoring Kompetensi',
+                CareerGoalResource::class => 'Monitoring Karier',
+                TrainingResource::class => 'Katalog Pelatihan',
+                TrainingRequestResource::class => 'Persetujuan Pelatihan',
+                MentoringResource::class => 'Pengelolaan Mentoring',
+            ],
+            UserRole::Hr->value => [
+                DutyTripResource::class => 'Monitoring Dinas',
+                AttendanceResource::class => 'Monitoring Absensi',
+                EmployeeKpiResource::class => 'Monitoring KPI',
+                PerformanceReviewResource::class => 'Umpan Balik Kinerja',
+                MeritResultResource::class => 'Publikasi Merit',
+                EmployeeCompetencyResource::class => 'Pengelolaan Kompetensi Pegawai',
+                CareerGoalResource::class => 'Monitoring Karier',
+                TrainingResource::class => 'Pengelolaan Pelatihan',
+                TrainingRequestResource::class => 'Verifikasi Pelatihan',
+                MentoringResource::class => 'Monitoring Mentoring',
+            ],
+        ];
+
+        foreach (UserRole::cases() as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]));
+
+            foreach ($expected[$role->value] as $resource => $label) {
+                $this->assertSame($label, $resource::getNavigationLabel());
+                $this->assertStringNotContainsString('360', $label);
+            }
+        }
+    }
+
+    public function test_kpi_bulk_delete_is_only_available_to_manager(): void
+    {
+        foreach (UserRole::cases() as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]));
+
+            $this->assertSame($role === UserRole::Manager, EmployeeKpiResource::canDeleteAny());
+        }
+    }
+
+    public function test_create_buttons_follow_each_role_access(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $users = [
+            'employee' => User::factory()->create([
+                'role' => UserRole::Employee,
+                'manager_id' => $manager->id,
+            ]),
+            'manager' => $manager,
+            'hr' => User::factory()->create(['role' => UserRole::Hr]),
+        ];
+        $expectations = [
+            'employee' => [
+                ListDutyTrips::class => false,
+                ListEmployeeKpis::class => false,
+                ListPerformanceReviews::class => true,
+                ListEmployeeCompetencies::class => false,
+                ListCareerGoals::class => true,
+                ListTrainings::class => false,
+                ListTrainingRequests::class => true,
+                ListMentorings::class => true,
+            ],
+            'manager' => [
+                ListDutyTrips::class => true,
+                ListEmployeeKpis::class => true,
+                ListPerformanceReviews::class => true,
+                ListEmployeeCompetencies::class => false,
+                ListCareerGoals::class => false,
+                ListTrainings::class => false,
+                ListTrainingRequests::class => false,
+                ListMentorings::class => false,
+            ],
+            'hr' => [
+                ListDutyTrips::class => false,
+                ListEmployeeKpis::class => false,
+                ListPerformanceReviews::class => false,
+                ListEmployeeCompetencies::class => true,
+                ListCareerGoals::class => false,
+                ListTrainings::class => true,
+                ListTrainingRequests::class => false,
+                ListMentorings::class => false,
+            ],
+        ];
+
+        foreach ($users as $panel => $user) {
+            filament()->setCurrentPanel($panel);
+            $this->actingAs($user);
+
+            foreach ($expectations[$panel] as $page => $isVisible) {
+                $component = Livewire::test($page);
+
+                $isVisible
+                    ? $component->assertActionVisible('create')
+                    : $component->assertActionHidden('create');
+            }
+
+            Livewire::test(ListAttendances::class)
+                ->assertActionDoesNotExist('create');
+            Livewire::test(ListMeritResults::class)
+                ->assertActionDoesNotExist('create');
+        }
+    }
+
+    public function test_detail_pages_render_grouped_information(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create([
+            'role' => UserRole::Employee,
+            'manager_id' => $manager->id,
+        ]);
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $period = ReviewPeriod::create([
+            'name' => 'Semester Detail',
+            'starts_at' => today()->startOfMonth(),
+            'ends_at' => today()->endOfMonth(),
+            'kpi_weight' => 40,
+            'discipline_weight' => 20,
+            'manager_weight' => 20,
+            'review_360_weight' => 20,
+        ]);
+        $indicator = KpiIndicator::create([
+            'review_period_id' => $period->id,
+            'name' => 'Kualitas hasil',
+            'weight' => 100,
+        ]);
+        $kpi = EmployeeKpi::create([
+            'review_period_id' => $period->id,
+            'kpi_indicator_id' => $indicator->id,
+            'employee_id' => $employee->id,
+            'manager_id' => $manager->id,
+            'target' => 100,
+            'achievement' => 80,
+        ]);
+        $review = PerformanceReview::create([
+            'review_period_id' => $period->id,
+            'reviewer_id' => $manager->id,
+            'reviewee_id' => $employee->id,
+            'type' => ReviewType::ManagerToEmployee,
+            'score' => 4,
+            'submitted_at' => now(),
+        ]);
+        $trip = DutyTrip::create([
+            'employee_id' => $employee->id,
+            'manager_id' => $manager->id,
+            'destination' => 'Kunjungan detail',
+            'purpose' => 'Verifikasi tampilan',
+            'starts_at' => now()->subHour(),
+            'ends_at' => now()->addHour(),
+            'location_name' => 'Kantor tujuan',
+            'address' => 'Jakarta',
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'radius_meters' => 100,
+            'status' => DutyTripStatus::Approved,
+            'approved_at' => now(),
+        ]);
+        $attendance = Attendance::create([
+            'client_uuid' => '50f26f3e-b3b3-49f6-9bcb-c31ec9862201',
+            'duty_trip_id' => $trip->id,
+            'employee_id' => $employee->id,
+            'captured_at' => now(),
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'accuracy_meters' => 10,
+            'distance_meters' => 5,
+            'photo_path' => 'attendance/detail.jpg',
+            'status' => AttendanceStatus::Valid,
+        ]);
+        $merit = MeritResult::create([
+            'review_period_id' => $period->id,
+            'employee_id' => $employee->id,
+            'kpi_score' => 80,
+            'discipline_score' => 100,
+            'manager_score' => 80,
+            'review_360_score' => 80,
+            'total_score' => 84,
+            'estimated_bonus' => 840000,
+            'manager_verified_by' => $manager->id,
+            'manager_verified_at' => now(),
+        ]);
+
+        filament()->setCurrentPanel('hr');
+        $this->actingAs($hr);
+
+        Livewire::test(ViewDutyTrip::class, ['record' => $trip->getRouteKey()])
+            ->assertSee('Informasi penugasan');
+        Livewire::test(ViewAttendance::class, ['record' => $attendance->getRouteKey()])
+            ->assertSee('Lokasi dan bukti');
+        Livewire::test(ViewEmployeeKpi::class, ['record' => $kpi->getRouteKey()])
+            ->assertSee('Target dan capaian')
+            ->assertActionHidden('edit');
+        Livewire::test(ViewPerformanceReview::class, ['record' => $review->getRouteKey()])
+            ->assertSee('Hasil penilaian');
+        Livewire::test(ViewMeritResult::class, ['record' => $merit->getRouteKey()])
+            ->assertSee('Status verifikasi');
+
+        filament()->setCurrentPanel('manager');
+        $this->actingAs($manager);
+        Livewire::test(ViewEmployeeKpi::class, ['record' => $kpi->getRouteKey()])
+            ->assertActionVisible('edit');
+
+        filament()->setCurrentPanel('employee');
+        $this->actingAs($employee);
+        Livewire::test(ViewEmployeeKpi::class, ['record' => $kpi->getRouteKey()])
+            ->assertActionHidden('edit');
     }
 
     public function test_role_resource_pages_render(): void

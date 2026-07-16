@@ -37,8 +37,8 @@ class DutyTripResource extends Resource
     public static function getNavigationLabel(): string
     {
         return match (auth()->user()?->role) {
-            UserRole::Employee => 'Dinas Saya',
-            UserRole::Manager => 'Perintah Dinas',
+            UserRole::Employee => 'Pelaksanaan Dinas',
+            UserRole::Manager => 'Pengelolaan Dinas',
             UserRole::Hr => 'Monitoring Dinas',
             default => 'Dinas',
         };

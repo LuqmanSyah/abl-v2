@@ -12,6 +12,9 @@ class ListMentorings extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [
+            CreateAction::make()
+                ->visible(fn (): bool => MentoringResource::canCreate()),
+        ];
     }
 }

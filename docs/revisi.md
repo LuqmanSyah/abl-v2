@@ -610,3 +610,6 @@ Diterapkan pada commit `c3ed9ac` + setelahnya. Semua fix telah lolos 58 test.
 ### 13.8. AR-1 — Ends_at Block (Dibatalkan)
 
 **Alasan:** `ends_at` block bertentangan dengan `Late` dan `Backdated` test. Late & NeedsReview classification sudah menangani kasus after-ends_at secara tepat.
+
+
+### 13.9. AR-3 — Masih error saat klik import xlsx (belum diperbaiki)

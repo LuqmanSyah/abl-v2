@@ -15,16 +15,27 @@
         h1 { margin: 0 0 6px; }
         .subtitle { margin: 0; color: #6b7280; }
         label { display: grid; gap: 6px; font-weight: 600; }
-        select, button, .button { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; background: white; color: inherit; text-decoration: none; }
+        select, button, .button { border: 1px solid #d1d5db; border-radius: 8px; padding: 9px 12px; background: white; color: inherit; text-decoration: none; font-size: inherit; }
         button, .btn-primary { background: #b45309; color: white; border-color: #b45309; cursor: pointer; }
-        .btn-excel { background: #16a34a; color: white; border-color: #16a34a; }
+        .btn-csv { background: #b45309; color: white; border-color: #b45309; }
+        .btn-xlsx { background: #16a34a; color: white; border-color: #16a34a; }
         .btn-pdf { background: #dc2626; color: white; border-color: #dc2626; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+        .columns-section { margin-top: 14px; }
+        .columns-section p { margin: 0 0 8px; font-weight: 700; color: #374151; font-size: 13px; }
+        .column-grid { display: flex; gap: 8px 16px; flex-wrap: wrap; padding: 14px; border: 1px solid #d1d5db; border-radius: 10px; background: #fafafa; }
+        .column-grid label { font-weight: 400; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+        .column-grid input { width: 16px; height: 16px; }
         .table { overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; white-space: nowrap; }
         th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
         th { background: #f9fafb; }
-        @media (max-width: 640px) { main { padding: 12px; } .card { padding: 14px; } label { width: 100%; } select { width: 100%; } }
+        .group-header { background: #fef3c7; font-weight: 700; }
+        .group-header td { padding: 8px 10px; }
+        .empty { padding: 32px; text-align: center; color: #6b7280; }
+        .summary { margin-top: 12px; color: #6b7280; font-size: 13px; }
+        @media (max-width: 640px) { main { padding: 12px; } .card { padding: 14px; } label { width: 100%; } select, button { width: 100%; } }
     </style>
 </head>
 <body>
@@ -33,58 +44,97 @@
         <div class="head">
             <div><a class="back" href="{{ url('/hr') }}">Kembali ke Panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.</p></div>
             <div class="actions">
-                <a class="button btn-excel" href="{{ route('hr.reports.export', array_filter($filters)) }}">
+                @php $queryParams = array_filter(['review_period_id' => $filters['review_period_id'], 'unit_id' => $filters['unit_id'], 'position_id' => $filters['position_id'], 'group_by' => $filters['group_by']] + (isset($filters['columns']) ? ['columns' => $filters['columns']] : [])); @endphp
+                <a class="button btn-csv" href="{{ route('hr.reports.export', $queryParams) }}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Unduh CSV
+                    CSV
                 </a>
-                <a class="button btn-pdf" href="{{ route('hr.reports.pdf', array_filter($filters)) }}">
+                <a class="button btn-xlsx" href="{{ route('hr.reports.xlsx', $queryParams) }}">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    XLSX
+                </a>
+                <a class="button btn-pdf" href="{{ route('hr.reports.pdf', $queryParams) }}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    Unduh PDF
+                    PDF
                 </a>
             </div>
         </div>
         <form method="get">
-            <label>Periode
-                <select name="review_period_id"><option value="">Semua</option>
-                    @foreach ($periods as $period)
-                        <option value="{{ $period->id }}" @selected($filters['review_period_id'] === $period->id)>{{ $period->name }}</option>
+            <div class="filter-row">
+                <label>Periode
+                    <select name="review_period_id"><option value="">Semua</option>
+                        @foreach ($periods as $period)
+                            <option value="{{ $period->id }}" @selected($filters['review_period_id'] === $period->id)>{{ $period->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>Unit
+                    <select name="unit_id"><option value="">Semua</option>
+                        @foreach ($units as $unit)
+                            <option value="{{ $unit->id }}" @selected($filters['unit_id'] === $unit->id)>{{ $unit->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>Jabatan
+                    <select name="position_id"><option value="">Semua</option>
+                        @foreach ($positions as $position)
+                            <option value="{{ $position->id }}" @selected($filters['position_id'] === $position->id)>{{ $position->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label>Kelompokkan
+                    <select name="group_by"><option value="">Tidak</option>
+                        <option value="unit" @selected($filters['group_by'] === 'unit')>Unit</option>
+                        <option value="position" @selected($filters['group_by'] === 'position')>Jabatan</option>
+                    </select>
+                </label>
+                <button class="btn-primary" type="submit">Terapkan</button>
+                @if (array_filter($filters)) <a class="button" href="{{ route('hr.reports.index') }}">Hapus filter</a> @endif
+            </div>
+            <div class="columns-section">
+                <p>Pilih kolom yang ditampilkan</p>
+                <div class="column-grid">
+                    @php $selectedCols = $filters['columns'] ?? array_keys($allColumns); @endphp
+                    @foreach ($allColumns as $key => $label)
+                        <label>
+                            <input type="checkbox" name="columns[]" value="{{ $key }}" @checked(in_array($key, $selectedCols))>
+                            {{ $label }}
+                        </label>
                     @endforeach
-                </select>
-            </label>
-            <label>Unit
-                <select name="unit_id"><option value="">Semua</option>
-                    @foreach ($units as $unit)
-                        <option value="{{ $unit->id }}" @selected($filters['unit_id'] === $unit->id)>{{ $unit->name }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label>Jabatan
-                <select name="position_id"><option value="">Semua</option>
-                    @foreach ($positions as $position)
-                        <option value="{{ $position->id }}" @selected($filters['position_id'] === $position->id)>{{ $position->name }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <button class="btn-primary" type="submit">Terapkan</button>
-            @if (array_filter($filters)) <a class="button" href="{{ route('hr.reports.index') }}">Hapus filter</a> @endif
+                </div>
+            </div>
         </form>
         <div class="table">
             <table>
                 <caption style="position:absolute;clip:rect(0,0,0,0)">Ringkasan SDM per pegawai</caption>
-                <thead><tr><th>NIP</th><th>Pegawai</th><th>Unit</th><th>Jabatan</th><th>Total absensi</th><th>Absensi valid</th><th>Skor merit</th><th>Pelatihan</th><th>Pelatihan selesai</th><th>Mentoring</th><th>Mentoring selesai</th></tr></thead>
+                <thead><tr>
+                    @foreach ($columns as $label)
+                        <th>{{ $label }}</th>
+                    @endforeach
+                </tr></thead>
                 <tbody>
-                @forelse ($rows as $row)
-                    <tr>
-                        <td>{{ $row['employee_number'] }}</td><td>{{ $row['name'] }}</td><td>{{ $row['unit'] }}</td><td>{{ $row['position'] }}</td>
-                        <td>{{ $row['attendance_count'] }}</td><td>{{ $row['valid_attendance_count'] }}</td><td>{{ $row['merit_score'] }}</td>
-                        <td>{{ $row['training_count'] }}</td><td>{{ $row['completed_training_count'] }}</td><td>{{ $row['mentoring_count'] }}</td><td>{{ $row['completed_mentoring_count'] }}</td>
-                    </tr>
+                @php $colKeys = array_keys($columns); @endphp
+                @forelse ($rows as $group)
+                    @if ($group['group'] !== 'all')
+                        <tr class="group-header"><td colspan="{{ count($columns) }}">{{ $group['group'] }}</td></tr>
+                    @endif
+                    @foreach ($group['items'] as $row)
+                        <tr>
+                            @foreach ($colKeys as $key)
+                                <td>{{ $row[$key] }}</td>
+                            @endforeach
+                        </tr>
+                    @endforeach
                 @empty
-                    <tr><td colspan="11" style="padding:32px;text-align:center;color:#6b7280">Tidak ada pegawai yang cocok dengan filter. Ubah atau hapus filter untuk melihat data.</td></tr>
+                    <tr><td colspan="{{ count($columns) }}" class="empty">Tidak ada pegawai yang cocok dengan filter. Ubah atau hapus filter untuk melihat data.</td></tr>
                 @endforelse
                 </tbody>
             </table>
         </div>
+        @php $total = $rows->sum(fn ($g) => count($g['items'])); @endphp
+        @if ($total)
+            <p class="summary">{{ $total }} pegawai ditampilkan.</p>
+        @endif
     </div>
 </main>
 </body>

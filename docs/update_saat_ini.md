@@ -135,12 +135,25 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-## 9. Laporan SDM (HR Report)
+## 9. Laporan SDM (HR Report) + Report Builder
 
-- `HrReportController` — filter by period/unit/jabatan
-- CSV export dengan formula protection (`=`, `+`, `-`, `@` prefix)
-- Kolom: absensi total & valid, merit score, training selesai, mentoring selesai
-- `OperationsReportTest` → filter + export test
+**Enhanced:** Report builder dengan column selection, group by, XLSX export.
+
+### Perubahan:
+
+| File | Perubahan |
+|------|-----------|
+| `app/Http/Controllers/HrReportController.php` | `AVAILABLE_COLUMNS` constant; `resolveColumns()`; `group_by` filter; grouped rows; XLSX export via openspout |
+| `resources/views/reports/hr.blade.php` | Column checkboxes (details toggle), group by select, dynamic table headers, group rows, XLSX button, summary count |
+| `resources/views/reports/hr-pdf.blade.php` | Dynamic columns + group rows |
+| `routes/web.php` | `hr.reports.xlsx` route |
+| `composer.json` | `openspout/openspout` for XLSX generation |
+
+### Fitur baru:
+- **Pilih kolom:** checklist kolom yang ditampilkan (disimpan di URL)
+- **Kelompokkan:** group by unit atau jabatan (tampilkan header grup)
+- **Export XLSX:** format Excel (`.xlsx`) via openspout
+- **Dynamic table:** header + data menyesuaikan kolom terpilih
 
 ---
 

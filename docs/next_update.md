@@ -147,14 +147,17 @@ IndexedDB udah ada buat queue absen. Sekarang diperluas.
 - ✅ Installable: manifest.json + icon SVG 192/512
 - ⏳ Push notifications via Web Push API (belum dikerjakan)
 
-### 5. Enhanced Reports
+### 5. Enhanced Reports ✅
 
 CSV export masih basic tanpa formatting.
 
-- PDF report (dompdf) untuk laporan siap cetak
-- Scheduled email report periodik ke HR
-- Report builder di panel: pilih kolom, filter, group by
-- Export format: CSV, PDF, Excel
+- ✅ PDF report (dompdf) untuk laporan siap cetak
+- ✅ Scheduled email report periodik ke HR
+- ✅ Report builder di panel: pilih kolom, filter, group by
+- ✅ Export format: CSV, PDF, XLSX
+- ✅ Column selection (checklist kolom yang ditampilkan)
+- ✅ Group by unit/jabatan
+- ✅ XLSX export via openspout
 
 ### 6. Face Verification ✅
 
@@ -196,7 +199,7 @@ Perluas dari email ke kanal lain.
 | Dashboard | Medium | High | Sprint 3 |
 | PWA | High | High | Sprint 4 |
 | Face Verify | Medium | High | ✅ Done |
-| Enhanced Reports | Medium | Medium | Sprint 6 |
+| Enhanced Reports | Medium | Medium | ✅ Done |
 | Multi-approval | Medium | High | Sprint 7 |
 | Multi-channel notif | Low | Medium | Backlog |
 

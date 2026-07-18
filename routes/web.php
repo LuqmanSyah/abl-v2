@@ -23,6 +23,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/hr/laporan', [HrReportController::class, 'index'])->name('hr.reports.index');
     Route::get('/hr/laporan/ekspor', [HrReportController::class, 'export'])->name('hr.reports.export');
     Route::get('/hr/laporan/pdf', [HrReportController::class, 'exportPdf'])->name('hr.reports.pdf');
+    Route::get('/hr/laporan/xlsx', [HrReportController::class, 'exportXlsx'])->name('hr.reports.xlsx');
 
     Route::post('/webpush/subscribe', [WebPushController::class, 'subscribe'])->name('webpush.subscribe');
     Route::post('/webpush/unsubscribe', [WebPushController::class, 'unsubscribe'])->name('webpush.unsubscribe');

@@ -11,6 +11,7 @@
         th, td { padding: 6px 8px; border: 1px solid #d1d5db; text-align: left; }
         th { background: #f3f4f6; font-size: 10px; text-transform: uppercase; }
         td { font-size: 11px; }
+        .group-row { background: #fef3c7; font-weight: 700; }
         .footer { margin-top: 16px; font-size: 10px; color: #9ca3af; text-align: center; }
     </style>
 </head>
@@ -22,22 +23,25 @@
     </p>
     <table>
         <thead><tr>
-            <th>NIP</th><th>Pegawai</th><th>Unit</th><th>Jabatan</th>
-            <th>Total absensi</th><th>Absensi valid</th><th>Skor merit</th>
-            <th>Pelatihan</th><th>Pelatihan selesai</th><th>Mentoring</th><th>Mentoring selesai</th>
+            @foreach ($columns as $label)
+                <th>{{ $label }}</th>
+            @endforeach
         </tr></thead>
         <tbody>
-        @forelse ($rows as $row)
-            <tr>
-                <td>{{ $row['employee_number'] }}</td><td>{{ $row['name'] }}</td>
-                <td>{{ $row['unit'] }}</td><td>{{ $row['position'] }}</td>
-                <td>{{ $row['attendance_count'] }}</td><td>{{ $row['valid_attendance_count'] }}</td>
-                <td>{{ $row['merit_score'] }}</td>
-                <td>{{ $row['training_count'] }}</td><td>{{ $row['completed_training_count'] }}</td>
-                <td>{{ $row['mentoring_count'] }}</td><td>{{ $row['completed_mentoring_count'] }}</td>
-            </tr>
+        @php $colKeys = array_keys($columns); @endphp
+        @forelse ($rows as $group)
+            @if ($group['group'] !== 'all')
+                <tr class="group-row"><td colspan="{{ count($columns) }}">{{ $group['group'] }}</td></tr>
+            @endif
+            @foreach ($group['items'] as $row)
+                <tr>
+                    @foreach ($colKeys as $key)
+                        <td>{{ $row[$key] }}</td>
+                    @endforeach
+                </tr>
+            @endforeach
         @empty
-            <tr><td colspan="11" style="padding:24px;text-align:center;color:#6b7280">Tidak ada data.</td></tr>
+            <tr><td colspan="{{ count($columns) }}" style="padding:24px;text-align:center;color:#6b7280">Tidak ada data.</td></tr>
         @endforelse
         </tbody>
     </table>

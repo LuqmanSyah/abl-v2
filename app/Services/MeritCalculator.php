@@ -49,7 +49,7 @@ class MeritCalculator
                 $totalDays += $days;
                 $validDays += $trip->attendances()->where('status', AttendanceStatus::Valid)->count();
             }
-            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 100;
+            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
 
             $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);
             $review360Score = $this->reviewScore($period, $employee, [ReviewType::EmployeeToManager, ReviewType::Peer]);
@@ -82,6 +82,6 @@ class MeritCalculator
         $average = PerformanceReview::where('review_period_id', $period->id)
             ->where('reviewee_id', $employee->id)->whereIn('type', array_map(fn (ReviewType $type) => $type->value, $types))->avg('score');
 
-        return $average ? (float) $average / 5 * 100 : 0;
+        return $average !== null ? (float) $average / 5 * 100 : 0;
     }
 }

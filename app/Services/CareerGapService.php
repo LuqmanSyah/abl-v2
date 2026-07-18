@@ -13,6 +13,9 @@ class CareerGapService
     /** @return Collection<int, array{competency: string, current: int, required: int, gap: int, recommendations: string}> */
     public function analyze(CareerGoal $goal): Collection
     {
+        if (! $goal->target_position_id || ! $goal->targetPosition) {
+            return collect();
+        }
         $levels = EmployeeCompetency::where('user_id', $goal->user_id)->pluck('level', 'competency_id');
         $standards = PositionCompetency::with('competency')
             ->where('position_id', $goal->target_position_id)

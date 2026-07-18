@@ -91,6 +91,6 @@ class AttendanceController extends Controller
         return $request->user()?->role === UserRole::Employee
             && $request->user()->is_active
             && $trip->employee_id === $request->user()->id
-            && in_array($trip->status, [DutyTripStatus::Approved, DutyTripStatus::Completed], true);
+            && $trip->status === DutyTripStatus::Approved;
     }
 }

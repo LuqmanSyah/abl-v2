@@ -169,9 +169,24 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | `docs/brd.md` | Business Requirements Document v1.3 |
 | `docs/implementation-plan.md` | Fase implementasi |
 | `docs/operations.md` | Operasional & deployment |
-| `docs/sprint-merit-bulanan.md` | Scope sprint merit |
+| `docs/sprint_project.md` | Scope sprint merit & project |
 | `docs/testing_list.md` | 190+ skenario uji + 18 bug tracker |
 | `docs/update_saat_ini.md` | File ini |
+
+---
+
+## 12. Revisi Bug & Keamanan (Batch 1 — 6 fix, 1 cancel, 1 open)
+
+| # | Service | Severity | Issue | Status |
+|---|---------|----------|-------|--------|
+| 1 | Merit | Critical | `with('attendance')` crash | ✅ Fixed |
+| 2 | Attendance | High | `canAttend()` vs `record()` conflict | ✅ Fixed |
+| 3 | Career | High | Mentoring tanpa DB locking | ✅ Fixed |
+| 4 | Merit | Medium | MC-2: 0 trips = 100 score → `: 0` | ✅ Fixed |
+| 5 | Merit | Low | B5: `$average` falsy bug | ✅ Fixed |
+| 6 | Career | Low | CG-1: `target_position_id` null crash | ✅ Fixed |
+| 7 | Attendance | Medium | AR-2: status priority nutup data | ❌ Open (butuh DB migration) |
+| 8 | Attendance | Medium | AR-1: ends_at block | ⛔ Cancelled (konflik Late test) |
 
 ---
 
@@ -179,16 +194,26 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 | ID | Deskripsi | Status |
 |----|-----------|--------|
-| B1 | `canAttend()` vs `record()` status conflict | **Open** — Completed trip masih tampil form |
+| B1 | `canAttend()` vs `record()` status conflict | **Fixed** — disinkronkan ke `Approved` saja |
+| B2 | Mentoring state tanpa DB locking | **Fixed** — implementasi `transition()` lockForUpdate |
 | B4 | Trip auto-Completed untuk semua status | **Fixed** — tidak auto-Completed lagi |
-| MC-2 | Discipline = 100 jika 0 trips | **Open** — masih `$totalDays ? ... : 100` |
-| Lainnya | 16 bug lain di testing_list.md | Open |
+| B5 | `reviewScore()` falsy `$average ?` bug | **Fixed** — `$average !== null` |
+| MC-2 | Discipline = 100 jika 0 trips | **Fixed** — fallback `: 100` → `: 0` |
+| CG-1 | `target_position_id` null crash | **Fixed** — early return guard |
+| AR-2 | Status priority nutup data lokasi | **Open** — perlu DB migration |
+| Lainnya | 11 bug lain di testing_list.md | Open |
 
 ---
 
 ## Test Suite
 
-**24 test passing**, 0 failing (110 assertions, 2.55s):
+**58 test passing**, 0 failing (485 assertions, 6.05s):
 - DutyAttendanceTest: 13 ✓
 - MeritSystemTest: 11 ✓
-- FilamentAccessTest, CareerDevelopmentTest, OperationsReportTest, DatabaseSeederTest: all ✓
+- CareerDevelopmentTest: 9 ✓
+- FilamentAccessTest: 15 ✓
+- FlowTest: 1 ✓
+- OperationsReportTest: 3 ✓
+- DatabaseSeederTest: 1 ✓
+- ExampleTest: 3 ✓
+- Unit/SqliteBackupTest: 1 ✓

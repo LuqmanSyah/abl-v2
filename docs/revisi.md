@@ -559,3 +559,54 @@ Halaman detail tidak lagi menampilkan seluruh field dalam satu daftar panjang. I
 - **Hasil Merit:** ringkasan merit, komponen nilai, status verifikasi, dan riwayat.
 
 Data teknis dan riwayat dibuat collapsible agar detail utama tetap mudah dipindai. Nama verifikator merit ditampilkan menggantikan ID pengguna.
+
+---
+
+## 13. Revisi Bug & Keamanan (Batch 1)
+
+Diterapkan pada commit `c3ed9ac` + setelahnya. Semua fix telah lolos 58 test.
+
+### 13.1. MeritResult — `with('attendance')` Crash (Critical)
+
+**Lokasi:** `app/Models/MeritResult.php:85`
+**Problem:** Relationship `attendance()` (HasOne) sudah di-rename jadi `attendances()` (HasMany). `breakdownForManager()` masih pakai `with('attendance')` → `RelationNotFoundException` saat manager buka modal rekomendasi training.
+**Fix:** `with('attendance')` → `with('attendances')`
+
+### 13.2. `canAttend()` vs `record()` Conflict (High)
+
+**Lokasi:** `app/Http/Controllers/AttendanceController.php:94`
+**Problem:** `canAttend()` izinkan `[Approved, Completed]` tapi `record()` hanya terima `Approved`. Trip Completed → form tampil, submit selalu gagal.
+**Fix:** Sinkronkan ke `$trip->status === DutyTripStatus::Approved`
+
+### 13.3. Mentoring — Race Condition (High)
+
+**Lokasi:** `app/Models/Mentoring.php:65-113`
+**Problem:** `approve()`, `reject()`, `complete()` tanpa `lockForUpdate()`. Dua request simultan bisa approve mentoring yang sama.
+**Fix:** Implementasi pattern `transition()` dengan `DB::transaction()` + `lockForUpdate()` seperti TrainingRequest.
+
+### 13.4. MC-2 — Discipline = 100 Jika 0 Calendar Days (Medium)
+
+**Lokasi:** `app/Services/MeritCalculator.php:52`
+**Problem:** Pegawai tanpa satupun perintah dinas dalam periode dapat nilai disiplin sempurna 100.
+**Fix:** `$totalDays ? min($validDays / $totalDays * 100, 100) : 0`
+
+### 13.5. B5 — `reviewScore()` Falsy Bug (Low)
+
+**Lokasi:** `app/Services/MeritCalculator.php:85`
+**Problem:** `$average ? (float) $average / 5 * 100 : 0` — jika `avg('score')` = `0.0`, PHP anggap falsy → return 0.
+**Fix:** `$average !== null ? (float) $average / 5 * 100 : 0`
+
+### 13.6. CG-1 — `target_position_id` Null Crash (Low)
+
+**Lokasi:** `app/Services/CareerGapService.php:14`
+**Problem:** Jika `CareerGoal::target_position_id` null, `PositionCompetency::where(...)` query nonsense.
+**Fix:** Guard `if (! $goal->target_position_id || ! $goal->targetPosition) { return collect(); }`
+
+### 13.7. AR-2 — Status Priority Nutup Data Lokasi (Open)
+
+**Lokasi:** `app/Services/AttendanceRecorder.php:62-68`
+**Status:** **Open** — Membutuhkan DB migration (simpan multiple flags). Reorder status di kode menyebabkan OutsideRadius menutup data suspek.
+
+### 13.8. AR-1 — Ends_at Block (Dibatalkan)
+
+**Alasan:** `ends_at` block bertentangan dengan `Late` dan `Backdated` test. Late & NeedsReview classification sudah menangani kasus after-ends_at secara tepat.

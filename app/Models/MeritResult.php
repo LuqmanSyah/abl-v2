@@ -82,7 +82,7 @@ class MeritResult extends Model
             ])
             ->get();
 
-        $dutyTrips = DutyTrip::with('attendance')
+        $dutyTrips = DutyTrip::with('attendances')
             ->where('employee_id', $this->employee_id)
             ->whereBetween('starts_at', [$period->starts_at->copy()->startOfDay(), $period->ends_at->copy()->endOfDay()])
             ->where(function (Builder $query): void {

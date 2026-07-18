@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class Mentoring extends Model
 {
@@ -64,36 +65,42 @@ class Mentoring extends Model
 
     public function approve(User $manager, mixed $scheduledAt, ?string $notes = null): void
     {
-        $this->guardManager($manager, MentoringStatus::Pending);
-        $scheduledAt = CarbonImmutable::parse($scheduledAt);
-        if ($scheduledAt->isPast()) {
-            throw new BusinessRuleException('Jadwal mentoring yang disetujui tidak boleh lampau.');
-        }
-        $this->update([
-            'status' => MentoringStatus::Approved,
-            'scheduled_at' => $scheduledAt,
-            'manager_notes' => $notes,
-        ]);
-        ActivityLog::record('mentoring.approved', $this, $manager);
+        $this->transition(function (self $mentoring) use ($manager, $scheduledAt, $notes): void {
+            $this->guardManager($manager, MentoringStatus::Pending);
+            $scheduledAt = CarbonImmutable::parse($scheduledAt);
+            if ($scheduledAt->isPast()) {
+                throw new BusinessRuleException('Jadwal mentoring yang disetujui tidak boleh lampau.');
+            }
+            $mentoring->update([
+                'status' => MentoringStatus::Approved,
+                'scheduled_at' => $scheduledAt,
+                'manager_notes' => $notes,
+            ]);
+            ActivityLog::record('mentoring.approved', $mentoring, $manager);
+        });
     }
 
     public function reject(User $manager, string $notes): void
     {
-        $this->guardManager($manager, MentoringStatus::Pending);
-        $this->update(['status' => MentoringStatus::Rejected, 'manager_notes' => $notes]);
-        ActivityLog::record('mentoring.rejected', $this, $manager);
+        $this->transition(function (self $mentoring) use ($manager, $notes): void {
+            $this->guardManager($manager, MentoringStatus::Pending);
+            $mentoring->update(['status' => MentoringStatus::Rejected, 'manager_notes' => $notes]);
+            ActivityLog::record('mentoring.rejected', $mentoring, $manager);
+        });
     }
 
     public function complete(User $manager, string $result, string $followUp): void
     {
-        $this->guardManager($manager, MentoringStatus::Approved);
-        $this->update([
-            'status' => MentoringStatus::Completed,
-            'result' => $result,
-            'follow_up' => $followUp,
-            'completed_at' => now(),
-        ]);
-        ActivityLog::record('mentoring.completed', $this, $manager);
+        $this->transition(function (self $mentoring) use ($manager, $result, $followUp): void {
+            $this->guardManager($manager, MentoringStatus::Approved);
+            $mentoring->update([
+                'status' => MentoringStatus::Completed,
+                'result' => $result,
+                'follow_up' => $followUp,
+                'completed_at' => now(),
+            ]);
+            ActivityLog::record('mentoring.completed', $mentoring, $manager);
+        });
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
@@ -110,5 +117,15 @@ class Mentoring extends Model
         if ($manager->role !== UserRole::Manager || $this->manager_id !== $manager->id || $this->status !== $status) {
             throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
         }
+    }
+
+    private function transition(callable $transition): void
+    {
+        DB::transaction(function () use ($transition): void {
+            $mentoring = self::query()->lockForUpdate()->findOrFail($this->id);
+            $this->setRawAttributes($mentoring->getAttributes(), true);
+            $transition($mentoring);
+            $this->setRawAttributes($mentoring->getAttributes(), true);
+        }, 3);
     }
 }

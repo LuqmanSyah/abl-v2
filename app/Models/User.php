@@ -57,6 +57,7 @@ class User extends Authenticatable implements FilamentUser
         'unit_id',
         'position_id',
         'manager_id',
+        'delegate_id',
         'employee_number',
         'phone',
         'is_active',
@@ -112,9 +113,19 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(self::class, 'manager_id');
     }
 
+    public function delegate(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'delegate_id');
+    }
+
     public function subordinates(): HasMany
     {
         return $this->hasMany(self::class, 'manager_id');
+    }
+
+    public function delegatedFrom(): HasMany
+    {
+        return $this->hasMany(self::class, 'delegate_id');
     }
 
     public function dutyTrips(): HasMany

@@ -169,14 +169,15 @@ Foto absen bisa diverifikasi otomatis.
 - ✅ Library: @vladmandic/face-api (client-side, tiny model)
 - ✅ Model files di public/models/ (cached oleh SW)
 
-### 7. Multi-level Approval Workflow
+### 7. Multi-level Approval Workflow ✅
 
 Approval linear Manager→HR saat ini kaku.
 
-- Generic workflow engine (status transition + guard)
-- Configurable approval chain per module (di admin panel)
-- Delegation: manager cuti → deputy approve
-- Escalation: pending > 3 hari → naik ke atasan di atasnya
+- ✅ Generic workflow engine (`HasWorkflow` trait — `workflowTransition()` with `lockForUpdate`)
+- ✅ Delegation: `users.delegate_id` → deputy approve atas nama manager
+- ✅ Escalation: `approval:escalate` scheduler → pending >3 hari naik ke HR
+- ⏳ Configurable approval chain di admin panel (ditunda)
+- Penerapan: TrainingRequest + Mentoring (refactor ke HasWorkflow trait)
 
 ### 8. Notifikasi Multi-channel
 
@@ -200,7 +201,7 @@ Perluas dari email ke kanal lain.
 | PWA | High | High | Sprint 4 |
 | Face Verify | Medium | High | ✅ Done |
 | Enhanced Reports | Medium | Medium | ✅ Done |
-| Multi-approval | Medium | High | Sprint 7 |
+| Multi-approval | Medium | High | ✅ Done |
 | Multi-channel notif | Low | Medium | Backlog |
 
 ---

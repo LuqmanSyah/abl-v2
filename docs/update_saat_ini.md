@@ -234,7 +234,30 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-## 13. Notifikasi & Scheduler Otomatis (Sprint 1 & 2)
+## 13. Multi-level Approval Workflow + Delegasi + Eskalasi
+
+**Fitur baru:** Generic workflow engine, delegasi atasan, eskalasi otomatis.
+
+### Perubahan:
+
+| File | Perubahan |
+|------|-----------|
+| `app/Models/Concerns/HasWorkflow.php` | Trait: `workflowTransition()` (lockForUpdate + re-read), `guardRole()`, `delegateCanAct()` |
+| `app/Models/TrainingRequest.php` | Refactor `transition()` → `workflowTransition()`; delegation via `actorIsManager()` |
+| `app/Models/Mentoring.php` | Refactor `transition()` → `workflowTransition()`; delegation via `actorIsManager()` |
+| `app/Models/User.php` | `delegate_id` fillable; `delegate()` + `delegatedFrom()` relations |
+| `database/migrations/2026_07_19_010000_add_delegate_id_to_users.php` | Tambah `delegate_id` nullable FK ke `users` |
+| `app/Console/Commands/EscalateApprovals.php` | `approval:escalate` — pending TrainingRequest/Mentoring >3 hari → notif HR |
+| `routes/console.php` | `approval:escalate` daily at 06:00 |
+
+### Detail:
+- **Workflow engine:** Trait `HasWorkflow` dengan `workflowTransition(callable)` — reload model in transaction with `lockForUpdate`, terapkan transisi, setRawAttributes. Siap pakai untuk model mana pun.
+- **Delegasi:** Manager set `delegate_id` (Manager lain). Delegate bisa approve/reject atas nama manager. Tercatat di activity_log sebagai `delegated_approval`.
+- **Eskalasi:** Scheduler tiap jam 06:00 cek TrainingRequest `pending_manager` + Mentoring `pending` yang sudah >3 hari. Kirim notifikasi ke seluruh HR.
+
+---
+
+## 14. Notifikasi & Scheduler Otomatis (Sprint 1 & 2)
 
 ### 13.1. Notifikasi (9 kelas)
 

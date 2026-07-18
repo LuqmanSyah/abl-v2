@@ -64,3 +64,4 @@ Schedule::command('merit:calculate')->monthlyOn(1, '00:05')->withoutOverlapping(
 Schedule::command('merit:remind-kpi')->dailyAt('09:00')->withoutOverlapping();
 Schedule::command('attendance:remind')->twiceDaily(8, 12)->withoutOverlapping();
 Schedule::command('merit:send-report')->monthlyOn(1, '01:00')->withoutOverlapping();
+Schedule::command('approval:escalate')->dailyAt('06:00')->withoutOverlapping();

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\MentoringStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Concerns\HasWorkflow;
 use App\Notifications\MentoringPending;
 use App\Notifications\MentoringScheduled;
 use Carbon\CarbonImmutable;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class Mentoring extends Model
 {
-    use HasFactory;
+    use HasFactory, HasWorkflow;
 
     protected $fillable = [
         'employee_id', 'manager_id', 'status', 'topic', 'target', 'requested_at', 'scheduled_at',
@@ -70,8 +71,10 @@ class Mentoring extends Model
 
     public function approve(User $manager, mixed $scheduledAt, ?string $notes = null): void
     {
-        $this->transition(function (self $mentoring) use ($manager, $scheduledAt, $notes): void {
-            $this->guardManager($manager, MentoringStatus::Pending);
+        $this->workflowTransition(function (self $mentoring) use ($manager, $scheduledAt, $notes): void {
+            if (! $this->actorIsManager($manager, $mentoring, MentoringStatus::Pending)) {
+                throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
+            }
             $scheduledAt = CarbonImmutable::parse($scheduledAt);
             if ($scheduledAt->isPast()) {
                 throw new BusinessRuleException('Jadwal mentoring yang disetujui tidak boleh lampau.');
@@ -88,8 +91,10 @@ class Mentoring extends Model
 
     public function reject(User $manager, string $notes): void
     {
-        $this->transition(function (self $mentoring) use ($manager, $notes): void {
-            $this->guardManager($manager, MentoringStatus::Pending);
+        $this->workflowTransition(function (self $mentoring) use ($manager, $notes): void {
+            if (! $this->actorIsManager($manager, $mentoring, MentoringStatus::Pending)) {
+                throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
+            }
             $mentoring->update(['status' => MentoringStatus::Rejected, 'manager_notes' => $notes]);
             ActivityLog::record('mentoring.rejected', $mentoring, $manager);
         });
@@ -97,8 +102,10 @@ class Mentoring extends Model
 
     public function complete(User $manager, string $result, string $followUp): void
     {
-        $this->transition(function (self $mentoring) use ($manager, $result, $followUp): void {
-            $this->guardManager($manager, MentoringStatus::Approved);
+        $this->workflowTransition(function (self $mentoring) use ($manager, $result, $followUp): void {
+            if (! $this->actorIsManager($manager, $mentoring, MentoringStatus::Approved)) {
+                throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
+            }
             $mentoring->update([
                 'status' => MentoringStatus::Completed,
                 'result' => $result,
@@ -118,20 +125,25 @@ class Mentoring extends Model
         };
     }
 
-    private function guardManager(User $manager, MentoringStatus $status): void
+    private function actorIsManager(User $user, self $mentoring, MentoringStatus $expectedStatus): bool
     {
-        if ($manager->role !== UserRole::Manager || $this->manager_id !== $manager->id || $this->status !== $status) {
-            throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
+        if ($user->role !== UserRole::Manager || $mentoring->status !== $expectedStatus) {
+            return false;
         }
-    }
 
-    private function transition(callable $transition): void
-    {
-        DB::transaction(function () use ($transition): void {
-            $mentoring = self::query()->lockForUpdate()->findOrFail($this->id);
-            $this->setRawAttributes($mentoring->getAttributes(), true);
-            $transition($mentoring);
-            $this->setRawAttributes($mentoring->getAttributes(), true);
-        }, 3);
+        if ($mentoring->manager_id === $user->id) {
+            return true;
+        }
+
+        if ($user->delegate_id === $mentoring->manager_id) {
+            ActivityLog::record('mentoring.delegated', $mentoring, $user, [
+                'action' => 'delegated_approval',
+                'delegate_of' => $mentoring->manager_id,
+            ]);
+
+            return true;
+        }
+
+        return false;
     }
 }

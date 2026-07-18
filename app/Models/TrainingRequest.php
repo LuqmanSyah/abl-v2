@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Concerns\HasWorkflow;
 use App\Notifications\TrainingPending;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class TrainingRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, HasWorkflow;
 
     private bool $managerRecommendation = false;
 
@@ -131,8 +132,9 @@ class TrainingRequest extends Model
 
     public function approveByManager(User $manager, ?string $notes = null): void
     {
-        $this->transition(function (self $request) use ($manager, $notes): void {
-            if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
+        $this->workflowTransition(function (self $request) use ($manager, $notes): void {
+            if ($request->status !== TrainingRequestStatus::PendingManager
+                || ! $this->actorIsManager($manager, $request)) {
                 throw new BusinessRuleException('Pengajuan pelatihan tidak dapat disetujui pengguna ini.');
             }
 
@@ -147,7 +149,7 @@ class TrainingRequest extends Model
 
     public function resubmit(User $employee, string $reason): void
     {
-        $this->transition(function (self $request) use ($employee, $reason): void {
+        $this->workflowTransition(function (self $request) use ($employee, $reason): void {
             if ($employee->role !== UserRole::Employee || $request->user_id !== $employee->id
                 || $request->status !== TrainingRequestStatus::Rejected || ! $employee->manager_id
                 || User::whereKey($employee->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
@@ -169,8 +171,9 @@ class TrainingRequest extends Model
 
     public function rejectByManager(User $manager, string $notes): void
     {
-        $this->transition(function (self $request) use ($manager, $notes): void {
-            if ($manager->role !== UserRole::Manager || $request->manager_id !== $manager->id || $request->status !== TrainingRequestStatus::PendingManager) {
+        $this->workflowTransition(function (self $request) use ($manager, $notes): void {
+            if ($request->status !== TrainingRequestStatus::PendingManager
+                || ! $this->actorIsManager($manager, $request)) {
                 throw new BusinessRuleException('Pengajuan pelatihan tidak dapat ditolak pengguna ini.');
             }
 
@@ -185,7 +188,7 @@ class TrainingRequest extends Model
 
     public function verifyByHr(User $hr): void
     {
-        $this->transition(function (self $request) use ($hr): void {
+        $this->workflowTransition(function (self $request) use ($hr): void {
             if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::PendingHr) {
                 throw new BusinessRuleException('Pengajuan pelatihan belum dapat diverifikasi HR.');
             }
@@ -201,7 +204,7 @@ class TrainingRequest extends Model
 
     public function complete(User $hr, string $result): void
     {
-        $this->transition(function (self $request) use ($hr, $result): void {
+        $this->workflowTransition(function (self $request) use ($hr, $result): void {
             if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::Approved) {
                 throw new BusinessRuleException('Pelatihan belum dapat diselesaikan.');
             }
@@ -224,12 +227,25 @@ class TrainingRequest extends Model
         };
     }
 
-    private function transition(callable $transition): void
+    private function actorIsManager(User $user, self $request): bool
     {
-        DB::transaction(function () use ($transition): void {
-            $request = self::query()->lockForUpdate()->findOrFail($this->id);
-            $transition($request);
-            $this->setRawAttributes($request->getAttributes(), true);
-        }, 3);
+        if ($user->role !== UserRole::Manager) {
+            return false;
+        }
+
+        if ($request->manager_id === $user->id) {
+            return true;
+        }
+
+        if ($user->delegate_id === $request->manager_id) {
+            ActivityLog::record('training.delegated', $request, $user, [
+                'action' => 'delegated_approval',
+                'delegate_of' => $request->manager_id,
+            ]);
+
+            return true;
+        }
+
+        return false;
     }
 }

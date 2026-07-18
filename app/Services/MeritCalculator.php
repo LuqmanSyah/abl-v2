@@ -24,8 +24,8 @@ class MeritCalculator
             $identity = ['review_period_id' => $period->id, 'employee_id' => $employee->id];
             $result = MeritResult::where($identity)->lockForUpdate()->first();
 
-            if ($result?->published_at) {
-                throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
+            if ($result?->manager_verified_at || $result?->hr_verified_at || $result?->published_at) {
+                throw new DomainException('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.');
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
@@ -56,6 +56,7 @@ class MeritCalculator
                 'kpi_score' => round($kpiScore, 2), 'discipline_score' => round($disciplineScore, 2),
                 'manager_score' => round($managerScore, 2), 'review_360_score' => round($review360Score, 2),
                 'total_score' => round($total, 2), 'estimated_bonus' => round((float) $period->base_bonus * $total / 100, 2),
+                'calculated_at' => now(),
                 'manager_verified_by' => null, 'manager_verified_at' => null, 'hr_verified_by' => null,
                 'hr_verified_at' => null, 'published_at' => null,
             ];

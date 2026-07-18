@@ -19,7 +19,7 @@ class MeritResult extends Model
     protected $fillable = [
         'review_period_id', 'employee_id', 'kpi_score', 'discipline_score', 'manager_score',
         'review_360_score', 'total_score', 'estimated_bonus', 'manager_verified_by',
-        'manager_verified_at', 'hr_verified_by', 'hr_verified_at', 'published_at',
+        'calculated_at', 'manager_verified_at', 'hr_verified_by', 'hr_verified_at', 'published_at',
     ];
 
     protected function casts(): array
@@ -27,7 +27,8 @@ class MeritResult extends Model
         return [
             'kpi_score' => 'decimal:2', 'discipline_score' => 'decimal:2', 'manager_score' => 'decimal:2',
             'review_360_score' => 'decimal:2', 'total_score' => 'decimal:2', 'estimated_bonus' => 'decimal:2',
-            'manager_verified_at' => 'datetime', 'hr_verified_at' => 'datetime', 'published_at' => 'datetime',
+            'calculated_at' => 'datetime', 'manager_verified_at' => 'datetime',
+            'hr_verified_at' => 'datetime', 'published_at' => 'datetime',
         ];
     }
 

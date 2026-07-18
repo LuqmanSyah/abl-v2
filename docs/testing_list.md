@@ -68,9 +68,9 @@
 
 #### 11. MeritCalculator — Recalculation Hapus Verifikasi Manager (MC-3)
 - **Lokasi**: `app/Services/MeritCalculator.php:59-60`
-- **Tingkat**: **Critical**
+- **Tingkat**: **Fixed**
 - **Deskripsi**: Setiap `calculate()` set `manager_verified_by=null`, `hr_verified_by=null`, `published_at=null`. Cuma cek `published_at` untuk blokade. Jika HR recalculate setelah manager verify (tapi sebelum HR verify), **verifikasi manager terhapus**. Manager harus verify lagi.
-- **Fix**: Tambah guard: jika `manager_verified_at` atau `hr_verified_at` terisi, throw error.
+- **Fix**: `calculate()` menolak hitung ulang jika `manager_verified_at`, `hr_verified_at`, atau `published_at` terisi. `calculated_at` dipakai untuk timestamp update merit.
 
 #### 12. MeritCalculator — `$kpi->indicator` Null Crash (MC-1)
 - **Lokasi**: `app/Services/MeritCalculator.php:31-34`
@@ -188,15 +188,17 @@
 | 5 | KPI target <= 0 | Manager | Target = 0 | Error "Target KPI harus lebih dari 0" |
 | 6 | KPI achievement negatif | Manager | Achievement = -1 | Error "Capaian KPI tidak boleh negatif" |
 | 7 | Hitung merit | (system) | MeritCalculator::calculate() | Formula: weighted average |
-| 8 | Verifikasi manager | Manager | verifyByManager() | manager_verified_at terisi |
-| 9 | Verifikasi HR | HR | verifyByHr() | hr_verified_at + published_at terisi |
-| 10 | Stale verification after recalc | HR | Hitung ulang, approve stale objek | Error "Verifikasi Atasan wajib selesai" |
-| 11 | Merit visible — employee | Employee | Lihat merit results | Hanya yang published |
-| 12 | Merit visible — manager | Manager | Lihat merit results | Bawahan sendiri |
-| 13 | Edit KPI — after published | Manager | Edit KPI setelah merit published | Error "tidak dapat diubah" |
-| 14 | Delete KPI — after published | Manager | Delete KPI setelah merit published | Error "tidak dapat dihapus" |
-| 15 | **BUG: Score >5 pada PerformanceReview** | Employee/Manager | Set score = 100 | Tidak divalidasi, perhitungan kacau |
-| 16 | Handle — zero achievement | Manager | achievement = 0, target > 0 | Perhitungan beres |
+| 8 | Hitung merit bulanan pertama | HR | Calculate periode bulan berjalan | `calculated_at` terisi, UI tampil "Sudah di-update pada ..." |
+| 9 | Hitung ulang sebelum verifikasi | HR | Ubah capaian KPI, calculate ulang | Score dan `calculated_at` berubah |
+| 10 | Verifikasi manager | Manager | verifyByManager() | `manager_verified_at` terisi, UI tampil "Sudah diverifikasi Atasan pada ..." |
+| 11 | Verifikasi HR | HR | verifyByHr() | `hr_verified_at` + `published_at` terisi |
+| 12 | Hitung ulang setelah verifikasi | HR | Calculate setelah Atasan verify | Error "Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang." |
+| 13 | Merit visible — employee | Employee | Lihat merit results | Hanya yang published |
+| 14 | Merit visible — manager | Manager | Lihat merit results | Bawahan sendiri |
+| 15 | Edit KPI — after published | Manager | Edit KPI setelah merit published | Error "tidak dapat diubah" |
+| 16 | Delete KPI — after published | Manager | Delete KPI setelah merit published | Error "tidak dapat dihapus" |
+| 17 | **BUG: Score >5 pada PerformanceReview** | Employee/Manager | Set score = 100 | Tidak divalidasi, perhitungan kacau |
+| 18 | Handle — zero achievement | Manager | achievement = 0, target > 0 | Perhitungan beres |
 
 #### 6. Performance Review (Penilaian)
 

@@ -130,13 +130,14 @@ Atasan buat DutyTrip (pilih bawahan + lokasi via map)
 ### 5.2. Merit System
 
 ```
-HR buat ReviewPeriod + KpiIndicator
+HR buat ReviewPeriod bulanan + KpiIndicator
   → Atasan set EmployeeKpi (target)
     → Pegawai jalankan
       → Atasan update achievement
         → Review 360 (atasan→pegawai, pegawai→atasan, peer)
-          → HR jalankan MeritCalculator::calculate()
+          → HR jalankan MeritCalculator::calculate() sebagai draft bulanan
             → kpi_score + discipline_score + manager_score + 360_score = total_score
+              → Jika belum diverifikasi, HR dapat hitung ulang dan `calculated_at` berubah
               → Atasan verifyByManager()
                 → HR verifyByHr() + publish
                   → Pegawai lihat hasil merit + estimasi bonus
@@ -188,6 +189,8 @@ total_score = (
 
 **Bobot wajib total 100%** (dijaga oleh model `ReviewPeriod::booted()`).
 
+**Update bulanan:** `MeritResult.calculated_at` mencatat waktu hitung/update terakhir. Hitung ulang hanya boleh sebelum verifikasi Atasan.
+
 **Verifikasi 2-tahap:** Atasan verify → HR verify + publish → employee bisa lihat.
 
 ---
@@ -206,7 +209,7 @@ total_score = (
 - DutyTrip employee harus bawahan langsung manager
 - Attendance hanya untuk trip Approved, dalam radius, sesuai jadwal
 - KPI target > 0, achievement >= 0
-- Merit published → semua data terkunci
+- Merit yang sudah diverifikasi/published → hasil tidak dapat dihitung ulang; data published terkunci
 - CareerGoal target position level > current position level
 - Mentoring requested_at tidak boleh lampau
 - Score review 1-5 (tanpa validasi model — bug B3)

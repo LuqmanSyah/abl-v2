@@ -19,6 +19,30 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        DB::table('approval_chains')->upsert([
+            [
+                'module' => 'training_request',
+                'name' => 'Training Request — Manager → HR',
+                'steps' => json_encode([
+                    ['role' => 'manager', 'label' => 'Persetujuan Atasan', 'order' => 1],
+                    ['role' => 'hr', 'label' => 'Verifikasi HR', 'order' => 2],
+                ]),
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'module' => 'mentoring',
+                'name' => 'Mentoring — Manager',
+                'steps' => json_encode([
+                    ['role' => 'manager', 'label' => 'Persetujuan Atasan', 'order' => 1],
+                ]),
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ], ['module'], ['name', 'steps', 'is_active', 'updated_at']);
+
         DB::transaction(function (): void {
             $now = now();
             $upsert = function (string $table, array $key, array $values = []) use ($now): int {

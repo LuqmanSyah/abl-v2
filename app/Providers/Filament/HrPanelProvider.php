@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
+use App\Filament\Resources\ApprovalChains\ApprovalChainResource;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Filament\Resources\CareerGoals\CareerGoalResource;
 use App\Filament\Resources\Competencies\CompetencyResource;
@@ -29,6 +30,7 @@ use App\Filament\Widgets\HrStats;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 
 class HrPanelProvider extends RolePanelProvider
@@ -58,6 +60,7 @@ class HrPanelProvider extends RolePanelProvider
                 TrainingRequestResource::class,
                 MentoringResource::class,
                 ActivityLogResource::class,
+                ApprovalChainResource::class,
             ])
             ->navigationGroups([
                 'Organisasi',
@@ -81,6 +84,7 @@ class HrPanelProvider extends RolePanelProvider
                     ->sort(10)
                     ->url(fn (): string => route('hr.reports.index')),
             ])
-            ->colors(['primary' => Color::Amber]);
+            ->colors(['primary' => Color::Amber])
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('pwa.register')->render());
     }
 }

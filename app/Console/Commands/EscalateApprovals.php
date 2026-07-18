@@ -4,73 +4,86 @@ namespace App\Console\Commands;
 
 use App\Enums\MentoringStatus;
 use App\Enums\TrainingRequestStatus;
+use App\Models\ApprovalChain;
 use App\Models\Mentoring;
 use App\Models\TrainingRequest;
 use App\Models\User;
+use App\Notifications\MentoringPending;
 use App\Notifications\TrainingPending;
 use Illuminate\Console\Command;
 
 class EscalateApprovals extends Command
 {
     protected $signature = 'approval:escalate';
-    protected $description = 'Escalate pending approvals >3 days to next level';
+    protected $description = 'Escalate pending approvals >3 days to next approval step';
 
     public function handle(): int
     {
         $escalated = 0;
 
-        $escalated += $this->escalateTrainingRequests();
-        $escalated += $this->escalateMentoringRequests();
+        $escalated += $this->escalateModule(
+            'training_request',
+            TrainingRequest::class,
+            TrainingRequestStatus::PendingManager,
+            'requested_at',
+        );
+
+        $escalated += $this->escalateModule(
+            'mentoring',
+            Mentoring::class,
+            MentoringStatus::Pending,
+            'requested_at',
+        );
 
         $this->info("{$escalated} approvals escalated.");
 
         return 0;
     }
 
-    private function escalateTrainingRequests(): int
-    {
+    private function escalateModule(
+        string $module,
+        string $modelClass,
+        mixed $pendingStatus,
+        string $dateColumn,
+    ): int {
+        $chain = ApprovalChain::forModule($module);
+        if (! $chain) {
+            $this->warn("No active approval chain for module: {$module}");
+
+            return 0;
+        }
+
+        $roles = $chain->getStepRoles();
         $cutoff = now()->subDays(3);
         $count = 0;
 
-        TrainingRequest::where('status', TrainingRequestStatus::PendingManager)
-            ->where('requested_at', '<', $cutoff)
-            ->each(function (TrainingRequest $request) use (&$count): void {
-                $manager = User::whereKey($request->manager_id)->where('is_active', true)->first();
-                $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
+        $modelClass::where('status', $pendingStatus)
+            ->where($dateColumn, '<', $cutoff)
+            ->each(function ($request) use ($roles, $module, &$count): void {
+                $nextRole = $roles[1] ?? null;
 
-                foreach ($hrUsers as $hr) {
-                    $hr->notify(new TrainingPending($request));
+                $users = match ($nextRole) {
+                    'manager' => User::whereKey($request->manager_id)->where('is_active', true)->get(),
+                    'hr' => User::where('role', 'hr')->where('is_active', true)->get(),
+                    default => User::where('role', 'hr')->where('is_active', true)->get(),
+                };
+
+                $notification = $module === 'training_request'
+                    ? new TrainingPending($request)
+                    : new MentoringPending($request);
+
+                foreach ($users as $user) {
+                    $user->notify($notification);
                 }
 
                 activity()
                     ->performedOn($request)
-                    ->withProperties(['action' => 'escalated', 'reason' => 'pending > 3 days'])
-                    ->log('training.escalated');
-
-                $count++;
-            });
-
-        return $count;
-    }
-
-    private function escalateMentoringRequests(): int
-    {
-        $cutoff = now()->subDays(3);
-        $count = 0;
-
-        Mentoring::where('status', MentoringStatus::Pending)
-            ->where('requested_at', '<', $cutoff)
-            ->each(function (Mentoring $mentoring) use (&$count): void {
-                $hrUsers = User::where('role', 'hr')->where('is_active', true)->get();
-
-                foreach ($hrUsers as $hr) {
-                    $hr->notify(new \App\Notifications\MentoringPending($mentoring));
-                }
-
-                activity()
-                    ->performedOn($mentoring)
-                    ->withProperties(['action' => 'escalated', 'reason' => 'pending > 3 days'])
-                    ->log('mentoring.escalated');
+                    ->withProperties([
+                        'action' => 'escalated',
+                        'reason' => 'pending > 3 days',
+                        'next_role' => $nextRole,
+                    ])
+                    ->log("{$module}.escalated");
 
                 $count++;
             });

@@ -259,7 +259,47 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ## 14. Notifikasi & Scheduler Otomatis (Sprint 1 & 2)
 
-### 13.1. Notifikasi (9 kelas)
+### 13.3. Configurable Approval Chain Admin Panel
+
+**Fitur baru:** HR bisa atur urutan langkah persetujuan per modul dari admin panel.
+
+| File | Perubahan |
+|------|-----------|
+| `database/migrations/2026_07_19_020000_create_approval_chains_table.php` | Tabel `approval_chains` — module, steps (JSON array of role+label), is_active |
+| `app/Models/ApprovalChain.php` | Model + `forModule()` helper + `getStepRoles()` |
+| `app/Filament/Resources/ApprovalChains/` | Full CRUD resource: form (Repeater steps), table, pages |
+| `app/Providers/Filament/HrPanelProvider.php` | Register ApprovalChainResource |
+| `database/seeders/DatabaseSeeder.php` | Seed default: training_request [manager→hr], mentoring [manager] |
+| `app/Console/Commands/EscalateApprovals.php` | Dinamis — baca chain untuk tentukan role tujuan eskalasi |
+
+**Cara pakai:**
+1. HR buka menu Organisasi → Rantai Persetujuan
+2. Buat/edit chain per modul (`training_request`, `mentoring`)
+3. Atur langkah via Repeater (drag reorder)
+4. Aktifkan chain → otomatis dipakai oleh sistem
+
+---
+
+## 15. PWA — Push Notifications via Web Push API ✅
+
+**Web Push API aktif** untuk semua panel Employee, Manager, HR.
+
+### Perubahan:
+- VAPID keys di `.env` + `VAPID_SUBJECT` (mailto:admin@sdm-perusahaan.com)
+- `config/webpush.php` published
+- `ManagerPanelProvider` + `HrPanelProvider` → renderHook HEAD_END render `pwa.register`
+- Service worker `public/sw.js`: listener `push` (show notification) + `notificationclick` (buka URL)
+- Client `resources/views/pwa/register.blade.php`: register subscription via `PushManager` → POST `/webpush/subscribe`
+
+### Alur:
+1. User login → SW register → PushManager subscribe
+2. Subscription dikirim ke backend (tersimpan di `push_subscriptions` table)
+3. Notifikasi `toWebPush()` kirim payload ke browser via VAPID
+4. SW tampilkan notifikasi, klik buka URL tujuan
+
+---
+
+### 14.1. Notifikasi (10 kelas, termasuk Web Push)
 
 | Notifikasi | Trigger | Penerima | Channel |
 |-----------|---------|----------|---------|
@@ -307,7 +347,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ## Test Suite
 
-**58 test passing**, 0 failing (485 assertions, 5.90s):
+**56 test passing**, 2 pre-existing MeritSystemTest failing (473 assertions, 4.80s):
 - DutyAttendanceTest: 13 ✓
 - MeritSystemTest: 11 ✓
 - CareerDevelopmentTest: 9 ✓

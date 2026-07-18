@@ -145,7 +145,7 @@ IndexedDB udah ada buat queue absen. Sekarang diperluas.
 - ✅ Service worker: cache semua halaman `pegawai/*` (Cache First strategy)
 - ✅ Background sync: kirim queue absen via SW `sync` event tanpa perlu buka halaman
 - ✅ Installable: manifest.json + icon SVG 192/512
-- ⏳ Push notifications via Web Push API (belum dikerjakan)
+- ✅ Push notifications via Web Push API (VAPID + SW push event + all 3 panels)
 
 ### 5. Enhanced Reports ✅
 
@@ -176,7 +176,7 @@ Approval linear Manager→HR saat ini kaku.
 - ✅ Generic workflow engine (`HasWorkflow` trait — `workflowTransition()` with `lockForUpdate`)
 - ✅ Delegation: `users.delegate_id` → deputy approve atas nama manager
 - ✅ Escalation: `approval:escalate` scheduler → pending >3 hari naik ke HR
-- ⏳ Configurable approval chain di admin panel (ditunda)
+- ✅ Configurable approval chain di admin panel (ApprovalChain resource, Repeater steps, seed default)
 - Penerapan: TrainingRequest + Mentoring (refactor ke HasWorkflow trait)
 
 ### 8. Notifikasi Multi-channel

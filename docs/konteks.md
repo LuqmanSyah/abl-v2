@@ -37,7 +37,7 @@
 | 3 | KPI & Merit System (periode, KPI, 360, kalkulasi) | ✅ Selesai | FR-MRT-01–08 | Fase 2 |
 | 4 | Pembinaan Karir (kompetensi, gap, training, mentoring) | ✅ Selesai | FR-KAR-01–10 | Fase 3 |
 | 5 | Laporan & Operasional (dashboard, CSV, audit, backup) | ✅ Selesai | NFR-02,04,05,09 | Fase 4 |
-| 6 | **Revisi: Rekomendasi Training oleh Atasan** | 🔄 Direncanakan | — | Fase 5 |
+| 6 | **Revisi: Rekomendasi Training oleh Atasan** | ✅ Selesai | — | Fase 5 |
 
 ---
 
@@ -183,7 +183,7 @@ total_score = (
 | Komponen | Sumber data | Range | Default bobot |
 |----------|-------------|-------|---------------|
 | KPI Score | `employee_kpis.achievement/target × weight`, cap 120% | 0-120 | 40% |
-| Discipline | `valid_attendance / total_duty_trips × 100` | 0-100 | 20% |
+| Discipline | `valid_days / total_calendar_days × 100`, cap 100 | 0-100 | 20% |
 | Manager | `avg(performance_reviews.type=manager_to_employee) / 5 × 100` | 0-100 | 20% |
 | 360 | `avg(performance_reviews.type=employee_to_manager OR peer) / 5 × 100` | 0-100 | 20% |
 
@@ -253,14 +253,14 @@ Detail: `docs/testing_list.md`.
 
 **Framework:** PHPUnit 11, SQLite in-memory, `RefreshDatabase` trait.
 
-**Coverage saat ini:** 45 tests, 238 assertions ✅
+**Coverage saat ini:** 57 tests, 447 assertions ✅
 
 | Area | File | Tests |
 |------|------|-------|
-| Auth & Panel Access | `FilamentAccessTest.php` | 10 |
-| Duty Trip & Attendance | `DutyAttendanceTest.php` | 10 |
-| Merit System | `MeritSystemTest.php` | 7 |
-| Career Development | `CareerDevelopmentTest.php` | 7 |
+| Auth & Panel Access | `FilamentAccessTest.php` | 15 |
+| Duty Trip & Attendance | `DutyAttendanceTest.php` | 13 |
+| Merit System | `MeritSystemTest.php` | 11 |
+| Career Development | `CareerDevelopmentTest.php` | 9 |
 | HR Report & Operations | `OperationsReportTest.php` | 3 |
 | Database Seeder | `DatabaseSeederTest.php` | 1 |
 | Unit — SqliteBackup | `SqliteBackupTest.php` | 1 |
@@ -349,7 +349,7 @@ tests/                    — 10 file (1 base, 7 feature, 2 unit)
 
 ### 13.1. Jangka Pendek
 - [ ] Fix critical bugs: B1 (status conflict), B2 (mentoring locking)
-- [ ] Implementasi revisi: rekomendasi training oleh atasan per `docs/revisi.md`
+- [x] Implementasi revisi: rekomendasi training oleh atasan per `docs/revisi.md`
 - [ ] Fix B3: validasi max score 5 di PerformanceReview
 - [ ] Fix B4: trip jangan Completed jika absensi flagged
 

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
-use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
@@ -13,6 +12,7 @@ use App\Models\MeritResult;
 use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class MeritCalculator
@@ -41,12 +41,15 @@ class MeritCalculator
                         ->orWhere(fn ($query) => $query
                             ->where('status', DutyTripStatus::Approved)
                             ->where('ends_at', '<=', now()));
-                });
-            $dutyTripCount = (clone $dutyTrips)->count();
-            $validAttendanceCount = (clone $dutyTrips)
-                ->whereHas('attendance', fn ($query) => $query->where('status', AttendanceStatus::Valid))
-                ->count();
-            $disciplineScore = $dutyTripCount ? $validAttendanceCount / $dutyTripCount * 100 : 100;
+                })->get();
+            $totalDays = 0;
+            $validDays = 0;
+            foreach ($dutyTrips as $trip) {
+                $days = $trip->starts_at->startOfDay()->diffInDays($trip->ends_at->startOfDay()) + 1;
+                $totalDays += $days;
+                $validDays += $trip->attendances()->where('status', AttendanceStatus::Valid)->count();
+            }
+            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 100;
 
             $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);
             $review360Score = $this->reviewScore($period, $employee, [ReviewType::EmployeeToManager, ReviewType::Peer]);

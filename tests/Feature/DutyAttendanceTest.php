@@ -75,7 +75,7 @@ class DutyAttendanceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::Valid, $first->status);
         $this->assertTrue($first->is($second));
-        $this->assertSame(DutyTripStatus::Completed, $trip->fresh()->status);
+        $this->assertSame(DutyTripStatus::Approved, $trip->fresh()->status);
         $this->assertDatabaseCount('attendances', 1);
 
         $this->expectException(DomainException::class);

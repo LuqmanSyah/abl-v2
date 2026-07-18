@@ -72,8 +72,9 @@ class DutyTripsTable
                     ->modalSubmitActionLabel('Verifikasi Absensi')
                     ->modalWidth('md')
                     ->visible(fn ($record): bool => auth()->user()?->role === UserRole::Hr
-                        && $record->attendance?->status === AttendanceStatus::NeedsReview)
-                    ->action(fn ($record) => $record->attendance->verifyByHr(auth()->user()))
+                        && ($latest = $record->attendances()->latest()->first())
+                        && $latest->status === AttendanceStatus::NeedsReview)
+                    ->action(fn ($record) => $record->attendances()->latest()->first()->verifyByHr(auth()->user()))
                     ->successNotificationTitle('Absensi dinas berhasil diverifikasi'),
             ])
             ->defaultSort('starts_at', 'desc');

@@ -22,7 +22,7 @@ class AttendanceController extends Controller
     {
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
-        return view('attendance.capture', ['trip' => $dutyTrip->load('employee', 'attendance')]);
+        return view('attendance.capture', ['trip' => $dutyTrip->load('employee', 'attendances')]);
     }
 
     public function store(Request $request, DutyTrip $dutyTrip, AttendanceRecorder $recorder): JsonResponse
@@ -43,10 +43,6 @@ class AttendanceController extends Controller
             abort_unless($existing->employee_id === $request->user()->id && $existing->duty_trip_id === $dutyTrip->id, 409);
 
             return response()->json(['message' => 'Absensi sudah tersinkronisasi.', 'attendance' => $existing]);
-        }
-
-        if ($existing = $dutyTrip->attendance()->first()) {
-            return response()->json(['message' => 'Absensi sudah tercatat.', 'attendance' => $existing]);
         }
 
         $photoPath = $request->file('photo')->store('attendance', 'local');

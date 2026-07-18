@@ -215,20 +215,31 @@ kpi_score = (60 + 20) / (60 + 40) × 100 = 80
 Duty trips dalam range periode:
   status = Completed ATAU (Approved DAN ends_at <= now)
 
-discipline_score = valid_attendance_count / total_duty_trip_count × 100
-  Jika total_duty_trip_count = 0 → discipline_score = 100
+Setiap trip dihitung hari kalendernya:
+  calendar_days = starts_at→startOfDay diffInDays ends_at→startOfDay + 1
+
+total_calendar_days = SUM(calendar_days) dari semua trip
+valid_days = COUNT(attendances.status = Valid)
+
+discipline_score = min(valid_days / total_calendar_days × 100, 100)
+  Jika total_calendar_days = 0 → discipline_score = 100
 ```
 
-**Sumber data:** `duty_trips.status`, `attendances.status`
+**Sumber data:** `duty_trips.starts_at`, `duty_trips.ends_at`, `attendances.status`
 
 **Penanggung jawab input:** Otomatis dari sistem absensi
 
 **Contoh:**
 ```
-Total duty trips periode = 2 (1 Completed + hadir, 1 Approved + tidak hadir)
-Valid attendance = 1
+Trip A: 1 hari kalender (start: 01 Aug 06:00, end: 01 Aug 18:00)
+  → 1 attendance Valid
 
-discipline_score = 1 / 2 × 100 = 50
+Trip B: 1 hari kalender (start: 03 Aug 09:00, end: 03 Aug 17:00)
+  → 1 attendance OutsideRadius (tidak dihitung)
+
+Total calendar days = 2, valid days = 1
+
+discipline_score = min(1/2 × 100, 100) = 50
 ```
 
 #### 8.1.3. Manager Score (0-100, bobot default 20%)
@@ -314,7 +325,9 @@ employee_kpis.target         ─┐
 employee_kpis.achievement    ─┤──→ KPI Score (0-120)          
 kpi_indicators.weight        ─┘                                   
                                                                     
-duty_trips.status            ─┐──→ Discipline Score (0-100)    
+duty_trips.starts_at         ─┐
+duty_trips.ends_at           ─┤──→ Discipline Score (0-100)    
+duty_trips.status            ─┤   (per-calendar-day)
 attendances.status           ─┘                                   
                                                             ──→ TOTAL SCORE (tidak di-clamp)
 performance_reviews.score    ─┐──→ Manager Score (0-100)       
@@ -334,7 +347,7 @@ Dari `tests/Feature/MeritSystemTest.php`:
 | Komponen | Hasil | Rumus |
 |----------|-------|-------|
 | kpi_score | 80.00 | (60+20)/(60+40)×100 |
-| discipline_score | 50.00 | 1/2×100 |
+| discipline_score | 50.00 | 1/2×100 (2 trip × 1 hari, 1 valid) |
 | manager_score | 80.00 | 4/5×100 |
 | review_360_score | 60.00 | 3/5×100 |
 | total_score | **70.00** | (80×40+50×20+80×20+60×20)/100 |
@@ -384,9 +397,10 @@ Riwayat KPI mulai tersedia setelah logging `kpi.*` diterapkan. `updated_at` lama
 │  └───────────────────────────────────────────────────┘ │
 │                                                         │
 │  ┌─ DISIPLIN DETAIL ─────────────────────────────────┐ │
-│  │ Tujuan Dinas      │ Tanggal    │ Status Absensi    │ │
-│  │ Kunjungan Kerja 1 │ 01 Aug 26  │ Valid ✅           │ │
-│  │ Kunjungan Kerja 3 │ 03 Aug 26  │ Outside Radius ⚠️ │ │
+│  │ Tujuan Dinas      │ Hari      │ Status Absensi     │ │
+│  │ Kunjungan Kerja 1 │ Day 1     │ Valid ✅            │ │
+│  │ Kunjungan Kerja 1 │ Day 2     │ Tidak ada absensi ✗│ │
+│  │ Kunjungan Kerja 3 │ Day 1     │ Outside Radius ⚠️  │ │
 │  └───────────────────────────────────────────────────┘ │
 │                                                         │
 │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │

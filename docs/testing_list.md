@@ -96,11 +96,11 @@
 - **Deskripsi**: `$suspected` (NeedsReview) diperiksa pertama. Jika clock mismatch + outside radius → cuma `NeedsReview`, HR tidak lihat bahwa lokasi juga salah. Informasi geografi hilang.
 - **Fix**: Ubah status priority: cek `outside_radius` dan `late` dulu. Jika suspected, simpan data asli di `data` JSON column Attendance. Atau simpan multiple flags.
 
-#### 16. MeritCalculator — Discipline = 100 Jika 0 Duty Trips (MC-2)
-- **Lokasi**: `app/Services/MeritCalculator.php:49`
+#### 16. MeritCalculator — Discipline = 100 Jika 0 Calendar Days (MC-2)
+- **Lokasi**: `app/Services/MeritCalculator.php:52`
 - **Tingkat**: **Medium**
-- **Deskripsi**: `$dutyTripCount ? $validAttendanceCount / $dutyTripCount * 100 : 100`. Pegawai tanpa satupun perintah dinas dalam periode dapat nilai disiplin **sempurna 100**. Tidak adil dibanding pegawai yg sering ditugaskan.
-- **Fix**: Jika 0 duty trips → discipline_score = 0, atau exclude discipline dari total (proporsional naikkan bobot lain).
+- **Deskripsi**: `$totalDays ? min($validDays / $totalDays * 100, 100) : 100`. Pegawai tanpa satupun perintah dinas (0 calendar days) dalam periode dapat nilai disiplin **sempurna 100**. Tidak adil dibanding pegawai yg sering ditugaskan.
+- **Fix**: Jika 0 total calendar days → discipline_score = 0, atau exclude discipline dari total (proporsional naikkan bobot lain).
 
 #### 17. SqliteBackup — Tidak Ada Directory Check untuk Target (SB-2)
 - **Lokasi**: `app/Services/SqliteBackup.php:17`
@@ -116,7 +116,83 @@
 
 ---
 
-### B. TESTING LIST — Fitur & Skenario
+### B. ALUR PENGUJIAN
+
+Urutan tes harus sesuai alur bisnis. Test tidak bisa loncat sebelum prekondisi siap.
+
+```
+1. Login — uji 3 role (Employee, Manager, HR)
+   ├── Login sukses → redirect panel sesuai role
+   ├── Login gagal → password salah / user inactive
+   └── Panel redirect → role mismatch ditolak
+
+2. HR setup organisasi — hanya HR bisa
+   ├── CRUD Unit → Position → User (assign unit+position+manager)
+   ├── Lokasi Dinas (dengan radius geofence)
+   ├── Kompetensi → Standar Kompetensi Jabatan
+   ├── Katalog Pelatihan
+   └── Periode Penilaian → Indikator KPI
+
+3. Manager buat Perintah Dinas
+   ├── Bawahan langsung → sukses
+   ├── Bukan bawahan → ditolak
+   ├── Ubah/Batal sebelum starts_at → sukses
+   └── Ubah setelah absensi → ditolak
+
+4. Employee absensi harian (GPS + foto + watermark, multi-hari per trip)
+   ├── Dalam radius + tepat waktu → Valid
+   ├── Luar radius → OutsideRadius
+   ├── Terlambat → Late
+   ├── GPS mencurigakan / clock mismatch → NeedsReview
+   ├── Sebelum starts_at → ditolak
+   ├── Duplikat UUID → idempotent
+   ├── Multi-day trip → absen tiap hari, record terpisah
+   └── Foto → akses sesuai scope
+
+5. Manager set KPI → Employee + Manager + Peer isi 360 review
+   ├── KPI validasi (target>0, achievement>=0)
+   ├── Review: Manager→Employee, Employee→Manager, Peer
+   ├── Self-review ditolak, beda unit ditolak
+   └── Review immutable setelah submit
+
+6. HR hitung merit (MeritCalculator)
+   ├── Hitung pertama → total_score + estimated_bonus
+   ├── Hitung ulang sebelum verifikasi → update score + calculated_at
+   └── Hitung ulang setelah verifikasi → DomainException ditolak
+
+7. Manager verifikasi merit → HR verifikasi + publikasi
+   ├── Employee belum lihat sebelum publish
+   ├── KPI/Periode terkunci setelah publish
+   └── Hanya merit bawahan sendiri yang bisa diverifikasi
+
+8. Employee rencana karir
+   ├── Set CareerGoal (target level > current)
+   └── Gap analysis → rekomendasi training/mentoring
+
+9. Training — 2 jalur
+   ├── Employee request → Manager approve → HR verify → Complete
+   ├── Manager rekomendasi → langsung Approved → HR complete
+   └── Duplikat ditolak, resubmit setelah rejected
+
+10. Mentoring
+    ├── Employee request → Manager schedule → Manager catat hasil
+    ├── Tanggal lampau ditolak
+    └── Race condition (BUG B2)
+
+11. HR laporan
+    ├── Filter unit/position/period
+    ├── Export CSV (escape injection)
+    └── Activity log monitoring
+
+12. Operasional
+    ├── Photo purge (command + akses setelah purge)
+    ├── Backup + restore
+    └── Deployment checklist
+```
+
+---
+
+### C. TESTING LIST — Fitur & Skenario
 
 #### 1. Autentikasi & Akses Panel
 
@@ -162,7 +238,7 @@
 | # | Skenario | Role | Langkah | Ekspektasi |
 |---|----------|------|---------|------------|
 | 1 | Lihat halaman capture | Employee | GET `/pegawai/dinas/{id}/absensi` | Halaman form muncul |
-| 2 | Submit absensi valid | Employee | Di dalam radius, tepat waktu | Status Valid, trip marked Completed |
+| 2 | Submit absensi valid | Employee | Di dalam radius, tepat waktu | Status Valid |
 | 3 | Submit absensi — outside radius | Employee | Absen di luar radius >100m | Status OutsideRadius |
 | 4 | Submit absensi — late | Employee | Absen setelah ends_at | Status Late |
 | 5 | Submit absensi — mock location | Employee | GPS mock diaktifkan | Status NeedsReview |
@@ -301,22 +377,23 @@
 
 ---
 
-### C. COVERAGE TEST SAAT INI
+### D. COVERAGE TEST SAAT INI
 
 | Area | Test File | Status |
 |------|----------|--------|
-| Auth & Panel Access | `tests/Feature/FilamentAccessTest.php` | ✅ 10 test |
-| Duty Trip & Attendance | `tests/Feature/DutyAttendanceTest.php` | ✅ 10 test |
-| Merit System | `tests/Feature/MeritSystemTest.php` | ✅ 7 test |
-| Career Development | `tests/Feature/CareerDevelopmentTest.php` | ✅ 7 test |
+| Auth & Panel Access | `tests/Feature/FilamentAccessTest.php` | ✅ 15 test |
+| Duty Trip & Attendance | `tests/Feature/DutyAttendanceTest.php` | ✅ 13 test |
+| Merit System | `tests/Feature/MeritSystemTest.php` | ✅ 11 test |
+| Career Development | `tests/Feature/CareerDevelopmentTest.php` | ✅ 9 test |
 | HR Report & Operations | `tests/Feature/OperationsReportTest.php` | ✅ 3 test |
 | Database Seeder | `tests/Feature/DatabaseSeederTest.php` | ✅ 1 test |
 | Unit (Example + SqliteBackup) | `tests/Unit/` | ✅ 2 test |
-| **Total** | | **✅ 45 test pass** |
+| E2E Full Flow | `tests/Feature/FlowTest.php` | ✅ `FlowTest.php` baru — 1 test, 38 assertions |
+| **Total** | | **✅ 58 test pass, 0 fail (485 assertions)** |
 
 ---
 
-### D. RINGKASAN BUG
+### E. RINGKASAN BUG
 
 | ID | Nama | Severity | Area | Status |
 |----|------|----------|------|--------|

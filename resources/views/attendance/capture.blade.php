@@ -33,12 +33,21 @@
         .steps { display: grid; gap: 9px; margin: 0 0 24px; padding: 0; counter-reset: step; list-style: none; color: #475569; font-size: 14px; }
         .steps li { display: flex; align-items: center; gap: 10px; }
         .steps li::before { counter-increment: step; content: counter(step); display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 12px; font-weight: 850; }
-        label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 800; }
-        input[type="file"] { width: 100%; padding: 12px; border: 1px dashed #94a3b8; border-radius: 12px; background: #f8fafc; color: #334155; font: inherit; }
-        input[type="file"]:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 4px #dbeafe; }
-        .help { display: block; margin: 8px 0 20px; color: #64748b; font-size: 13px; line-height: 1.5; }
-        button { width: 100%; min-height: 51px; border: 0; border-radius: 12px; background: #2563eb; color: white; font: inherit; font-weight: 850; cursor: pointer; box-shadow: 0 9px 20px #2563eb33; }
-        button:hover { background: #1d4ed8; }
+        #camera-ui { text-align: center; }
+        #preview { width: 100%; max-height: 400px; border-radius: 12px; background: #1e293b; object-fit: cover; }
+        #captured-canvas { display: none; }
+        #captured-img { width: 100%; max-height: 400px; border-radius: 12px; object-fit: cover; }
+        .camera-actions { display: flex; gap: 10px; margin-top: 14px; }
+        .camera-actions button { flex: 1; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 51px; border: 0; border-radius: 12px; font-weight: 850; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: white; box-shadow: 0 9px 20px #2563eb33; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-secondary { background: #e2e8f0; color: #334155; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-success { background: #16a34a; color: white; box-shadow: 0 9px 20px #16a34a33; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #dc2626; color: white; box-shadow: 0 9px 20px #dc262633; }
+        .btn-danger:hover { background: #b91c1c; }
         button:disabled { cursor: wait; opacity: .65; }
         #status { display: none; margin: 18px 0 0; padding: 13px 14px; border-radius: 11px; background: #eff6ff; color: #1e40af; line-height: 1.5; white-space: pre-line; }
         #status:not(:empty) { display: block; }
@@ -57,7 +66,7 @@
 <body>
 <main>
     <nav class="topbar" aria-label="Navigasi halaman">
-        <a class="back" href="{{ url('/pegawai') }}">← Kembali ke portal</a>
+        <a class="back" href="{{ url('/pegawai') }}">Kembali ke portal</a>
         <span id="network" class="network">Terhubung</span>
     </nav>
 
@@ -70,28 +79,39 @@
 
         <div class="content">
             <dl class="facts">
-                <div class="fact"><dt>Jadwal</dt><dd>{{ $trip->starts_at->translatedFormat('d M Y, H:i') }}–{{ $trip->ends_at->translatedFormat('H:i') }} WIB</dd></div>
+                <div class="fact"><dt>Jadwal</dt><dd>{{ $trip->starts_at->translatedFormat('d M Y, H:i') }} – {{ $trip->ends_at->translatedFormat('d M Y, H:i') }} WIB</dd></div>
                 <div class="fact"><dt>Lokasi</dt><dd>{{ $trip->address }}</dd></div>
                 <div class="fact"><dt>Batas jarak</dt><dd>Maksimal {{ number_format($trip->radius_meters) }} meter dari titik tugas</dd></div>
                 <div class="fact"><dt>Pegawai</dt><dd>{{ $trip->employee->name }}</dd></div>
             </dl>
 
-            @if ($trip->attendance)
-                <p class="notice success">Absensi sudah tercatat dengan status <strong>{{ $trip->attendance->status->label() }}</strong>.</p>
+            @php $todayAttendance = $trip->attendances()->whereDate('captured_at', today())->first(); @endphp
+            @if ($todayAttendance)
+                <p class="notice success">Absensi hari ini sudah tercatat dengan status <strong>{{ $todayAttendance->status->label() }}</strong>.</p>
             @elseif (now()->isBefore($trip->starts_at))
                 <p class="notice warning">Absensi dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y, H:i') }} WIB</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
             @else
                 <ol class="steps" aria-label="Langkah absensi">
+                    <li>Izinkan browser mengakses kamera dan lokasi akurat.</li>
                     <li>Ambil foto wajah di lokasi tugas.</li>
-                    <li>Izinkan browser membaca lokasi akurat.</li>
                     <li>Data dikirim otomatis atau disimpan saat luring.</li>
                 </ol>
 
-                <form id="attendance-form">
-                    <label for="photo">Foto kehadiran</label>
-                    <input id="photo" type="file" accept="image/*" capture="user" required>
-                    <small class="help">Foto diberi waktu dan koordinat secara otomatis. Ukuran maksimum 5 MB.</small>
-                    <button id="submit" type="submit">Ambil lokasi dan simpan absensi</button>
+                <div id="camera-ui">
+                    <video id="preview" autoplay playsinline hidden></video>
+                    <img id="captured-img" hidden>
+                    <canvas id="captured-canvas"></canvas>
+
+                    <div class="camera-actions">
+                        <button id="btn-camera" class="btn btn-primary" type="button">Buka kamera</button>
+                        <button id="btn-capture" class="btn btn-success" type="button" hidden>Ambil foto</button>
+                        <button id="btn-retake" class="btn btn-secondary" type="button" hidden>Ulangi</button>
+                    </div>
+                </div>
+
+                <form id="attendance-form" hidden>
+                    <input id="photo" type="file" accept="image/*" hidden>
+                    <button id="submit" class="btn btn-primary" type="submit">Ambil lokasi dan simpan absensi</button>
                 </form>
             @endif
 
@@ -109,6 +129,16 @@ const endpoint = @json(route('attendance.store', $trip));
 const tripId = @json($trip->id);
 const employee = @json($trip->employee->name);
 const place = @json($trip->location_name);
+
+const preview = document.querySelector('#preview');
+const capturedImg = document.querySelector('#captured-img');
+const capturedCanvas = document.querySelector('#captured-canvas');
+const btnCamera = document.querySelector('#btn-camera');
+const btnCapture = document.querySelector('#btn-capture');
+const btnRetake = document.querySelector('#btn-retake');
+
+let cameraStream = null;
+let capturedBlob = null;
 
 function setStatus(message, kind = 'info') {
     statusBox.textContent = message;
@@ -134,9 +164,69 @@ function locationNow() {
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }));
 }
 
-async function watermarkedPhoto(file, data) {
+async function startCamera() {
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        });
+        preview.srcObject = cameraStream;
+        preview.hidden = false;
+        btnCamera.hidden = true;
+        btnCapture.hidden = false;
+        capturedImg.hidden = true;
+        capturedBlob = null;
+    } catch (error) {
+        if (error.name === 'NotAllowedError') {
+            setStatus('Izin kamera ditolak. Aktifkan izin kamera browser lalu coba lagi.', 'error');
+        } else if (error.name === 'NotFoundError') {
+            setStatus('Kamera tidak ditemukan.', 'error');
+        } else {
+            setStatus('Kamera gagal dibuka. ' + (error.message || ''), 'error');
+        }
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+    preview.srcObject = null;
+}
+
+function capturePhoto() {
+    capturedCanvas.width = preview.videoWidth;
+    capturedCanvas.height = preview.videoHeight;
+    const ctx = capturedCanvas.getContext('2d');
+    ctx.drawImage(preview, 0, 0);
+
+    capturedCanvas.toBlob(blob => {
+        capturedBlob = blob;
+        capturedImg.src = capturedCanvas.toDataURL('image/jpeg');
+        preview.hidden = true;
+        capturedImg.hidden = false;
+        btnCapture.hidden = true;
+        btnRetake.hidden = false;
+        form.hidden = false;
+        stopCamera();
+    }, 'image/jpeg', 0.85);
+}
+
+function retakePhoto() {
+    capturedImg.hidden = true;
+    capturedBlob = null;
+    btnRetake.hidden = true;
+    form.hidden = true;
+    startCamera();
+}
+
+btnCamera.addEventListener('click', startCamera);
+btnCapture.addEventListener('click', capturePhoto);
+btnRetake.addEventListener('click', retakePhoto);
+
+async function watermarkedPhoto(blob, data) {
     const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(blob);
     image.src = objectUrl;
     try {
         await image.decode();
@@ -283,10 +373,9 @@ async function syncQueue() {
 
 form?.addEventListener('submit', async event => {
     event.preventDefault();
-    const button = document.querySelector('#submit');
-    const file = document.querySelector('#photo').files[0];
-    if (!file) return setStatus('Ambil foto terlebih dahulu.', 'error');
+    if (!capturedBlob) return setStatus('Ambil foto terlebih dahulu.', 'error');
 
+    const button = document.querySelector('#submit');
     button.disabled = true;
     button.textContent = 'Membaca lokasi…';
     try {
@@ -302,7 +391,7 @@ form?.addEventListener('submit', async event => {
             accuracy_meters: Math.round(position.coords.accuracy),
             mock_location_suspected: 0,
         };
-        data.photo = await watermarkedPhoto(file, data);
+        data.photo = await watermarkedPhoto(capturedBlob, data);
         if (data.photo.size > 5 * 1024 * 1024) {
             throw new Error('Foto setelah diproses melebihi 5 MB. Gunakan kamera dengan resolusi lebih rendah.');
         }

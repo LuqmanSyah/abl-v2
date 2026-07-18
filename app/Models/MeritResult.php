@@ -136,7 +136,7 @@ class MeritResult extends Model
             'discipline' => $dutyTrips->map(fn (DutyTrip $trip): array => [
                 'destination' => $trip->destination,
                 'starts_at' => $trip->starts_at,
-                'attendance_status' => $trip->attendance?->status?->label() ?? 'Tidak hadir',
+                'attendance_status' => $trip->attendances()->latest()->first()?->status?->label() ?? 'Tidak hadir',
             ])->values()->all(),
         ];
     }

@@ -54,6 +54,14 @@ class DutyTripForm
                             ->native(false)
                             ->after('starts_at')
                             ->required(),
+                        FileUpload::make('supporting_document_path')
+                            ->label('Dokumen pendukung')
+                            ->disk('local')
+                            ->directory('duty-trip-documents')
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
+                            ->maxSize(5120)
+                            ->helperText('PDF, JPG, atau PNG. Maksimal 5 MB.')
+                            ->columnSpanFull(),
                         Hidden::make('manager_id'),
                         Hidden::make('status')->default(DutyTripStatus::Approved->value),
                     ]),
@@ -113,19 +121,6 @@ class DutyTripForm
                             ->numeric()
                             ->minValue(-180)
                             ->maxValue(180),
-                    ]),
-                Section::make('Lampiran')
-                    ->description('Tambahkan surat tugas atau dokumen pendukung bila tersedia.')
-                    ->icon('heroicon-o-paper-clip')
-                    ->collapsed()
-                    ->components([
-                        FileUpload::make('supporting_document_path')
-                            ->label('Dokumen pendukung')
-                            ->disk('local')
-                            ->directory('duty-trip-documents')
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
-                            ->maxSize(5120)
-                            ->helperText('PDF, JPG, atau PNG. Maksimal 5 MB.'),
                     ]),
             ]);
     }

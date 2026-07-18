@@ -33,7 +33,8 @@ class AttendanceRecorder
                 return $existing;
             }
 
-            if ($existing = $trip->attendance()->first()) {
+            $today = CarbonImmutable::today();
+            if ($existing = $trip->attendances()->whereDate('captured_at', $today)->first()) {
                 return $existing;
             }
 
@@ -77,8 +78,7 @@ class AttendanceRecorder
                 'synced_at' => $receivedAt,
             ]);
 
-            $trip->update(['status' => DutyTripStatus::Completed]);
-            ActivityLog::record('duty_trip.completed', $trip, $employee, ['attendance_id' => $attendance->id]);
+            ActivityLog::record('attendance.created', $attendance, $employee);
 
             return $attendance;
         }, 3);

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\TripAssigned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -44,7 +45,10 @@ class DutyTrip extends Model
         };
 
         static::creating($validateAssignment);
-        static::created(fn (self $trip) => ActivityLog::record('duty_trip.assigned', $trip));
+        static::created(function (self $trip): void {
+            ActivityLog::record('duty_trip.assigned', $trip);
+            $trip->employee->notify(new TripAssigned($trip));
+        });
 
         static::updating(function (self $trip) use ($validateAssignment): void {
             if ($trip->isDirty(['employee_id', 'manager_id'])) {

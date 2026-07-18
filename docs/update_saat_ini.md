@@ -2,7 +2,7 @@
 
 ## Ringkasan
 
-128 files changed, +9519 / -1096 lines. Branch: `merit-bulanan-status`.
+146 files changed, +9780 / -1100 lines. Branch: `merit-bulanan-status`.
 
 ---
 
@@ -171,7 +171,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | `docs/operations.md` | Operasional & deployment |
 | `docs/sprint_project.md` | Scope sprint merit & project |
 | `docs/testing_list.md` | 190+ skenario uji + 18 bug tracker |
-| `docs/update_saat_ini.md` | File ini |
+| `docs/next_update.md` | Roadmap pengembangan — notifikasi, scheduler, lanjutan |
 
 ---
 
@@ -187,6 +187,39 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | 6 | Career | Low | CG-1: `target_position_id` null crash | ✅ Fixed |
 | 7 | Attendance | Medium | AR-2: status priority nutup data | ❌ Open (butuh DB migration) |
 | 8 | Attendance | Medium | AR-1: ends_at block | ⛔ Cancelled (konflik Late test) |
+
+---
+
+## 13. Notifikasi & Scheduler Otomatis (Sprint 1 & 2)
+
+### 13.1. Notifikasi (9 kelas)
+
+| Notifikasi | Trigger | Penerima | Channel |
+|-----------|---------|----------|---------|
+| `TripAssigned` | DutyTrip created | Employee | DB + Email |
+| `AttendanceReminder` | Scheduler harian | Employee | DB + Email |
+| `AttendanceNeedsReview` | Attendance status NeedsReview | Manager + HR | DB + Email |
+| `MentoringPending` | Mentoring created | Manager | DB |
+| `MentoringScheduled` | Mentoring approved | Employee | DB |
+| `MeritPublished` | MeritResult verifyByHr | Employee | DB + Email |
+| `MeritReadyForVerification` | MeritResult calculated | Manager | DB |
+| `KpiDeadlineReminder` | Scheduler harian | Manager | DB |
+| `TrainingPending` | TrainingRequest employee create | Manager | DB |
+
+### 13.2. Scheduler (3 command)
+
+| Command | Jadwal | Fungsi |
+|---------|--------|--------|
+| `merit:calculate` | Tiap tgl 1, 00:05 | Hitung merit semua periode aktif |
+| `merit:remind-kpi` | Setiap hari 09:00 | Ingatkan manager yang belum input KPI |
+| `attendance:remind` | Setiap hari 08:00 & 12:00 | Ingatkan employee yang belum absen hari ini |
+
+### 13.3. Infra
+
+- `notifications` table via `php artisan notifications:table`
+- `User` sudah `Notifiable` (trait existing)
+- Notifikasi queueable via `Queueable` trait
+- Semua scheduler pakai `->dailyAt()` / `->twiceDaily()` / `->monthlyOn()`
 
 ---
 
@@ -207,7 +240,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ## Test Suite
 
-**58 test passing**, 0 failing (485 assertions, 6.05s):
+**58 test passing**, 0 failing (485 assertions, 5.90s):
 - DutyAttendanceTest: 13 ✓
 - MeritSystemTest: 11 ✓
 - CareerDevelopmentTest: 9 ✓
@@ -217,3 +250,5 @@ Bobot default: 40/20/20/20, wajib total 100%.
 - DatabaseSeederTest: 1 ✓
 - ExampleTest: 3 ✓
 - Unit/SqliteBackupTest: 1 ✓
+
+**Coverage gap:** Notifikasi terpicu via observer/event — perlu test integration notifikasi menyala di skenario yang tepat.

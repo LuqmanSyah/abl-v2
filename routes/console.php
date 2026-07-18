@@ -59,3 +59,7 @@ if (config('database.default') === 'sqlite') {
 }
 
 Schedule::command('attendance:purge-photos --days='.config('hr.photo_retention_days'))->dailyAt('03:00');
+
+Schedule::command('merit:calculate')->monthlyOn(1, '00:05');
+Schedule::command('merit:remind-kpi')->dailyAt('09:00');
+Schedule::command('attendance:remind')->twiceDaily(8, 12);

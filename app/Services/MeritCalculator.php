@@ -12,6 +12,7 @@ use App\Models\MeritResult;
 use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
+use App\Notifications\MeritReadyForVerification;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -71,6 +72,8 @@ class MeritCalculator
             }
 
             ActivityLog::record('merit.calculated', $result);
+
+            $employee->manager?->notify(new MeritReadyForVerification($result));
 
             return $result;
         }, 3);

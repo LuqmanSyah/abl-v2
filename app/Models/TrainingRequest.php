@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\TrainingPending;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -57,6 +58,7 @@ class TrainingRequest extends Model
         static::created(function (self $request): void {
             if (! $request->managerRecommendation) {
                 ActivityLog::record('training.requested', $request);
+                $request->manager->notify(new TrainingPending($request));
             }
         });
     }

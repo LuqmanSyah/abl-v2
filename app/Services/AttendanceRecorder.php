@@ -9,6 +9,7 @@ use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\User;
+use App\Notifications\AttendanceNeedsReview;
 use App\Support\GeoDistance;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +80,10 @@ class AttendanceRecorder
             ]);
 
             ActivityLog::record('attendance.created', $attendance, $employee);
+
+            if ($status === AttendanceStatus::NeedsReview) {
+                $trip->manager->notify(new AttendanceNeedsReview($attendance));
+            }
 
             return $attendance;
         }, 3);

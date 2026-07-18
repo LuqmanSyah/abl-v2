@@ -6,6 +6,8 @@ use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\MeritPublished;
+use App\Notifications\MeritReadyForVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -168,6 +170,7 @@ class MeritResult extends Model
 
             $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);
             ActivityLog::record('merit.hr_published', $result, $hr);
+            $result->employee->notify(new MeritPublished($result));
             $this->setRawAttributes($result->getAttributes(), true);
         }, 3);
     }

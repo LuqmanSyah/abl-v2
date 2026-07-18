@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\MentoringStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\MentoringPending;
+use App\Notifications\MentoringScheduled;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -50,7 +52,10 @@ class Mentoring extends Model
                 throw new BusinessRuleException('Mentoring harus diajukan kepada Atasan langsung.');
             }
         });
-        static::created(fn (self $mentoring) => ActivityLog::record('mentoring.requested', $mentoring));
+        static::created(function (self $mentoring): void {
+            ActivityLog::record('mentoring.requested', $mentoring);
+            $mentoring->manager->notify(new MentoringPending($mentoring));
+        });
     }
 
     public function employee(): BelongsTo
@@ -77,6 +82,7 @@ class Mentoring extends Model
                 'manager_notes' => $notes,
             ]);
             ActivityLog::record('mentoring.approved', $mentoring, $manager);
+            $mentoring->employee->notify(new MentoringScheduled($mentoring));
         });
     }
 

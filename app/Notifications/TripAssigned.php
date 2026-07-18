@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Concerns\HasDynamicChannels;
 use App\Models\DutyTrip;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -11,14 +12,22 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 class TripAssigned extends Notification
 {
-    use Queueable;
+    use HasDynamicChannels, Queueable;
 
     public function __construct(public DutyTrip $trip) {}
 
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'mail', 'webpush'];
+        return $this->resolveChannels($notifiable, ['database', 'mail', 'webpush']);
+    }
+
+    public function toWhatsApp(User $notifiable): string
+    {
+        return "Perintah Dinas Baru\n"
+            ."Anda ditugaskan {$this->trip->destination} oleh {$this->trip->manager->name}.\n"
+            ."Lokasi: {$this->trip->location_name}\n"
+            ."Jadwal: {$this->trip->starts_at->translatedFormat('d M Y, H:i')} – {$this->trip->ends_at->translatedFormat('d M Y, H:i')}";
     }
 
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage

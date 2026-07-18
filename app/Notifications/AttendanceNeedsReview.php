@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Attendance;
+use App\Models\Concerns\HasDynamicChannels;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -11,18 +12,25 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 class AttendanceNeedsReview extends Notification
 {
-    use Queueable;
+    use HasDynamicChannels, Queueable;
 
     public function __construct(public Attendance $attendance) {}
 
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        $channels = ['database', 'webpush'];
+        $base = ['database', 'webpush'];
         if ($notifiable->role->value === 'hr') {
-            $channels[] = 'mail';
+            $base[] = 'mail';
         }
-        return $channels;
+        return $this->resolveChannels($notifiable, $base);
+    }
+
+    public function toWhatsApp(User $notifiable): string
+    {
+        return "Absensi Perlu Pemeriksaan\n"
+            ."Absensi {$this->attendance->employee->name} untuk dinas {$this->attendance->dutyTrip->destination} memerlukan pemeriksaan.\n"
+            ."Periksa: " . url("/hr/attendances/{$this->attendance->id}");
     }
 
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage

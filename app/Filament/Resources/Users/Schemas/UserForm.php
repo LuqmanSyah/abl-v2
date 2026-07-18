@@ -78,6 +78,23 @@ class UserForm
                     ->label('Aktif')
                     ->default(true)
                     ->required(),
+                \Filament\Forms\Components\Section::make('Preferensi Notifikasi')
+                    ->description('WA hanya untuk notifikasi urgent: Trip Baru, Absen Hari Ini, Absensi Perlu Pemeriksaan')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('notification_preferences.inapp')
+                            ->label('In-app (database)')
+                            ->default(true),
+                        Toggle::make('notification_preferences.webpush')
+                            ->label('Web Push')
+                            ->default(true),
+                        Toggle::make('notification_preferences.email')
+                            ->label('Email')
+                            ->default(true),
+                        Toggle::make('notification_preferences.wa')
+                            ->label('WhatsApp')
+                            ->default(false),
+                    ]),
             ]);
     }
 }

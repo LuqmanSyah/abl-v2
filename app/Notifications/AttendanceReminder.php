@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\Concerns\HasDynamicChannels;
 use App\Models\DutyTrip;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -11,14 +12,22 @@ use NotificationChannels\WebPush\WebPushMessage;
 
 class AttendanceReminder extends Notification
 {
-    use Queueable;
+    use HasDynamicChannels, Queueable;
 
     public function __construct(public DutyTrip $trip) {}
 
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'mail', 'webpush'];
+        return $this->resolveChannels($notifiable, ['database', 'mail', 'webpush']);
+    }
+
+    public function toWhatsApp(User $notifiable): string
+    {
+        return "Absensi Dinas\n"
+            ."Jangan lupa absen hari ini untuk dinas {$this->trip->destination}.\n"
+            ."Lokasi: {$this->trip->location_name}\n"
+            ."Absen: " . url("/pegawai/dinas/{$this->trip->id}/absensi");
     }
 
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage

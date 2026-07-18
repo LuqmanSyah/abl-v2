@@ -299,13 +299,13 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-### 14.1. Notifikasi (10 kelas, termasuk Web Push)
+### 14.1. Notifikasi (9 kelas)
 
 | Notifikasi | Trigger | Penerima | Channel |
 |-----------|---------|----------|---------|
-| `TripAssigned` | DutyTrip created | Employee | DB + Email |
-| `AttendanceReminder` | Scheduler harian | Employee | DB + Email |
-| `AttendanceNeedsReview` | Attendance status NeedsReview | Manager + HR | DB + Email |
+| `TripAssigned` | DutyTrip created | Employee | DB + Email + WA |
+| `AttendanceReminder` | Scheduler harian | Employee | DB + Email + WA |
+| `AttendanceNeedsReview` | Attendance status NeedsReview | Manager + HR | DB + Email + WA |
 | `MentoringPending` | Mentoring created | Manager | DB |
 | `MentoringScheduled` | Mentoring approved | Employee | DB |
 | `MeritPublished` | MeritResult verifyByHr | Employee | DB + Email |
@@ -313,7 +313,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | `KpiDeadlineReminder` | Scheduler harian | Manager | DB |
 | `TrainingPending` | TrainingRequest employee create | Manager | DB |
 
-### 13.2. Scheduler (3 command)
+### 14.2. Scheduler (3 command)
 
 | Command | Jadwal | Fungsi |
 |---------|--------|--------|
@@ -321,12 +321,41 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | `merit:remind-kpi` | Setiap hari 09:00 | Ingatkan manager yang belum input KPI |
 | `attendance:remind` | Setiap hari 08:00 & 12:00 | Ingatkan employee yang belum absen hari ini |
 
-### 13.3. Infra
+### 14.3. Infra
 
 - `notifications` table via `php artisan notifications:table`
 - `User` sudah `Notifiable` (trait existing)
 - Notifikasi queueable via `Queueable` trait
 - Semua scheduler pakai `->dailyAt()` / `->twiceDaily()` / `->monthlyOn()`
+
+---
+
+## 16. Multi-channel Notifikasi — WhatsApp ✅
+
+**WA channel untuk 3 notif urgent:** TripAssigned, AttendanceReminder, AttendanceNeedsReview.
+
+### Perubahan:
+
+| File | Perubahan |
+|------|-----------|
+| `database/migrations/2026_07_19_030000_add_notification_preferences_to_users.php` | Kolom `notification_preferences` JSON |
+| `app/Models/User.php` | Cast `array` + default on creating (inapp/wp/email=true, wa=false) |
+| `app/Models/Concerns/HasDynamicChannels.php` | Trait: `resolveChannels()` — filter `$baseChannels` by preferences, tambah `wa` jika enabled |
+| `app/Channels/WhatsAppChannel.php` | Custom channel — dispatch queue job `SendWhatsAppNotification` |
+| `app/Jobs/SendWhatsAppNotification.php` | HTTP POST ke WA API (Fonnte/Wablas) via Guzzle |
+| `app/Notifications/TripAssigned.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
+| `app/Notifications/AttendanceReminder.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
+| `app/Notifications/AttendanceNeedsReview.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
+| `app/Providers/AppServiceProvider.php` | Daftar `wa` channel ke `ChannelManager` |
+| `app/Filament/Resources/Users/Schemas/UserForm.php` | Section Preferensi Notifikasi: toggle inapp, webpush, email, wa |
+| `config/services.php` | Config `wa.base_url` + `wa.api_key` |
+| `.env` | `WA_BASE_URL`, `WA_API_KEY` |
+
+### Detail:
+- **WA hanya untuk urgent:** Trip baru (employee), absen hari ini (employee), absensi perlu pemeriksaan (manager/HR)
+- **Preference per user:** Masing-masing user bisa toggle ON/OFF untuk in-app, web push, email, WA
+- **Queue:** WA dikirim via job `SendWhatsAppNotification` — tidak blocking request
+- **Provider:** Bisa pakai Fonnte (fonnte.com), Wablas (wablas.com), atau API WA lain. Cukup ganti `WA_BASE_URL` + `WA_API_KEY` di `.env`.
 
 ---
 
@@ -347,7 +376,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ## Test Suite
 
-**56 test passing**, 2 pre-existing MeritSystemTest failing (473 assertions, 4.80s):
+**57 test passing**, 1 pre-existing MeritSystemTest failing (485 assertions, 5.76s):
 - DutyAttendanceTest: 13 ✓
 - MeritSystemTest: 11 ✓
 - CareerDevelopmentTest: 9 ✓
@@ -358,4 +387,4 @@ Bobot default: 40/20/20/20, wajib total 100%.
 - ExampleTest: 3 ✓
 - Unit/SqliteBackupTest: 1 ✓
 
-**Coverage gap:** Notifikasi terpicu via observer/event — perlu test integration notifikasi menyala di skenario yang tepat.
+**Coverage gap:** Notifikasi terpicu via observer/event + WA channel via queue — perlu test integration di skenario yang tepat.

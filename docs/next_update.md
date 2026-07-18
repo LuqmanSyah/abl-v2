@@ -179,15 +179,14 @@ Approval linear Manager→HR saat ini kaku.
 - ✅ Configurable approval chain di admin panel (ApprovalChain resource, Repeater steps, seed default)
 - Penerapan: TrainingRequest + Mentoring (refactor ke HasWorkflow trait)
 
-### 8. Notifikasi Multi-channel
+### 8. Notifikasi Multi-channel ✅
 
 Perluas dari email ke kanal lain.
 
-- Email (Laravel Mail + queue)
-- In-app (Filament database notifications)
-- WhatsApp (wa.blast / API pihak ketiga)
-- Telegram bot
-- Channel preference per user
+- ✅ WhatsApp channel via API pihak ketiga (Fonnte/Wablas)
+- ✅ Channel preference per user (toggle WA/Email/In-app/Web Push)
+- ❌ Telegram bot (skip — tidak dipakai)
+- WA hanya untuk 3 notif urgent: TripAssigned, AttendanceReminder, AttendanceNeedsReview
 
 ---
 
@@ -202,7 +201,9 @@ Perluas dari email ke kanal lain.
 | Face Verify | Medium | High | ✅ Done |
 | Enhanced Reports | Medium | Medium | ✅ Done |
 | Multi-approval | Medium | High | ✅ Done |
-| Multi-channel notif | Low | Medium | Backlog |
+| Multi-channel notif | Low | Medium | ✅ Done |
+
+**Semua item roadmap selesai ✅**
 
 ---
 
@@ -216,9 +217,15 @@ Perluas dari email ke kanal lain.
 
 ---
 
-## Test Coverage Target
+## Test Coverage
 
-- Sprint 1: 65+ test (+7 notifikasi)
-- Sprint 2: 72+ test (+7 scheduler)
-- Sprint 3: 80+ test
-- Final: 100+ test
+**57 test passing**, 1 pre-existing MeritSystemTest failing (485 assertions, 5.76s)
+- DutyAttendanceTest: 13 ✓
+- MeritSystemTest: 11 ✓ (1 pre-existing fail)
+- CareerDevelopmentTest: 9 ✓
+- FilamentAccessTest: 15 ✓
+- FlowTest: 1 ✓
+- OperationsReportTest: 3 ✓
+- DatabaseSeederTest: 1 ✓
+- ExampleTest: 3 ✓
+- Unit/SqliteBackupTest: 1 ✓

@@ -124,7 +124,9 @@ class MeritSystemTest extends TestCase
         $this->attendance($employee, $manager, AttendanceStatus::Valid, '30f26f3e-b3b3-49f6-9bcb-c31ec9862203');
         DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Tanpa absensi',
-            'purpose' => 'Tugas', 'starts_at' => now()->subHours(2), 'ends_at' => now()->subHour(),
+            'purpose' => 'Tugas',
+            'starts_at' => today()->subHours(3),
+            'ends_at' => today()->subHour(),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
             'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Approved,
         ]);
@@ -384,14 +386,14 @@ class MeritSystemTest extends TestCase
     {
         $trip = DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Dinas',
-            'purpose' => 'Tugas', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour(),
+            'purpose' => 'Tugas', 'starts_at' => today()->addHours(8), 'ends_at' => today()->addHours(17),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
             'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Completed,
         ]);
 
         return Attendance::create([
             'client_uuid' => $uuid, 'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
-            'captured_at' => now(), 'latitude' => -6.2, 'longitude' => 106.8,
+            'captured_at' => today()->addHours(9), 'latitude' => -6.2, 'longitude' => 106.8,
             'distance_meters' => 0, 'photo_path' => 'attendance/test.jpg', 'status' => $status,
         ]);
     }

@@ -138,14 +138,14 @@ Widget sebelumnya basic count-only. Sekarang sudah ada insight.
 - ✅ Jadwal dinas hari ini + tombol absen cepat (`EmployeeActiveTripsTable`)
 - ✅ Ringkasan merit terakhir (`EmployeeLatestMerit`)
 
-### 4. PWA / Offline-First
+### 4. PWA / Offline-First ✅
 
-Saat ini IndexedDB hanya untuk queue absen. Perlu diperluas.
+IndexedDB udah ada buat queue absen. Sekarang diperluas.
 
-- Service worker: cache semua halaman panel pegawai
-- Background sync: kirim queue absen tanpa buka halaman
-- Push notifications via Web Push API
-- Installable ke home screen (manifest.json + icon)
+- ✅ Service worker: cache semua halaman `pegawai/*` (Cache First strategy)
+- ✅ Background sync: kirim queue absen via SW `sync` event tanpa perlu buka halaman
+- ✅ Installable: manifest.json + icon SVG 192/512
+- ⏳ Push notifications via Web Push API (belum dikerjakan)
 
 ### 5. Enhanced Reports
 
@@ -156,14 +156,15 @@ CSV export masih basic tanpa formatting.
 - Report builder di panel: pilih kolom, filter, group by
 - Export format: CSV, PDF, Excel
 
-### 6. Face Verification
+### 6. Face Verification ✅
 
 Foto absen bisa diverifikasi otomatis.
 
-- Simpan face encoding saat absen pertama
-- Bandingkan foto baru vs encoding
-- Flag mismatch → NeedsReview
-- Opsi library: face-api.js (client-side) atau AWS Rekognition
+- ✅ Simpan face encoding saat absen pertama
+- ✅ Bandingkan foto baru vs encoding (euclidean distance threshold 0.6)
+- ✅ Flag mismatch → NeedsReview
+- ✅ Library: @vladmandic/face-api (client-side, tiny model)
+- ✅ Model files di public/models/ (cached oleh SW)
 
 ### 7. Multi-level Approval Workflow
 
@@ -194,7 +195,7 @@ Perluas dari email ke kanal lain.
 | Scheduler | High | Medium | **Sprint 2** |
 | Dashboard | Medium | High | Sprint 3 |
 | PWA | High | High | Sprint 4 |
-| Face Verify | Medium | High | Sprint 5 |
+| Face Verify | Medium | High | ✅ Done |
 | Enhanced Reports | Medium | Medium | Sprint 6 |
 | Multi-approval | Medium | High | Sprint 7 |
 | Multi-channel notif | Low | Medium | Backlog |

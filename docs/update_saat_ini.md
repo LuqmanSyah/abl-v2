@@ -144,7 +144,38 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-## 10. Operasional & Infra
+## 10. Face Verification
+
+**Fitur baru:** Verifikasi wajah otomatis saat absen menggunakan face-api.js (client-side).
+
+### Alur:
+1. Saat ambil foto, JS ekstrak 128-dim face descriptor via `@vladmandic/face-api`
+2. Descriptor dikirim sebagai JSON `face_descriptor` di form data
+3. Server simpan `face_descriptor` ke kolom baru `attendances.face_descriptor`
+4. Server bandingkan dengan descriptor absensi sebelumnya (employee + trip sama)
+5. Euclidean distance > 0.6 → status diubah ke `NeedsReview`
+
+### Perubahan:
+
+| File | Perubahan |
+|------|-----------|
+| `public/js/face-api.js` | Library @vladmandic/face-api (1.3 MB) |
+| `public/js/face-verification.js` | Modul wrapper: init, extractDescriptor, verify |
+| `public/models/*.bin` + `*manifest.json` | Model files (tiny_face_detector, face_landmark_68, face_recognition) — ~6.6 MB total |
+| `app/Http/Controllers/AttendanceController.php` | `show()`: passing `previousDescriptor`; `store()`: validasi `face_descriptor` |
+| `resources/views/attendance/capture.blade.php` | Load face-api.js + face-verification.js; face verification di submit handler; status messaging |
+| `database/migrations/2026_07_19_000000_add_face_descriptor_to_attendances.php` | Migration: tambah `face_descriptor` TEXT ke `attendances` |
+| `app/Models/Attendance.php` | `$fillable` + `face_descriptor` |
+| `app/Services/AttendanceRecorder.php` | Server-side face descriptor comparison dengan Euclidean distance |
+
+### Catatan:
+- Model files di-cache oleh Service Worker setelah first load
+- Jika face-api tidak tersedia (gagal load / offline first-time), absensi tetap diproses tanpa data wajah (fallback)
+- Threshold 0.6 adalah default face-api.js recommendation
+
+---
+
+## 11. Operasional & Infra
 
 - `compose.yaml` — Docker MySQL (port 3307)
 - `.env.example` — updated dengan DB config

@@ -10,6 +10,7 @@ use App\Models\Position;
 use App\Models\ReviewPeriod;
 use App\Models\Unit;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -48,6 +49,20 @@ class HrReportController extends Controller
             }
             fclose($output);
         }, 'laporan-sdm-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function exportPdf(Request $request): \Illuminate\Http\Response
+    {
+        $this->authorizeHr($request);
+        $filters = $this->filters($request);
+
+        $pdf = Pdf::loadView('reports.hr-pdf', [
+            'filters' => $filters,
+            'rows' => $this->rows($filters),
+            'periods' => ReviewPeriod::orderByDesc('starts_at')->get(),
+        ]);
+
+        return $pdf->download('laporan-sdm-'.now()->format('Ymd-His').'.pdf');
     }
 
     /** @param array<string, int|null> $filters */

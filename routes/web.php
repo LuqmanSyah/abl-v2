@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthenticatedSessionController;
 use App\Http\Controllers\HrReportController;
+use App\Http\Controllers\WebPushController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [AuthenticatedSessionController::class, 'create'])->name('home');
@@ -21,4 +22,8 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->name('attendance.photo');
     Route::get('/hr/laporan', [HrReportController::class, 'index'])->name('hr.reports.index');
     Route::get('/hr/laporan/ekspor', [HrReportController::class, 'export'])->name('hr.reports.export');
+    Route::get('/hr/laporan/pdf', [HrReportController::class, 'exportPdf'])->name('hr.reports.pdf');
+
+    Route::post('/webpush/subscribe', [WebPushController::class, 'subscribe'])->name('webpush.subscribe');
+    Route::post('/webpush/unsubscribe', [WebPushController::class, 'unsubscribe'])->name('webpush.unsubscribe');
 });

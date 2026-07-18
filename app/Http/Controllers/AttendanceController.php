@@ -22,7 +22,16 @@ class AttendanceController extends Controller
     {
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
-        return view('attendance.capture', ['trip' => $dutyTrip->load('employee', 'attendances')]);
+        $previousDescriptor = Attendance::where('duty_trip_id', $dutyTrip->id)
+            ->where('employee_id', $request->user()->id)
+            ->whereNotNull('face_descriptor')
+            ->latest('captured_at')
+            ->value('face_descriptor');
+
+        return view('attendance.capture', [
+            'trip' => $dutyTrip->load('employee', 'attendances'),
+            'previousDescriptor' => $previousDescriptor,
+        ]);
     }
 
     public function store(Request $request, DutyTrip $dutyTrip, AttendanceRecorder $recorder): JsonResponse
@@ -36,6 +45,7 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['nullable', 'integer', 'min:0'],
             'mock_location_suspected' => ['nullable', 'boolean'],
+            'face_descriptor' => ['nullable', 'string'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
 

@@ -79,9 +79,36 @@ class AttendanceRecorder
                 'synced_at' => $receivedAt,
             ]);
 
+            if (! empty($data['face_descriptor'])) {
+                $previous = Attendance::where('duty_trip_id', $trip->id)
+                    ->where('employee_id', $employee->id)
+                    ->whereNotNull('face_descriptor')
+                    ->where('id', '!=', $attendance->id)
+                    ->latest('captured_at')
+                    ->first();
+
+                if ($previous && $previous->face_descriptor) {
+                    $prev = json_decode($previous->face_descriptor, true);
+                    $curr = json_decode($data['face_descriptor'], true);
+
+                    if (is_array($prev) && is_array($curr) && count($prev) === count($curr)) {
+                        $sum = 0;
+                        foreach ($prev as $i => $v) {
+                            $sum += ($v - $curr[$i]) ** 2;
+                        }
+                        $distance = sqrt($sum);
+
+                        if ($distance > 0.6 && $attendance->status === AttendanceStatus::Valid) {
+                            $attendance->update(['status' => AttendanceStatus::NeedsReview]);
+                            $attendance = $attendance->fresh();
+                        }
+                    }
+                }
+            }
+
             ActivityLog::record('attendance.created', $attendance, $employee);
 
-            if ($status === AttendanceStatus::NeedsReview) {
+            if ($attendance->status === AttendanceStatus::NeedsReview) {
                 $trip->manager->notify(new AttendanceNeedsReview($attendance));
             }
 

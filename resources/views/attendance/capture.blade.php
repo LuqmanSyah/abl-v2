@@ -2,9 +2,12 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="/manifest.json">
     <title>Absensi · {{ $trip->destination }}</title>
     <style>
         :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; }
@@ -120,7 +123,13 @@
         </div>
     </article>
 </main>
+<script src="/js/face-api.js"></script>
+<script src="/js/face-verification.js"></script>
 <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 const form = document.querySelector('#attendance-form');
 const statusBox = document.querySelector('#status');
 const networkBox = document.querySelector('#network');
@@ -129,6 +138,7 @@ const endpoint = @json(route('attendance.store', $trip));
 const tripId = @json($trip->id);
 const employee = @json($trip->employee->name);
 const place = @json($trip->location_name);
+const previousDescriptor = @json($previousDescriptor ?? null);
 
 const preview = document.querySelector('#preview');
 const capturedImg = document.querySelector('#captured-img');
@@ -396,8 +406,25 @@ form?.addEventListener('submit', async event => {
             throw new Error('Foto setelah diproses melebihi 5 MB. Gunakan kamera dengan resolusi lebih rendah.');
         }
 
+        button.textContent = 'Memverifikasi wajah…';
+        try {
+            const faceResult = await FaceVerification.verify(capturedBlob, previousDescriptor);
+            if (faceResult.descriptor) {
+                data.face_descriptor = JSON.stringify(faceResult.descriptor);
+            }
+            if (faceResult.mismatch) {
+                data.mock_location_suspected = 1;
+            }
+            setStatus(faceResult.reason, faceResult.match ? 'info' : 'warning');
+        } catch {
+            setStatus('Verifikasi wajah tidak tersedia. Data wajah tidak disertakan.', 'warning');
+        }
+
         try {
             await queue(data);
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready.then(reg => reg.sync.register('sync-attendance')).catch(() => {});
+            }
         } catch {
             if (!navigator.onLine) {
                 throw new Error('Penyimpanan luring tidak tersedia. Sambungkan internet lalu coba lagi.');
@@ -411,7 +438,8 @@ form?.addEventListener('submit', async event => {
         }
 
         if (!navigator.onLine) {
-            setStatus('Absensi tersimpan di perangkat dan akan dikirim saat kembali terhubung.', 'warning');
+            const suffix = data.face_descriptor ? '' : ' Catatan: verifikasi wajah akan dijalankan saat tersambung.';
+            setStatus('Absensi tersimpan di perangkat dan akan dikirim saat kembali terhubung.' + suffix, 'warning');
             return;
         }
 

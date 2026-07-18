@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushMessage;
 
 class MeritPublished extends Notification
 {
@@ -17,7 +18,16 @@ class MeritPublished extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'webpush'];
+    }
+
+    public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
+    {
+        return (new WebPushMessage)
+            ->title('Hasil Merit Telah Dipublikasikan')
+            ->body("Periode {$this->merit->reviewPeriod->name}: skor total {$this->merit->total_score}, estimasi bonus Rp " . number_format($this->merit->estimated_bonus, 0, ',', '.') . ".")
+            ->icon('/icons/icon-192.png')
+            ->data(['url' => url("/pegawai/merit-results/{$this->merit->id}")]);
     }
 
     public function toDatabase(User $notifiable): array

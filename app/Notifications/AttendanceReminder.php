@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushMessage;
 
 class AttendanceReminder extends Notification
 {
@@ -17,7 +18,16 @@ class AttendanceReminder extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'webpush'];
+    }
+
+    public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
+    {
+        return (new WebPushMessage)
+            ->title('Absensi Dinas')
+            ->body("Jangan lupa absen hari ini untuk dinas {$this->trip->destination}.")
+            ->icon('/icons/icon-192.png')
+            ->data(['url' => url("/pegawai/dinas/{$this->trip->id}/absensi")]);
     }
 
     public function toDatabase(User $notifiable): array

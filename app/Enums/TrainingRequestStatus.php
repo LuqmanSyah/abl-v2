@@ -20,4 +20,13 @@ enum TrainingRequestStatus: string
             self::Completed => 'Selesai',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::PendingManager, self::PendingHr => 'warning',
+            self::Approved, self::Completed => 'success',
+            self::Rejected => 'danger',
+        };
+    }
 }

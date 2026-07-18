@@ -12,7 +12,11 @@ use App\Filament\Resources\MeritResults\MeritResultResource;
 use App\Filament\Resources\PerformanceReviews\PerformanceReviewResource;
 use App\Filament\Resources\TrainingRequests\TrainingRequestResource;
 use App\Filament\Resources\Trainings\TrainingResource;
+use App\Filament\Widgets\EmployeeActiveTripsTable;
+use App\Filament\Widgets\EmployeeKpiProgressTable;
+use App\Filament\Widgets\EmployeeLatestMerit;
 use App\Filament\Widgets\EmployeeStats;
+use App\Filament\Widgets\EmployeeTrainingMentoringTable;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
 use Filament\Widgets\AccountWidget;
@@ -41,7 +45,14 @@ class EmployeePanelProvider extends RolePanelProvider
                 'Kinerja',
                 'Pengembangan',
             ])
-            ->widgets([EmployeeStats::class, AccountWidget::class])
+            ->widgets([
+                EmployeeStats::class,
+                EmployeeLatestMerit::class,
+                EmployeeKpiProgressTable::class,
+                EmployeeActiveTripsTable::class,
+                EmployeeTrainingMentoringTable::class,
+                AccountWidget::class,
+            ])
             ->colors(['primary' => Color::Blue]);
     }
 }

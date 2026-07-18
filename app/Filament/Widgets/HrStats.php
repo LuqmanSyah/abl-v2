@@ -24,6 +24,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class HrStats extends StatsOverviewWidget
 {
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
         return [
@@ -57,6 +59,11 @@ class HrStats extends StatsOverviewWidget
                 ->color('primary')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->url(MentoringResource::getUrl()),
+            Stat::make('Absensi perlu review', Attendance::where('status', \App\Enums\AttendanceStatus::NeedsReview)->count())
+                ->description('Perlu dicek HR')
+                ->color('danger')
+                ->icon(Heroicon::OutlinedShieldExclamation)
+                ->url(AttendanceResource::getUrl()),
         ];
     }
 }

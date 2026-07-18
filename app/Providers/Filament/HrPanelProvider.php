@@ -21,6 +21,10 @@ use App\Filament\Resources\TrainingRequests\TrainingRequestResource;
 use App\Filament\Resources\Trainings\TrainingResource;
 use App\Filament\Resources\Units\UnitResource;
 use App\Filament\Resources\Users\UserResource;
+use App\Filament\Widgets\HrActiveTripsTable;
+use App\Filament\Widgets\HrAttendanceDropAlert;
+use App\Filament\Widgets\HrAttendanceStats;
+use App\Filament\Widgets\HrMeritPerUnitTable;
 use App\Filament\Widgets\HrStats;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
@@ -62,7 +66,14 @@ class HrPanelProvider extends RolePanelProvider
                 'Pengembangan',
                 'Laporan & Audit',
             ])
-            ->widgets([HrStats::class, AccountWidget::class])
+            ->widgets([
+                HrStats::class,
+                HrActiveTripsTable::class,
+                HrAttendanceStats::class,
+                HrMeritPerUnitTable::class,
+                HrAttendanceDropAlert::class,
+                AccountWidget::class,
+            ])
             ->navigationItems([
                 NavigationItem::make('Laporan SDM')
                     ->icon('heroicon-o-chart-bar')

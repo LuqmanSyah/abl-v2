@@ -1,6 +1,6 @@
 # Next Update — Roadmap Pengembangan
 
-## Prioritas: Notifikasi + Scheduler Otomatis
+## Prioritas: Dashboard Lanjutan ✅
 
 ---
 
@@ -116,27 +116,27 @@ Schedule::command('attendance:purge-photos')->weekly()->sundays()->at('03:00');
 
 ## Sprint 3+: Fitur Lanjutan (dalam antrean)
 
-### 3. Dashboard Lanjutan
+### 3. Dashboard Lanjutan ✅
 
-Widget saat ini basic count-only. Tidak ada insight.
+Widget sebelumnya basic count-only. Sekarang sudah ada insight.
 
 **HR Dashboard:**
-- Daftar pegawai sedang dinas + status absensi real-time
-- Grafik absensi per bulan
-- Rata-rata score merit per unit
-- Alert: pegawai dengan attendance drop
+- ✅ Daftar pegawai sedang dinas + status absensi real-time (`HrActiveTripsTable`)
+- ✅ Grafik absensi per bulan (`HrAttendanceChart`)
+- ✅ Rata-rata score merit per unit (`HrMeritPerUnitTable`)
+- ✅ Alert: pegawai dengan attendance drop (`HrAttendanceDropAlert`)
 
 **Manager Dashboard:**
-- Ringkasan merit tim (avg score, distribusi)
-- Timeline approval pending (mentoring, training, KPI)
-- Anggota tim yang belum isi KPI
-- Status dinas anggota tim hari ini
+- ✅ Ringkasan merit tim (avg score, distribusi) (`ManagerTeamMeritChart`)
+- ✅ Timeline approval pending (mentoring) (`ManagerPendingApprovalsTable`)
+- ✅ Anggota tim yang belum isi KPI (`ManagerIncompleteKpiTable`)
+- ✅ Status dinas anggota tim hari ini (`ManagerTeamTripTable`)
 
 **Employee Dashboard:**
-- Progress KPI (real-time vs target)
-- Riwayat training + mentoring
-- Jadwal dinas hari ini + tombol absen cepat
-- Ringkasan merit terakhir
+- ✅ Progress KPI (real-time vs target) (`EmployeeKpiProgressChart`)
+- ✅ Riwayat training + mentoring (`EmployeeTrainingMentoringTable`)
+- ✅ Jadwal dinas hari ini + tombol absen cepat (`EmployeeActiveTripsTable`)
+- ✅ Ringkasan merit terakhir (`EmployeeLatestMerit`)
 
 ### 4. PWA / Offline-First
 

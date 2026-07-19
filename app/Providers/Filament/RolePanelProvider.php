@@ -29,6 +29,7 @@ abstract class RolePanelProvider extends PanelProvider
             ->assets([
                 Css::make('portal-theme', asset('css/portal-filament.css')),
             ])
+            ->maxContentWidth('max-w-full')
             ->sidebarCollapsibleOnDesktop()
             ->unsavedChangesAlerts()
             ->databaseTransactions()

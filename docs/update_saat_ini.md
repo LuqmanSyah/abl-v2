@@ -391,21 +391,21 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-## 17. Edit Profile — Hapus Fitur Upload Foto, Ganti Avatar Silhouette
+## 17. Edit Profile — Hapus Upload Foto & Avatar Silhouette
 
 **Lokasi:** `app/Filament/Pages/EditProfile.php`
 
 ### Perubahan:
 - Hapus `FileUpload` field `avatar_url` (foto profil)
 - Hapus import `Filament\Forms\Components\FileUpload`
-- Ganti dengan `Html` component — lingkaran abu-abu (`w-20 h-20 rounded-full bg-gray-200`) dengan ikon orang putih (SVG `heroicon-solid user`, `text-white`)
-- Komponen ditempatkan di Section "Informasi Akun", `columnSpan(2)`
-- Layout form: avatar silhouette di baris pertama, name+email di baris kedua, phone di baris ketiga
+- Hapus `Html` component (avatar silhouette) + import
+- Form "Informasi Akun": hanya name (col 1) + email (col 2) + phone (col 1, full width)
+- Tidak ada tampilan avatar sama sekali di form
 
 ### Alasan:
 - Fitur upload foto profil tidak esensial untuk MVP
-- Avatar silhouette sebagai placeholder default (sama seperti tampilan Filament user menu tanpa foto)
-- Menghilangkan dependensi FileUpload dan image editor pada halaman profil
+- Avatar silhouette mubazir — Filament user menu sudah tampilkan default icon
+- Form lebih bersih, lebih sedikit kode
 
 ### Test:
 - 58 tests pass tanpa perubahan

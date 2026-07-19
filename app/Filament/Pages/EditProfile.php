@@ -7,7 +7,6 @@ use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
@@ -47,15 +46,6 @@ class EditProfile extends BaseEditProfile
                     ->description('Data diri dan informasi akun.')
                     ->columns(2)
                     ->schema([
-                        Html::make(<<<HTML
-                            <div class="flex justify-center w-full py-3">
-                                <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-                                    <svg class="w-10 h-10 text-white" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-7 14a7 7 0 0 1 14 0H5Z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                        HTML)->columnSpan(2),
                         $this->getNameFormComponent()
                             ->columnSpan(1),
                         $this->getEmailFormComponent()

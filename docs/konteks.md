@@ -253,7 +253,7 @@ Detail: `docs/testing_list.md`.
 
 **Framework:** PHPUnit 11, SQLite in-memory, `RefreshDatabase` trait.
 
-**Coverage saat ini:** 57 tests, 447 assertions ✅
+**Coverage saat ini:** 58 tests, 486 assertions ✅
 
 | Area | File | Tests |
 |------|------|-------|

@@ -40,22 +40,18 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
-                Section::make('Foto Profil')
-                    ->compact()
-                    ->columns(1)
-                    ->schema([
-                        FileUpload::make('avatar_url')
-                            ->label('Upload foto')
-                            ->image()
-                            ->imageEditor()
-                            ->directory('avatars')
-                            ->maxSize(2048)
-                            ->columnSpanFull(),
-                    ]),
                 Section::make('Informasi Akun')
                     ->description('Data diri dan informasi akun.')
                     ->columns(2)
                     ->schema([
+                        FileUpload::make('avatar_url')
+                            ->label('Foto profil')
+                            ->image()
+                            ->imageEditor()
+                            ->directory('avatars')
+                            ->maxSize(2048)
+                            ->imagePreviewHeight('8rem')
+                            ->columnSpan(1),
                         $this->getNameFormComponent()
                             ->columnSpan(1),
                         $this->getEmailFormComponent()

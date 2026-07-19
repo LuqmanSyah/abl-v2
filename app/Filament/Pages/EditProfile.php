@@ -2,11 +2,12 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\UserRole;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class EditProfile extends BaseEditProfile
@@ -62,7 +63,7 @@ class EditProfile extends BaseEditProfile
                             ->label('Peran')
                             ->disabled()
                             ->dehydrated(false)
-                            ->formatStateUsing(fn ($state) => $state?->label() ?? '-'),
+                            ->formatStateUsing(fn ($state) => UserRole::tryFrom($state)?->label() ?? '-'),
                         TextInput::make('unit.name')
                             ->label('Unit kerja')
                             ->disabled()

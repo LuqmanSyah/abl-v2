@@ -409,3 +409,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ### Test:
 - 58 tests pass tanpa perubahan
+
+## Mengaktifkan Fitur Toggle Dark/Light Mode
+- Menghapus konfigurasi `->darkMode(true, true)` pada file `app/Providers/Filament/RolePanelProvider.php`.
+- **Alasan:** Parameter `(true, true)` memaksa Filament untuk selalu menggunakan Dark Mode dan menyembunyikan tombol switch tema. Dengan dihapusnya konfigurasi tersebut, fitur bawaan toggle Dark/Light mode dari Filament kembali aktif.

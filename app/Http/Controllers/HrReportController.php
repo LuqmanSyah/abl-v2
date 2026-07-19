@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use League\Csv\Writer as CsvWriter;
+use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -104,13 +105,13 @@ class HrReportController extends Controller
 
         return response()->streamDownload(function () use ($rows, $headers, $cellMap): void {
             $writer = new Writer;
-            $writer->openToBrowser('php://output');
-            $writer->addRow($headers);
+            $writer->openToFile('php://output');
+            $writer->addRow(Row::fromValues($headers));
 
             foreach ($rows as $group) {
                 foreach ($group['items'] as $row) {
                     $values = $this->flatten($row, $cellMap);
-                    $writer->addRow($values);
+                    $writer->addRow(Row::fromValues($values));
                 }
             }
 

@@ -56,6 +56,8 @@ Artisan::command('backup:database {--keep=14}', function () {
 
 if (config('database.default') === 'sqlite') {
     Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00')->withoutOverlapping();
+} else {
+    Schedule::command('db:backup --keep='.config('hr.backup_keep', 14))->dailyAt('02:00')->withoutOverlapping();
 }
 
 Schedule::command('attendance:purge-photos --days='.config('hr.photo_retention_days'))->dailyAt('03:00')->withoutOverlapping();

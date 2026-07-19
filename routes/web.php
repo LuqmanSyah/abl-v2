@@ -17,6 +17,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/pegawai/dinas/{dutyTrip}/absensi', [AttendanceController::class, 'show'])
         ->name('attendance.capture');
     Route::post('/pegawai/dinas/{dutyTrip}/absensi', [AttendanceController::class, 'store'])
+        ->middleware('throttle:10,1')
         ->name('attendance.store');
     Route::get('/absensi/{attendance}/foto', [AttendanceController::class, 'photo'])
         ->name('attendance.photo');

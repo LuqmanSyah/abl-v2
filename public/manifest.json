@@ -1,9 +1,9 @@
 {
-  "name": "Portal Pegawai — Sistem Manajemen SDM",
+  "name": "Portal SDM — Sistem Manajemen SDM",
   "short_name": "Portal SDM",
   "description": "Absensi dinas, KPI, merit, dan pengembangan karir",
-  "start_url": "/pegawai",
-  "scope": "/pegawai",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#2563eb",

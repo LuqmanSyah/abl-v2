@@ -14,6 +14,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use League\Csv\Writer as CsvWriter;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -60,15 +61,18 @@ class HrReportController extends Controller
         $cellMap = array_keys($columns);
 
         return response()->streamDownload(function () use ($rows, $headers, $cellMap): void {
-            $output = fopen('php://output', 'w');
-            fputcsv($output, $headers);
+            $writer = CsvWriter::createFromPath('php://output', 'w');
+            $writer->setEscape('');
+            $writer->addFormatter(function (array $row): array {
+                return array_map(fn ($value) => is_string($value) && preg_match('/^[=+\-@\t\r]/', $value) ? "'".$value : $value, $row);
+            });
+            $writer->insertOne($headers);
             foreach ($rows as $group) {
                 foreach ($group['items'] as $row) {
                     $values = $this->flatten($row, $cellMap);
-                    fputcsv($output, array_map($this->csvValue(...), $values));
+                    $writer->insertOne($values);
                 }
             }
-            fclose($output);
         }, 'laporan-sdm-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
@@ -220,8 +224,4 @@ class HrReportController extends Controller
         abort_unless($request->user()?->is_active && $request->user()->role === UserRole::Hr, 403);
     }
 
-    private function csvValue(mixed $value): mixed
-    {
-        return is_string($value) && preg_match('/^[=+\-@]/', $value) ? "'{$value}" : $value;
-    }
 }

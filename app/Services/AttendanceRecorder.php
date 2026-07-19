@@ -45,6 +45,11 @@ class AttendanceRecorder
 
             $capturedAt = CarbonImmutable::parse($data['captured_at']);
             $receivedAt = CarbonImmutable::now();
+
+            if ($capturedAt->isFuture()) {
+                throw new BusinessRuleException('Waktu absensi tidak valid (masih masa depan).');
+            }
+
             if ($receivedAt->isBefore($trip->starts_at) || $capturedAt->isBefore($trip->starts_at)) {
                 throw new BusinessRuleException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
             }

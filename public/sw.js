@@ -1,16 +1,8 @@
-const CACHE = 'sdm-pegawai-v1';
-const CACHE_PREFIX = '/pegawai';
-const ASSETS = [
-  '/pegawai',
-  '/pegawai/login',
-  '/pegawai/attendance/capture',
-];
+const CACHE = 'sdm-portal-v2';
+const PANEL_PATHS = ['/pegawai', '/atasan', '/hr'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS)).catch(() => {})
-  );
 });
 
 self.addEventListener('activate', event => {
@@ -24,7 +16,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  if (url.pathname.startsWith(CACHE_PREFIX)) {
+  if (PANEL_PATHS.some(path => url.pathname.startsWith(path))) {
     event.respondWith(
       caches.match(event.request).then(cached => {
         const fetched = fetch(event.request).then(response => {
@@ -32,7 +24,6 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE).then(cache => cache.put(event.request, clone));
           return response;
         }).catch(() => cached);
-
         return cached || fetched;
       })
     );
@@ -53,17 +44,17 @@ self.addEventListener('sync', event => {
 });
 
 self.addEventListener('push', event => {
-  let data = { title: 'SDM Pegawai', body: '', url: '/pegawai' };
+  let data = { title: 'Portal SDM', body: '', url: '/' };
   if (event.data) {
     try {
       data = Object.assign(data, event.data.json());
-    } catch (e) { /* ignore malformed payload */ }
+    } catch (e) { /* ignore */ }
   }
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: data.icon || '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: data.icon || '/icons/icon-192.svg',
+      badge: '/icons/icon-192.svg',
       data: { url: data.url },
       requireInteraction: true,
     })
@@ -72,7 +63,7 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const url = event.notification.data?.url || '/pegawai';
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
@@ -95,9 +86,7 @@ async function processQueue() {
         if (!e.retryable) await removeRecord(db, record.client_uuid);
       }
     }
-  } catch (e) {
-    return;
-  }
+  } catch (e) { /* ignore */ }
 }
 
 function openDb() {
@@ -132,7 +121,6 @@ function sendRecord(data) {
     }
   });
   body.append('photo', data.photo, 'attendance.jpg');
-
   return fetch(data.endpoint, {
     method: 'POST',
     headers: { 'Accept': 'application/json' },

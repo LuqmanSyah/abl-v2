@@ -31,6 +31,9 @@ abstract class RolePanelProvider extends PanelProvider
             ->assets([
                 Css::make('portal-theme', asset('css/portal-filament.css')),
             ])
+            ->darkMode(true, true)
+            ->brandLogo(fn () => view('components.brand-logo'))
+            ->favicon(asset('icons/icon-192.svg'))
             ->maxContentWidth('max-w-full')
             ->sidebarCollapsibleOnDesktop()
             ->unsavedChangesAlerts()

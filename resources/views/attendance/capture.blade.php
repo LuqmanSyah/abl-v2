@@ -42,7 +42,7 @@
         #captured-img { width: 100%; max-height: 400px; border-radius: 12px; object-fit: cover; }
         .camera-actions { display: flex; gap: 10px; margin-top: 14px; }
         .camera-actions button { flex: 1; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 51px; border: 0; border-radius: 12px; font-weight: 850; cursor: pointer; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 51px; border: 0; border-radius: 12px; font-weight: 850; cursor: pointer; touch-action: manipulation; }
         .btn-primary { background: #2563eb; color: white; box-shadow: 0 9px 20px #2563eb33; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-secondary { background: #e2e8f0; color: #334155; }

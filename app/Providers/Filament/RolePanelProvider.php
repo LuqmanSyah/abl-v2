@@ -30,6 +30,8 @@ abstract class RolePanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->unsavedChangesAlerts()
             ->databaseTransactions()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([Dashboard::class])
             ->middleware([

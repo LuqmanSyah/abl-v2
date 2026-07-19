@@ -62,7 +62,8 @@ class EditProfile extends BaseEditProfile
                             ->imageCropAspectRatio('1:1')
                             ->directory('avatars')
                             ->maxSize(2048)
-                            ->columnSpan(2),
+                            ->imagePreviewHeight('10rem')
+                            ->columnSpan(1),
                         $this->getNameFormComponent()
                             ->columnSpan(1),
                         $this->getEmailFormComponent()

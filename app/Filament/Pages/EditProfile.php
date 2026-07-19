@@ -14,7 +14,7 @@ use Filament\Support\Enums\Width;
 
 class EditProfile extends BaseEditProfile
 {
-    protected Width | string | null $maxContentWidth = 'max-w-full';
+    protected Width | string | null $maxContentWidth = Width::Full;
 
     public static function getLabel(): string
     {

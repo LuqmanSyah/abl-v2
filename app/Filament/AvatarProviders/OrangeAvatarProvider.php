@@ -17,6 +17,6 @@ class OrangeAvatarProvider implements AvatarProvider
             ->map(fn (string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
             ->join(' ');
 
-        return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&format=svg&color=F97316&background=FFF4E6';
+        return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&format=png&color=F97316&background=FFF4E6';
     }
 }

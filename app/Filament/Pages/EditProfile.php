@@ -10,9 +10,12 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 
 class EditProfile extends BaseEditProfile
 {
+    protected Width | string | null $maxContentWidth = 'max-w-full';
+
     public static function getLabel(): string
     {
         return 'Profil Saya';

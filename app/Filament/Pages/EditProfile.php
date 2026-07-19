@@ -57,6 +57,7 @@ class EditProfile extends BaseEditProfile
                             ->removeUploadedFileButtonPosition(fn (FileUpload $component) => $component->hasImageEditor() ? 'left bottom' : 'center bottom')
                             ->uploadButtonPosition(fn (FileUpload $component) => $component->hasImageEditor() ? 'right bottom' : 'center bottom')
                             ->uploadProgressIndicatorPosition(fn (FileUpload $component) => $component->hasImageEditor() ? 'right bottom' : 'center bottom')
+                            ->panelLayout('compact')
                             ->imageEditor()
                             ->imageEditorMode(1)
                             ->imageCropAspectRatio('1:1')

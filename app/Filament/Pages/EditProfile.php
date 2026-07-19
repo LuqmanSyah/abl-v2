@@ -48,7 +48,6 @@ class EditProfile extends BaseEditProfile
                             ->label('Foto profil')
                             ->avatar()
                             ->circleCropper(false)
-                            ->panelLayout('compact')
                             ->imageEditor()
                             ->imageEditorMode(1)
                             ->imageCropAspectRatio('1:1')
@@ -56,7 +55,7 @@ class EditProfile extends BaseEditProfile
                             ->imageResizeTargetHeight(400)
                             ->directory('avatars')
                             ->maxSize(2048)
-                            ->columnSpan(1),
+                            ->columnSpan(2),
                         $this->getNameFormComponent()
                             ->columnSpan(1),
                         $this->getEmailFormComponent()

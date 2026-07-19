@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\EditProfile;
 use App\Http\Middleware\HandleForbiddenPanelPage;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -24,6 +25,7 @@ abstract class RolePanelProvider extends PanelProvider
     {
         return $panel
             ->login(fn () => redirect()->route('login'))
+            ->profile(EditProfile::class, isSimple: false)
             ->assets([
                 Css::make('portal-theme', asset('css/portal-filament.css')),
             ])

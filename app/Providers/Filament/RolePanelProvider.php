@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\OrangeAvatarProvider;
 use App\Filament\Pages\EditProfile;
 use App\Http\Middleware\HandleForbiddenPanelPage;
 use Filament\Http\Middleware\Authenticate;
@@ -26,6 +27,7 @@ abstract class RolePanelProvider extends PanelProvider
         return $panel
             ->login(fn () => redirect()->route('login'))
             ->profile(EditProfile::class, isSimple: false)
+            ->defaultAvatarProvider(OrangeAvatarProvider::class)
             ->assets([
                 Css::make('portal-theme', asset('css/portal-filament.css')),
             ])

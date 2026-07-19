@@ -172,6 +172,15 @@ a.fi-wi-stats-overview-stat:hover {
     }
 }
 
+.fi-user-avatar {
+    transition: filter 200ms ease;
+}
+
+.fi-user-avatar:hover {
+    filter: brightness(0.85);
+}
+
 @media (prefers-reduced-motion: reduce) {
+    .fi-user-avatar { transition: none; }
     .fi-wi-stats-overview-stat { transition: none; }
 }

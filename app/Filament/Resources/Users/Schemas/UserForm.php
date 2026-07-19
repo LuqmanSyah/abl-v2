@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\UserRole;
 use Filament\Forms\Components\Select;
+use Illuminate\Validation\Rules\Password;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -30,8 +31,10 @@ class UserForm
                     ->label('Kata sandi')
                     ->password()
                     ->revealable()
+                    ->rule(Password::min(8)->mixedCase()->numbers())
                     ->required(fn (string $operation): bool => $operation === 'create')
-                    ->dehydrated(fn (?string $state): bool => filled($state)),
+                    ->dehydrated(fn (?string $state): bool => filled($state))
+                    ->helperText('Minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka.'),
                 Select::make('role')
                     ->label('Peran')
                     ->options(UserRole::options())

@@ -45,11 +45,9 @@ class EditProfile extends BaseEditProfile
                     ->columns(1)
                     ->schema([
                         FileUpload::make('avatar_url')
-                            ->label('')
-                            ->avatar()
+                            ->label('Upload foto')
                             ->image()
                             ->imageEditor()
-                            ->circleCropper()
                             ->directory('avatars')
                             ->maxSize(2048)
                             ->columnSpanFull(),
@@ -109,6 +107,12 @@ class EditProfile extends BaseEditProfile
                     ]),
                 $this->getPasswordSectionComponent(),
             ]);
+    }
+
+    protected function getPasswordFormComponent(): Component
+    {
+        return parent::getPasswordFormComponent()
+            ->helperText('Kata sandi minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka.');
     }
 
     protected function getPasswordSectionComponent(): Component

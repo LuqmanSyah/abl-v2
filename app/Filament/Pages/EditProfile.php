@@ -46,7 +46,9 @@ class EditProfile extends BaseEditProfile
                     ->schema([
                         FileUpload::make('avatar_url')
                             ->label('Foto profil')
-                            ->image()
+                            ->avatar()
+                            ->circleCropper(false)
+                            ->panelLayout('compact')
                             ->imageEditor()
                             ->imageEditorMode(1)
                             ->imageCropAspectRatio('1:1')
@@ -54,7 +56,6 @@ class EditProfile extends BaseEditProfile
                             ->imageResizeTargetHeight(400)
                             ->directory('avatars')
                             ->maxSize(2048)
-                            ->imagePreviewHeight('8rem')
                             ->columnSpan(1),
                         $this->getNameFormComponent()
                             ->columnSpan(1),

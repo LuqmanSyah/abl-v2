@@ -70,6 +70,7 @@ class User extends Authenticatable implements FilamentUser
         'notification_preferences',
         'employee_number',
         'phone',
+        'avatar_url',
         'is_active',
     ];
 

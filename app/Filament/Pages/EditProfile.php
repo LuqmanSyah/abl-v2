@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\UserRole;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
@@ -39,20 +40,36 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
+                Section::make('Foto Profil')
+                    ->compact()
+                    ->columns(1)
+                    ->schema([
+                        FileUpload::make('avatar_url')
+                            ->label('')
+                            ->avatar()
+                            ->image()
+                            ->imageEditor()
+                            ->circleCropper()
+                            ->directory('avatars')
+                            ->maxSize(2048)
+                            ->columnSpanFull(),
+                    ]),
                 Section::make('Informasi Akun')
-                    ->description('Data diri dan informasi akun Anda.')
+                    ->description('Data diri dan informasi akun.')
                     ->columns(2)
                     ->schema([
-                        $this->getNameFormComponent(),
-                        $this->getEmailFormComponent(),
+                        $this->getNameFormComponent()
+                            ->columnSpan(1),
+                        $this->getEmailFormComponent()
+                            ->columnSpan(1),
                         TextInput::make('phone')
                             ->label('Telepon')
                             ->tel()
-                            ->columnSpanFull()
-                            ->helperText('Digunakan untuk notifikasi WhatsApp urgensi (trip baru, absen hari ini).'),
+                            ->columnSpan(1)
+                            ->helperText('Nomor untuk notifikasi WhatsApp urgensi.'),
                     ]),
                 Section::make('Informasi Kepegawaian')
-                    ->description('Data kepegawaian — tidak dapat diubah dari halaman ini.')
+                    ->description('Data kepegawaian — tidak dapat diubah dari sini.')
                     ->columns(2)
                     ->schema([
                         TextInput::make('employee_number')

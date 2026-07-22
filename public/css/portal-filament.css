@@ -1,7 +1,9 @@
 :root {
     --portal-border: #e2e8f0;
-    --portal-shadow: 0 12px 32px rgba(15, 23, 42, .06);
+    --portal-shadow: none;
 }
+
+.dark { --portal-shadow: 0 12px 32px rgba(15, 23, 42, .06); }
 
 .fi-body {
     background:
@@ -122,7 +124,7 @@ a.fi-wi-stats-overview-stat:hover {
 }
 
 .dark .fi-body {
-    background: radial-gradient(circle at 88% 0, color-mix(in srgb, var(--primary-500) 12%, transparent), transparent 28rem), #0f172a;
+    background: radial-gradient(circle at 88% 0, color-mix(in srgb, var(--primary-500) 12%, transparent), transparent 28rem), var(--gray-950);
     color: #e2e8f0;
 }
 
@@ -130,7 +132,7 @@ a.fi-wi-stats-overview-stat:hover {
 .dark .fi-sidebar-header,
 .dark .fi-topbar nav {
     border-color: #273449;
-    background: rgba(15, 23, 42, .94);
+    background: var(--gray-900);
 }
 
 .dark .fi-header-heading { color: #f8fafc; }
@@ -143,11 +145,11 @@ a.fi-wi-stats-overview-stat:hover {
 .dark .fi-modal-header,
 .dark .fi-modal-footer {
     border-color: #334155;
-    background: #111c2f;
+    background: var(--gray-900);
 }
 
 .dark .fi-modal-content {
-    background: #0f172a;
+    background: var(--gray-900);
 }
 
 .dark .fi-modal-heading { color: #f8fafc; }

@@ -15,15 +15,15 @@ class Attendance extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_uuid', 'duty_trip_id', 'employee_id', 'captured_at', 'latitude', 'longitude',
+        'client_uuid', 'duty_trip_id', 'employee_id', 'attendance_date', 'captured_at', 'latitude', 'longitude',
         'accuracy_meters', 'distance_meters', 'photo_path', 'face_descriptor',
-        'status', 'mock_location_suspected', 'synced_at',
+        'status', 'review_reason', 'mock_location_suspected', 'synced_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'captured_at' => 'datetime', 'synced_at' => 'datetime', 'status' => AttendanceStatus::class,
+            'attendance_date' => 'date', 'captured_at' => 'datetime', 'synced_at' => 'datetime', 'status' => AttendanceStatus::class,
             'latitude' => 'decimal:7', 'longitude' => 'decimal:7', 'mock_location_suspected' => 'boolean',
         ];
     }

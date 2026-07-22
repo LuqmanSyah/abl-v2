@@ -6,15 +6,19 @@ use App\Models\Attendance;
 use App\Models\Concerns\HasDynamicChannels;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
-class AttendanceNeedsReview extends Notification
+class AttendanceNeedsReview extends Notification implements ShouldQueue
 {
     use HasDynamicChannels, Queueable;
 
-    public function __construct(public Attendance $attendance) {}
+    public function __construct(public Attendance $attendance)
+    {
+        $this->afterCommit();
+    }
 
     /** @return list<string> */
     public function via(User $notifiable): array
@@ -23,6 +27,7 @@ class AttendanceNeedsReview extends Notification
         if ($notifiable->role->value === 'hr') {
             $base[] = 'mail';
         }
+
         return $this->resolveChannels($notifiable, $base);
     }
 
@@ -30,7 +35,7 @@ class AttendanceNeedsReview extends Notification
     {
         return "Absensi Perlu Pemeriksaan\n"
             ."Absensi {$this->attendance->employee->name} untuk dinas {$this->attendance->dutyTrip->destination} memerlukan pemeriksaan.\n"
-            ."Periksa: " . url("/hr/attendances/{$this->attendance->id}");
+            .'Periksa: '.url("/hr/attendances/{$this->attendance->id}");
     }
 
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage

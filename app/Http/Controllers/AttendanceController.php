@@ -45,7 +45,7 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['nullable', 'integer', 'min:0'],
             'mock_location_suspected' => ['nullable', 'boolean'],
-            'face_descriptor' => ['nullable', 'string'],
+            'face_descriptor' => ['nullable', 'string', 'json', 'max:8192'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
 

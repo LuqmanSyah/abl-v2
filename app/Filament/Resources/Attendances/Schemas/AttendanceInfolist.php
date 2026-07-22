@@ -32,6 +32,10 @@ class AttendanceInfolist
                             ->badge()
                             ->formatStateUsing(fn ($state): string => $state instanceof AttendanceStatus ? $state->label() : (string) $state)
                             ->color(fn ($state): string => $state instanceof AttendanceStatus ? $state->color() : 'gray'),
+                        TextEntry::make('review_reason')
+                            ->label('Alasan pemeriksaan awal')
+                            ->placeholder('-')
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
                 Section::make('Lokasi dan bukti')

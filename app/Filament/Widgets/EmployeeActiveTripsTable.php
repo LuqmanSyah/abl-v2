@@ -3,7 +3,6 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DutyTripStatus;
-use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Filament\Resources\DutyTrips\DutyTripResource;
 use App\Models\DutyTrip;
 use Filament\Actions\Action;
@@ -18,7 +17,7 @@ class EmployeeActiveTripsTable extends TableWidget
 
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -44,8 +43,8 @@ class EmployeeActiveTripsTable extends TableWidget
                 TextColumn::make('attendances_count')
                     ->label('Absensi')
                     ->counts('attendances')
-                    ->formatStateUsing(fn (DutyTrip $record): string => $record->attendances()->count() > 0 ? 'Sudah absen' : 'Belum absen')
-                    ->color(fn (DutyTrip $record): string => $record->attendances()->count() > 0 ? 'success' : 'warning')
+                    ->formatStateUsing(fn (DutyTrip $record): string => $record->attendances()->whereDate('captured_at', today())->exists() ? 'Sudah absen' : 'Belum absen')
+                    ->color(fn (DutyTrip $record): string => $record->attendances()->whereDate('captured_at', today())->exists() ? 'success' : 'warning')
                     ->badge(),
             ])
             ->recordActions([
@@ -58,8 +57,8 @@ class EmployeeActiveTripsTable extends TableWidget
                         ->label('Absen Sekarang')
                         ->icon('heroicon-o-map-pin')
                         ->color('success')
-                        ->visible(fn (DutyTrip $record): bool => $record->attendances()->count() === 0)
-                        ->url(fn (DutyTrip $record): string => route('attendance.capture', ['duty_trip' => $record->id])),
+                        ->visible(fn (DutyTrip $record): bool => ! $record->attendances()->whereDate('captured_at', today())->exists())
+                        ->url(fn (DutyTrip $record): string => route('attendance.capture', $record)),
                 ]),
             ])
             ->emptyStateHeading('Tidak ada dinas aktif hari ini')

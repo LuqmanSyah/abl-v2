@@ -5,11 +5,12 @@ namespace App\Models;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\TripAssigned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DutyTrip extends Model
 {
@@ -44,7 +45,10 @@ class DutyTrip extends Model
         };
 
         static::creating($validateAssignment);
-        static::created(fn (self $trip) => ActivityLog::record('duty_trip.assigned', $trip));
+        static::created(function (self $trip): void {
+            ActivityLog::record('duty_trip.assigned', $trip);
+            $trip->employee->notify(new TripAssigned($trip));
+        });
 
         static::updating(function (self $trip) use ($validateAssignment): void {
             if ($trip->isDirty(['employee_id', 'manager_id'])) {
@@ -55,7 +59,7 @@ class DutyTrip extends Model
                 'duty_location_id', 'location_name', 'address', 'latitude', 'longitude', 'radius_meters',
             ];
 
-            if (($trip->getRawOriginal('status') === DutyTripStatus::Completed->value || $trip->attendance()->exists())
+            if ($trip->attendances()->exists()
                 && $trip->isDirty($locked)) {
                 throw new BusinessRuleException('Lokasi dinas yang telah selesai tidak dapat diubah.');
             }
@@ -77,9 +81,9 @@ class DutyTrip extends Model
         return $this->belongsTo(DutyLocation::class);
     }
 
-    public function attendance(): HasOne
+    public function attendances(): HasMany
     {
-        return $this->hasOne(Attendance::class);
+        return $this->hasMany(Attendance::class);
     }
 
     public function canBeChangedBy(User $manager): bool
@@ -88,7 +92,7 @@ class DutyTrip extends Model
             && $this->manager_id === $manager->id
             && $this->status === DutyTripStatus::Approved
             && $this->starts_at->isFuture()
-            && ! $this->attendance()->exists();
+            && ! $this->attendances()->whereDate('captured_at', today())->exists();
     }
 
     public function cancel(User $manager): void

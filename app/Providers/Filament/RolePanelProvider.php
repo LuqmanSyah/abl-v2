@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\AvatarProviders\OrangeAvatarProvider;
+use App\Filament\Pages\EditProfile;
 use App\Http\Middleware\HandleForbiddenPanelPage;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -24,12 +26,19 @@ abstract class RolePanelProvider extends PanelProvider
     {
         return $panel
             ->login(fn () => redirect()->route('login'))
+            ->profile(EditProfile::class, isSimple: false)
+            ->defaultAvatarProvider(OrangeAvatarProvider::class)
             ->assets([
                 Css::make('portal-theme', asset('css/portal-filament.css')),
             ])
+            ->brandLogo(fn () => view('components.brand-logo'))
+            ->favicon(asset('icons/icon-192.svg'))
+            ->maxContentWidth('max-w-full')
             ->sidebarCollapsibleOnDesktop()
             ->unsavedChangesAlerts()
             ->databaseTransactions()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([Dashboard::class])
             ->middleware([

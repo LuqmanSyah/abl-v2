@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
-use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
@@ -13,6 +12,8 @@ use App\Models\MeritResult;
 use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
+use App\Notifications\MeritReadyForVerification;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class MeritCalculator
@@ -24,8 +25,8 @@ class MeritCalculator
             $identity = ['review_period_id' => $period->id, 'employee_id' => $employee->id];
             $result = MeritResult::where($identity)->lockForUpdate()->first();
 
-            if ($result?->published_at) {
-                throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
+            if ($result?->manager_verified_at || $result?->hr_verified_at || $result?->published_at) {
+                throw new DomainException('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.');
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
@@ -41,12 +42,15 @@ class MeritCalculator
                         ->orWhere(fn ($query) => $query
                             ->where('status', DutyTripStatus::Approved)
                             ->where('ends_at', '<=', now()));
-                });
-            $dutyTripCount = (clone $dutyTrips)->count();
-            $validAttendanceCount = (clone $dutyTrips)
-                ->whereHas('attendance', fn ($query) => $query->where('status', AttendanceStatus::Valid))
-                ->count();
-            $disciplineScore = $dutyTripCount ? $validAttendanceCount / $dutyTripCount * 100 : 100;
+                })->get();
+            $totalDays = 0;
+            $validDays = 0;
+            foreach ($dutyTrips as $trip) {
+                $days = $trip->starts_at->startOfDay()->diffInDays($trip->ends_at->startOfDay()) + 1;
+                $totalDays += $days;
+                $validDays += $trip->attendances()->where('status', AttendanceStatus::Valid)->count();
+            }
+            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
 
             $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);
             $review360Score = $this->reviewScore($period, $employee, [ReviewType::EmployeeToManager, ReviewType::Peer]);
@@ -56,6 +60,7 @@ class MeritCalculator
                 'kpi_score' => round($kpiScore, 2), 'discipline_score' => round($disciplineScore, 2),
                 'manager_score' => round($managerScore, 2), 'review_360_score' => round($review360Score, 2),
                 'total_score' => round($total, 2), 'estimated_bonus' => round((float) $period->base_bonus * $total / 100, 2),
+                'calculated_at' => now(),
                 'manager_verified_by' => null, 'manager_verified_at' => null, 'hr_verified_by' => null,
                 'hr_verified_at' => null, 'published_at' => null,
             ];
@@ -68,6 +73,8 @@ class MeritCalculator
 
             ActivityLog::record('merit.calculated', $result);
 
+            $employee->manager?->notify(new MeritReadyForVerification($result));
+
             return $result;
         }, 3);
     }
@@ -78,6 +85,6 @@ class MeritCalculator
         $average = PerformanceReview::where('review_period_id', $period->id)
             ->where('reviewee_id', $employee->id)->whereIn('type', array_map(fn (ReviewType $type) => $type->value, $types))->avg('score');
 
-        return $average ? (float) $average / 5 * 100 : 0;
+        return $average !== null ? (float) $average / 5 * 100 : 0;
     }
 }

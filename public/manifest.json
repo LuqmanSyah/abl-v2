@@ -1,0 +1,19 @@
+{
+  "name": "Portal SDM — Sistem Manajemen SDM",
+  "short_name": "Portal SDM",
+  "description": "Absensi dinas, KPI, merit, dan pengembangan karir",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "categories": ["business", "productivity"],
+  "lang": "id-ID",
+  "icons": [
+    { "src": "/icons/icon-192.svg", "type": "image/svg+xml", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icons/icon-512.svg", "type": "image/svg+xml", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icons/icon-192.svg", "type": "image/svg+xml", "sizes": "192x192", "purpose": "maskable" },
+    { "src": "/icons/icon-512.svg", "type": "image/svg+xml", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}

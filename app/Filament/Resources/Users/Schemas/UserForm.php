@@ -4,8 +4,10 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\UserRole;
 use Filament\Forms\Components\Select;
+use Illuminate\Validation\Rules\Password;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -29,8 +31,10 @@ class UserForm
                     ->label('Kata sandi')
                     ->password()
                     ->revealable()
+                    ->rule(Password::min(8)->mixedCase()->numbers())
                     ->required(fn (string $operation): bool => $operation === 'create')
-                    ->dehydrated(fn (?string $state): bool => filled($state)),
+                    ->dehydrated(fn (?string $state): bool => filled($state))
+                    ->helperText('Minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka.'),
                 Select::make('role')
                     ->label('Peran')
                     ->options(UserRole::options())
@@ -73,11 +77,29 @@ class UserForm
                     ->unique(ignoreRecord: true),
                 TextInput::make('phone')
                     ->label('Telepon')
-                    ->tel(),
+                    ->tel()
+                    ->helperText('Digunakan untuk notifikasi WhatsApp urgensi (trip baru, absen hari ini).'),
                 Toggle::make('is_active')
                     ->label('Aktif')
                     ->default(true)
                     ->required(),
+                Section::make('Preferensi Notifikasi')
+                    ->description('WA hanya untuk notifikasi urgent: Trip Baru, Absen Hari Ini, Absensi Perlu Pemeriksaan')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('notification_preferences.inapp')
+                            ->label('In-app (database)')
+                            ->default(true),
+                        Toggle::make('notification_preferences.webpush')
+                            ->label('Web Push')
+                            ->default(true),
+                        Toggle::make('notification_preferences.email')
+                            ->label('Email')
+                            ->default(true),
+                        Toggle::make('notification_preferences.wa')
+                            ->label('WhatsApp')
+                            ->default(false),
+                    ]),
             ]);
     }
 }

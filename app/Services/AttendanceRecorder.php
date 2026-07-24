@@ -4,14 +4,19 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
+use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\User;
+use App\Notifications\AttendanceNeedsReview;
 use App\Support\GeoDistance;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
+use JsonException;
+use Throwable;
 
 class AttendanceRecorder
 {
@@ -33,7 +38,10 @@ class AttendanceRecorder
                 return $existing;
             }
 
-            if ($existing = $trip->attendance()->first()) {
+            $capturedAt = CarbonImmutable::parse($data['captured_at']);
+            $attendanceDate = $capturedAt->toDateString();
+
+            if ($existing = $trip->attendances()->whereDate('attendance_date', $attendanceDate)->first()) {
                 return $existing;
             }
 
@@ -41,8 +49,8 @@ class AttendanceRecorder
                 throw new BusinessRuleException('Absensi hanya tersedia untuk dinas aktif.');
             }
 
-            $capturedAt = CarbonImmutable::parse($data['captured_at']);
             $receivedAt = CarbonImmutable::now();
+
             if ($receivedAt->isBefore($trip->starts_at) || $capturedAt->isBefore($trip->starts_at)) {
                 throw new BusinessRuleException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
             }
@@ -55,9 +63,9 @@ class AttendanceRecorder
             );
             $clockMismatch = abs($capturedAt->getTimestamp() - $receivedAt->getTimestamp())
                 > config('hr.attendance_clock_tolerance_minutes') * 60;
-            $suspected = (bool) ($data['mock_location_suspected'] ?? false)
-                || (isset($data['accuracy_meters']) && (int) $data['accuracy_meters'] > 100)
-                || $clockMismatch;
+            $mockLocation = (bool) ($data['mock_location_suspected'] ?? false);
+            $poorAccuracy = isset($data['accuracy_meters']) && (int) $data['accuracy_meters'] > 100;
+            $suspected = $mockLocation || $poorAccuracy || $clockMismatch;
 
             $status = match (true) {
                 $suspected => AttendanceStatus::NeedsReview,
@@ -66,21 +74,103 @@ class AttendanceRecorder
                 default => AttendanceStatus::Valid,
             };
 
+            $reasons = array_filter([
+                $mockLocation ? 'Perangkat mendeteksi lokasi palsu.' : null,
+                $poorAccuracy ? 'Akurasi GPS lebih dari 100 meter.' : null,
+                $clockMismatch ? 'Waktu perangkat melewati batas toleransi.' : null,
+                $distance > $trip->radius_meters ? 'Lokasi berada di luar radius dinas.' : null,
+                $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,
+            ]);
+
+            $faceDescriptor = $this->validatedFaceDescriptor($data['face_descriptor'] ?? null);
+
             $attendance = Attendance::create([
                 ...$data,
                 'duty_trip_id' => $trip->id,
                 'employee_id' => $employee->id,
+                'attendance_date' => $attendanceDate,
                 'distance_meters' => $distance,
                 'photo_path' => $photoPath,
+                'face_descriptor' => $faceDescriptor,
                 'status' => $status,
+                'review_reason' => $reasons ? implode(' ', $reasons) : null,
                 'mock_location_suspected' => $suspected,
                 'synced_at' => $receivedAt,
             ]);
 
-            $trip->update(['status' => DutyTripStatus::Completed]);
-            ActivityLog::record('duty_trip.completed', $trip, $employee, ['attendance_id' => $attendance->id]);
+            if ($faceDescriptor !== null) {
+                $previous = Attendance::where('duty_trip_id', $trip->id)
+                    ->where('employee_id', $employee->id)
+                    ->whereNotNull('face_descriptor')
+                    ->where('id', '!=', $attendance->id)
+                    ->latest('captured_at')
+                    ->first();
+
+                if ($previous && $previous->face_descriptor) {
+                    $prev = json_decode($previous->face_descriptor, true);
+                    $curr = json_decode($faceDescriptor, true);
+
+                    if (is_array($prev) && is_array($curr) && count($prev) === count($curr)) {
+                        $sum = 0;
+                        foreach ($prev as $i => $v) {
+                            $sum += ($v - $curr[$i]) ** 2;
+                        }
+                        $distance = sqrt($sum);
+
+                        if ($distance > 0.6) {
+                            $attendance->update([
+                                'status' => $attendance->status === AttendanceStatus::Valid
+                                    ? AttendanceStatus::NeedsReview
+                                    : $attendance->status,
+                                'review_reason' => trim($attendance->review_reason.' Data pengenalan wajah tidak cocok dengan absensi sebelumnya.'),
+                            ]);
+                            $attendance = $attendance->fresh();
+                        }
+                    }
+                }
+            }
+
+            ActivityLog::record('attendance.created', $attendance, $employee);
+
+            if ($attendance->status === AttendanceStatus::NeedsReview) {
+                try {
+                    $hrUsers = User::where('role', UserRole::Hr)->where('is_active', true)->get();
+                    Notification::send($hrUsers, new AttendanceNeedsReview($attendance));
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            }
 
             return $attendance;
         }, 3);
+    }
+
+    private function validatedFaceDescriptor(mixed $descriptor): ?string
+    {
+        if ($descriptor === null || $descriptor === '') {
+            return null;
+        }
+
+        if (! is_string($descriptor) || strlen($descriptor) > 8192) {
+            throw new BusinessRuleException('Data pengenalan wajah tidak valid.');
+        }
+
+        try {
+            $values = json_decode($descriptor, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new BusinessRuleException('Data pengenalan wajah tidak valid.');
+        }
+
+        if (! is_array($values) || count($values) !== 128) {
+            throw new BusinessRuleException('Data pengenalan wajah tidak valid.');
+        }
+
+        foreach ($values as $value) {
+            if (! is_numeric($value) || ! is_finite((float) $value)) {
+                throw new BusinessRuleException('Data pengenalan wajah tidak valid.');
+            }
+        }
+
+        return json_encode(array_map('floatval', $values), JSON_THROW_ON_ERROR);
     }
 }

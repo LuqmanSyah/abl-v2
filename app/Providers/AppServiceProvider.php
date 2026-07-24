@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Channels\WhatsAppChannel;
 use App\Exceptions\BusinessRuleException;
 use Closure;
 use Filament\Actions\Action;
@@ -13,7 +14,9 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Alignment;
 use Filament\Support\Enums\Width;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\ServiceProvider;
+use NotificationChannels\WebPush\WebPushChannel;
 use Throwable;
 
 use function Livewire\on;
@@ -33,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->app->make(ChannelManager::class)->extend('webpush', fn ($app): WebPushChannel => $app->make(WebPushChannel::class));
+        $this->app->make(ChannelManager::class)->extend('wa', fn ($app): WhatsAppChannel => $app->make(WhatsAppChannel::class));
+
         on('exception', function (mixed $component, Throwable $exception, Closure $stopPropagation): void {
             if (! $component instanceof Page || ! $exception instanceof BusinessRuleException) {
                 return;

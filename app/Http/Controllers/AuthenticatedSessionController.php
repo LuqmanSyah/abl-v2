@@ -12,19 +12,7 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(Request $request): View|RedirectResponse
     {
-        $user = $request->user();
-
-        if ($user && ! $user->is_active) {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors([
-                'email' => 'Akun Anda sudah dinonaktifkan. Hubungi Admin SDM bila ini tidak sesuai.',
-            ]);
-        }
-
-        return $user ? $this->redirectToPanel($user) : view('auth.login');
+        return $request->user() ? $this->redirectToPanel($request->user()) : view('auth.login');
     }
 
     public function store(Request $request): RedirectResponse

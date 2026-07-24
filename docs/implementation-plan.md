@@ -83,12 +83,14 @@ Hasil:
 - Penilaian 360: atasan, bawahan, dan rekan kerja.
 - Kalkulasi komponen KPI, kedisiplinan, penilaian atasan, dan 360.
 - Formula per periode: bobot wajib berjumlah 100%; capaian KPI dibatasi 120%; estimasi bonus adalah dasar bonus dikali skor merit.
+- Hasil merit dihitung per bulan melalui `ReviewPeriod`; `calculated_at` menyimpan waktu update terakhir.
 - Verifikasi berurutan oleh atasan dan HR.
 - Skor, rincian komponen, serta estimasi bonus tampil setelah verifikasi.
 
 Verifikasi:
 
 - Total bobot KPI valid dan perhitungan punya test angka tetap.
+- Hitung ulang sebelum verifikasi memperbarui `calculated_at`; hitung ulang setelah verifikasi ditolak.
 - Pengguna tidak dapat menilai diri sendiri atau mengirim dua kali pada periode sama.
 - Skor belum terlihat sebelum dua tahap verifikasi.
 
@@ -134,6 +136,26 @@ Verifikasi:
 - Backup MySQL diuji melalui restore staging; prosedur dan checklist deployment tersedia di `docs/operations.md`.
 
 BRD: NFR-02, NFR-04, NFR-05, NFR-09, data utama, dan kriteria keberhasilan.
+
+## Fase 5 — Merit Bulanan dan Status Update
+
+Status: selesai untuk implementasi.
+
+Hasil:
+
+- Merit dihitung per bulan berbasis `ReviewPeriod`.
+- `merit_results.calculated_at` mencatat waktu hitung/update merit terakhir.
+- HR dapat hitung ulang draft merit selama belum diverifikasi Atasan.
+- Hitung ulang setelah verifikasi Atasan, verifikasi HR, atau publish ditolak agar hasil tidak berubah diam-diam.
+- UI hasil merit menampilkan tanggal update, verifikasi Atasan, verifikasi HR, dan publikasi.
+
+Verifikasi:
+
+- Test hitung pertama mengisi `calculated_at`.
+- Test hitung ulang sebelum verifikasi memperbarui score dan timestamp.
+- Test hitung ulang setelah verifikasi ditolak dan verifikasi tetap utuh.
+
+Detail sprint: `docs/sprint-merit-bulanan.md`.
 
 ## Urutan Migrasi Data
 

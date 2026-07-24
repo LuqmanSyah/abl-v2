@@ -13,7 +13,7 @@ class MeritResultInfolist
         return $schema
             ->components([
                 Section::make('Ringkasan merit')
-                    ->description('Hasil akhir perhitungan merit pegawai.')
+                    ->description('Skor akhir dan estimasi bonus pegawai pada periode ini.')
                     ->icon('heroicon-o-trophy')
                     ->columns(2)
                     ->schema([
@@ -22,62 +22,76 @@ class MeritResultInfolist
                         TextEntry::make('employee.name')
                             ->label('Pegawai'),
                         TextEntry::make('total_score')
-                            ->label('Skor merit')
-                            ->numeric(),
+                            ->label('Total skor merit')
+                            ->numeric()
+                            ->color(fn ($state): string => match (true) {
+                                $state >= 80 => 'success',
+                                $state >= 60 => 'warning',
+                                default => 'danger',
+                            }),
                         TextEntry::make('estimated_bonus')
                             ->label('Estimasi bonus')
-                            ->money('IDR'),
+                            ->money('IDR')
+                            ->numeric(),
                     ])
                     ->columnSpanFull(),
-                Section::make('Komponen penilaian')
-                    ->description('Nilai pembentuk skor merit sebelum bobot periode diterapkan.')
-                    ->icon('heroicon-o-chart-pie')
-                    ->columns(2)
+                Section::make('Komponen Nilai')
+                    ->description('Rincian nilai berdasarkan KPI, kedisiplinan, penilaian atasan, dan umpan balik kinerja.')
+                    ->icon('heroicon-o-chart-bar')
+                    ->columns(4)
                     ->schema([
                         TextEntry::make('kpi_score')
                             ->label('Nilai KPI')
-                            ->numeric(),
+                            ->numeric()
+                            ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->kpi_weight ?? 0).'%'),
                         TextEntry::make('discipline_score')
                             ->label('Nilai kedisiplinan')
-                            ->numeric(),
+                            ->numeric()
+                            ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->discipline_weight ?? 0).'%'),
                         TextEntry::make('manager_score')
-                            ->label('Nilai Atasan')
-                            ->numeric(),
+                            ->label('Nilai atasan')
+                            ->numeric()
+                            ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->manager_weight ?? 0).'%'),
                         TextEntry::make('review_360_score')
-                            ->label('Nilai umpan balik kinerja')
-                            ->numeric(),
+                            ->label('Nilai umpan balik')
+                            ->numeric()
+                            ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->review_360_weight ?? 0).'%'),
                     ])
                     ->columnSpanFull(),
                 Section::make('Status verifikasi')
-                    ->description('Tahapan pemeriksaan sebelum hasil dapat dilihat Pegawai.')
+                    ->description('Riwayat persetujuan berjenjang dari Atasan dan HR.')
                     ->icon('heroicon-o-check-badge')
-                    ->columns(2)
+                    ->columns(3)
                     ->schema([
                         TextEntry::make('managerVerifier.name')
                             ->label('Verifikator Atasan')
                             ->placeholder('-'),
                         TextEntry::make('manager_verified_at')
-                            ->label('Diverifikasi Atasan')
+                            ->label('Waktu verifikasi Atasan')
                             ->dateTime()
                             ->placeholder('-'),
                         TextEntry::make('hrVerifier.name')
                             ->label('Verifikator HR')
                             ->placeholder('-'),
                         TextEntry::make('hr_verified_at')
-                            ->label('Diverifikasi HR')
+                            ->label('Waktu verifikasi HR')
                             ->dateTime()
                             ->placeholder('-'),
                         TextEntry::make('published_at')
-                            ->label('Dipublikasikan')
+                            ->label('Waktu publikasi')
                             ->dateTime()
                             ->placeholder('-')
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
-                Section::make('Riwayat data')
+                Section::make('Riwayat')
                     ->icon('heroicon-o-clock')
                     ->columns(2)
                     ->schema([
+                        TextEntry::make('calculated_at')
+                            ->label('Terakhir di-update')
+                            ->dateTime()
+                            ->placeholder('-'),
                         TextEntry::make('created_at')
                             ->label('Dibuat pada')
                             ->dateTime()

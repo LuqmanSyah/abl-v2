@@ -6,6 +6,8 @@ use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\MeritPublished;
+use App\Notifications\MeritReadyForVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +21,7 @@ class MeritResult extends Model
     protected $fillable = [
         'review_period_id', 'employee_id', 'kpi_score', 'discipline_score', 'manager_score',
         'review_360_score', 'total_score', 'estimated_bonus', 'manager_verified_by',
-        'manager_verified_at', 'hr_verified_by', 'hr_verified_at', 'published_at',
+        'calculated_at', 'manager_verified_at', 'hr_verified_by', 'hr_verified_at', 'published_at',
     ];
 
     protected function casts(): array
@@ -27,7 +29,8 @@ class MeritResult extends Model
         return [
             'kpi_score' => 'decimal:2', 'discipline_score' => 'decimal:2', 'manager_score' => 'decimal:2',
             'review_360_score' => 'decimal:2', 'total_score' => 'decimal:2', 'estimated_bonus' => 'decimal:2',
-            'manager_verified_at' => 'datetime', 'hr_verified_at' => 'datetime', 'published_at' => 'datetime',
+            'calculated_at' => 'datetime', 'manager_verified_at' => 'datetime',
+            'hr_verified_at' => 'datetime', 'published_at' => 'datetime',
         ];
     }
 
@@ -81,7 +84,7 @@ class MeritResult extends Model
             ])
             ->get();
 
-        $dutyTrips = DutyTrip::with('attendance')
+        $dutyTrips = DutyTrip::with('attendances')
             ->where('employee_id', $this->employee_id)
             ->whereBetween('starts_at', [$period->starts_at->copy()->startOfDay(), $period->ends_at->copy()->endOfDay()])
             ->where(function (Builder $query): void {
@@ -135,7 +138,7 @@ class MeritResult extends Model
             'discipline' => $dutyTrips->map(fn (DutyTrip $trip): array => [
                 'destination' => $trip->destination,
                 'starts_at' => $trip->starts_at,
-                'attendance_status' => $trip->attendance?->status?->label() ?? 'Tidak hadir',
+                'attendance_status' => $trip->attendances()->latest()->first()?->status?->label() ?? 'Tidak hadir',
             ])->values()->all(),
         ];
     }
@@ -167,6 +170,7 @@ class MeritResult extends Model
 
             $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);
             ActivityLog::record('merit.hr_published', $result, $hr);
+            $result->employee->notify(new MeritPublished($result));
             $this->setRawAttributes($result->getAttributes(), true);
         }, 3);
     }

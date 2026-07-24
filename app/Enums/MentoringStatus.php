@@ -18,4 +18,14 @@ enum MentoringStatus: string
             self::Completed => 'Selesai',
         };
     }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::Pending => 'warning',
+            self::Approved => 'success',
+            self::Rejected => 'danger',
+            self::Completed => 'info',
+        };
+    }
 }

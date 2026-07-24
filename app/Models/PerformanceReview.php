@@ -22,6 +22,10 @@ class PerformanceReview extends Model
     protected static function booted(): void
     {
         static::creating(function (self $review): void {
+            if ($review->score < 1 || $review->score > 5) {
+                throw new BusinessRuleException('Nilai penilaian harus antara 1 sampai 5.');
+            }
+
             $reviewer = User::findOrFail($review->reviewer_id);
             $reviewee = User::findOrFail($review->reviewee_id);
             $valid = match ($review->type) {

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
+    <link rel="icon" href="{{ asset('icons/icon-192.svg') }}" type="image/svg+xml">
     <title>Masuk · {{ config('app.name') }}</title>
     <style>
         :root {
@@ -85,7 +86,8 @@
         }
 
         input[type="email"],
-        input[type="password"] {
+        input[type="password"],
+        input[type="text"] {
             width: 100%;
             min-height: 50px;
             padding: 12px 14px;

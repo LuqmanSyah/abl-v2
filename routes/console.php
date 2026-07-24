@@ -55,7 +55,15 @@ Artisan::command('backup:database {--keep=14}', function () {
 })->purpose('Buat backup konsisten database SQLite');
 
 if (config('database.default') === 'sqlite') {
-    Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00');
+    Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00')->withoutOverlapping();
+} else {
+    Schedule::command('db:backup --keep='.config('hr.backup_keep', 14))->dailyAt('02:00')->withoutOverlapping();
 }
 
-Schedule::command('attendance:purge-photos --days='.config('hr.photo_retention_days'))->dailyAt('03:00');
+Schedule::command('attendance:purge-photos --days='.config('hr.photo_retention_days'))->dailyAt('03:00')->withoutOverlapping();
+
+Schedule::command('merit:calculate')->monthlyOn(1, '00:05')->withoutOverlapping();
+Schedule::command('merit:remind-kpi')->dailyAt('09:00')->withoutOverlapping();
+Schedule::command('attendance:remind')->twiceDaily(8, 12)->withoutOverlapping();
+Schedule::command('merit:send-report')->monthlyOn(1, '01:00')->withoutOverlapping();
+Schedule::command('approval:escalate')->dailyAt('06:00')->withoutOverlapping();

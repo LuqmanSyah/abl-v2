@@ -13,14 +13,24 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasPushSubscriptions;
 
     protected static function booted(): void
     {
+        static::creating(function (self $user): void {
+            $user->notification_preferences ??= [
+                'inapp' => true,
+                'webpush' => true,
+                'email' => true,
+                'wa' => false,
+            ];
+        });
+
         static::saving(function (self $user): void {
             if ($user->position_id && Position::whereKey($user->position_id)->where('unit_id', $user->unit_id)->doesntExist()) {
                 throw new BusinessRuleException('Jabatan harus berasal dari unit kerja yang dipilih.');
@@ -56,8 +66,11 @@ class User extends Authenticatable implements FilamentUser
         'unit_id',
         'position_id',
         'manager_id',
+        'delegate_id',
+        'notification_preferences',
         'employee_number',
         'phone',
+        'avatar_url',
         'is_active',
     ];
 
@@ -83,6 +96,7 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'notification_preferences' => 'array',
         ];
     }
 
@@ -111,9 +125,19 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(self::class, 'manager_id');
     }
 
+    public function delegate(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'delegate_id');
+    }
+
     public function subordinates(): HasMany
     {
         return $this->hasMany(self::class, 'manager_id');
+    }
+
+    public function delegatedFrom(): HasMany
+    {
+        return $this->hasMany(self::class, 'delegate_id');
     }
 
     public function dutyTrips(): HasMany

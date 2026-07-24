@@ -37,7 +37,7 @@
 | 3 | KPI & Merit System (periode, KPI, 360, kalkulasi) | ✅ Selesai | FR-MRT-01–08 | Fase 2 |
 | 4 | Pembinaan Karir (kompetensi, gap, training, mentoring) | ✅ Selesai | FR-KAR-01–10 | Fase 3 |
 | 5 | Laporan & Operasional (dashboard, CSV, audit, backup) | ✅ Selesai | NFR-02,04,05,09 | Fase 4 |
-| 6 | **Revisi: Rekomendasi Training oleh Atasan** | 🔄 Direncanakan | — | Fase 5 |
+| 6 | **Revisi: Rekomendasi Training oleh Atasan** | ✅ Selesai | — | Fase 5 |
 
 ---
 
@@ -130,13 +130,14 @@ Atasan buat DutyTrip (pilih bawahan + lokasi via map)
 ### 5.2. Merit System
 
 ```
-HR buat ReviewPeriod + KpiIndicator
+HR buat ReviewPeriod bulanan + KpiIndicator
   → Atasan set EmployeeKpi (target)
     → Pegawai jalankan
       → Atasan update achievement
         → Review 360 (atasan→pegawai, pegawai→atasan, peer)
-          → HR jalankan MeritCalculator::calculate()
+          → HR jalankan MeritCalculator::calculate() sebagai draft bulanan
             → kpi_score + discipline_score + manager_score + 360_score = total_score
+              → Jika belum diverifikasi, HR dapat hitung ulang dan `calculated_at` berubah
               → Atasan verifyByManager()
                 → HR verifyByHr() + publish
                   → Pegawai lihat hasil merit + estimasi bonus
@@ -182,11 +183,13 @@ total_score = (
 | Komponen | Sumber data | Range | Default bobot |
 |----------|-------------|-------|---------------|
 | KPI Score | `employee_kpis.achievement/target × weight`, cap 120% | 0-120 | 40% |
-| Discipline | `valid_attendance / total_duty_trips × 100` | 0-100 | 20% |
+| Discipline | `valid_days / total_calendar_days × 100`, cap 100 | 0-100 | 20% |
 | Manager | `avg(performance_reviews.type=manager_to_employee) / 5 × 100` | 0-100 | 20% |
 | 360 | `avg(performance_reviews.type=employee_to_manager OR peer) / 5 × 100` | 0-100 | 20% |
 
 **Bobot wajib total 100%** (dijaga oleh model `ReviewPeriod::booted()`).
+
+**Update bulanan:** `MeritResult.calculated_at` mencatat waktu hitung/update terakhir. Hitung ulang hanya boleh sebelum verifikasi Atasan.
 
 **Verifikasi 2-tahap:** Atasan verify → HR verify + publish → employee bisa lihat.
 
@@ -206,7 +209,7 @@ total_score = (
 - DutyTrip employee harus bawahan langsung manager
 - Attendance hanya untuk trip Approved, dalam radius, sesuai jadwal
 - KPI target > 0, achievement >= 0
-- Merit published → semua data terkunci
+- Merit yang sudah diverifikasi/published → hasil tidak dapat dihitung ulang; data published terkunci
 - CareerGoal target position level > current position level
 - Mentoring requested_at tidak boleh lampau
 - Score review 1-5 (tanpa validasi model — bug B3)
@@ -223,10 +226,10 @@ total_score = (
 
 | ID | Bug | Severity | Area |
 |----|-----|----------|------|
-| B1 | `canAttend()` izinkan Completed, `record()` tolak | **Critical** | Attendance |
+| B1 | `canAttend()` izinkan Completed, `record()` tolak (**Fixed**) | **Critical** | Attendance |
 | B2 | Mentoring approve/reject tanpa locking | **Critical** | Mentoring |
 | B3 | Score 0-255 tanpa validasi max 5 | **High** | Performance Review |
-| B4 | Trip selalu Completed meski absensi flagged | **High** | Attendance |
+| B4 | Trip selalu Completed meski absensi flagged (**Fixed**) | **High** | Attendance |
 | B10 | `guardManager()` baca memory, bukan DB fresh | **High** | Mentoring |
 | B5 | `reviewScore()` falsy 0.0 vs null | **Medium** | Merit |
 | B6 | `captured_at` masa depan valid | **Medium** | Attendance |
@@ -250,14 +253,14 @@ Detail: `docs/testing_list.md`.
 
 **Framework:** PHPUnit 11, SQLite in-memory, `RefreshDatabase` trait.
 
-**Coverage saat ini:** 45 tests, 238 assertions ✅
+**Coverage saat ini:** 58 tests, 486 assertions ✅
 
 | Area | File | Tests |
 |------|------|-------|
-| Auth & Panel Access | `FilamentAccessTest.php` | 10 |
-| Duty Trip & Attendance | `DutyAttendanceTest.php` | 10 |
-| Merit System | `MeritSystemTest.php` | 7 |
-| Career Development | `CareerDevelopmentTest.php` | 7 |
+| Auth & Panel Access | `FilamentAccessTest.php` | 15 |
+| Duty Trip & Attendance | `DutyAttendanceTest.php` | 13 |
+| Merit System | `MeritSystemTest.php` | 11 |
+| Career Development | `CareerDevelopmentTest.php` | 9 |
 | HR Report & Operations | `OperationsReportTest.php` | 3 |
 | Database Seeder | `DatabaseSeederTest.php` | 1 |
 | Unit — SqliteBackup | `SqliteBackupTest.php` | 1 |
@@ -345,10 +348,11 @@ tests/                    — 10 file (1 base, 7 feature, 2 unit)
 ## 13. Tujuan Pengembangan ke Depan
 
 ### 13.1. Jangka Pendek
-- [ ] Fix critical bugs: B1 (status conflict), B2 (mentoring locking)
-- [ ] Implementasi revisi: rekomendasi training oleh atasan per `docs/revisi.md`
+- [x] Fix B1: sinkronkan status attendance ke Approved
+- [ ] Fix B2: mentoring locking
+- [x] Implementasi revisi: rekomendasi training oleh atasan per `docs/revisi.md`
 - [ ] Fix B3: validasi max score 5 di PerformanceReview
-- [ ] Fix B4: trip jangan Completed jika absensi flagged
+- [x] Fix B4: trip jangan Completed jika absensi flagged
 
 ### 13.2. Jangka Menengah
 - [ ] Tampilan breakdown merit di modal rekomendasi training (`meritBreakdownForManager()`)

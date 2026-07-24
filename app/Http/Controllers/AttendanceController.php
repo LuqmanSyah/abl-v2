@@ -22,7 +22,16 @@ class AttendanceController extends Controller
     {
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
-        return view('attendance.capture', ['trip' => $dutyTrip->load('employee', 'attendance')]);
+        $previousDescriptor = Attendance::where('duty_trip_id', $dutyTrip->id)
+            ->where('employee_id', $request->user()->id)
+            ->whereNotNull('face_descriptor')
+            ->latest('captured_at')
+            ->value('face_descriptor');
+
+        return view('attendance.capture', [
+            'trip' => $dutyTrip->load('employee', 'attendances'),
+            'previousDescriptor' => $previousDescriptor,
+        ]);
     }
 
     public function store(Request $request, DutyTrip $dutyTrip, AttendanceRecorder $recorder): JsonResponse
@@ -36,6 +45,7 @@ class AttendanceController extends Controller
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['nullable', 'integer', 'min:0'],
             'mock_location_suspected' => ['nullable', 'boolean'],
+            'face_descriptor' => ['nullable', 'string', 'json', 'max:8192'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
 
@@ -43,10 +53,6 @@ class AttendanceController extends Controller
             abort_unless($existing->employee_id === $request->user()->id && $existing->duty_trip_id === $dutyTrip->id, 409);
 
             return response()->json(['message' => 'Absensi sudah tersinkronisasi.', 'attendance' => $existing]);
-        }
-
-        if ($existing = $dutyTrip->attendance()->first()) {
-            return response()->json(['message' => 'Absensi sudah tercatat.', 'attendance' => $existing]);
         }
 
         $photoPath = $request->file('photo')->store('attendance', 'local');
@@ -95,6 +101,6 @@ class AttendanceController extends Controller
         return $request->user()?->role === UserRole::Employee
             && $request->user()->is_active
             && $trip->employee_id === $request->user()->id
-            && in_array($trip->status, [DutyTripStatus::Approved, DutyTripStatus::Completed], true);
+            && $trip->status === DutyTripStatus::Approved;
     }
 }

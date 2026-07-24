@@ -7,14 +7,21 @@ use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
 use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
+use App\Filament\Widgets\EmployeeActiveTripsTable;
+use App\Filament\Widgets\HrActiveTripsTable;
+use App\Filament\Widgets\HrAttendanceDropAlert;
 use App\Models\DutyTrip;
 use App\Models\User;
+use App\Notifications\AttendanceNeedsReview;
+use App\Notifications\AttendanceReminder;
 use App\Services\AttendanceRecorder;
 use App\Support\GeoDistance;
 use DomainException;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -75,11 +82,68 @@ class DutyAttendanceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::Valid, $first->status);
         $this->assertTrue($first->is($second));
-        $this->assertSame(DutyTripStatus::Completed, $trip->fresh()->status);
+        $this->assertSame(DutyTripStatus::Approved, $trip->fresh()->status);
         $this->assertDatabaseCount('attendances', 1);
 
         $this->expectException(DomainException::class);
         $trip->update(['latitude' => -7.0]);
+    }
+
+    public function test_multi_day_trip_accepts_one_attendance_per_captured_day(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $trip->update([
+            'starts_at' => now()->subDay()->startOfHour(),
+            'ends_at' => now()->addDay()->endOfHour(),
+        ]);
+        $recorder = app(AttendanceRecorder::class);
+
+        $first = $recorder->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862301',
+            'captured_at' => now()->subDay()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/day-one.jpg');
+        $second = $recorder->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862302',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/day-two.jpg');
+
+        $this->assertFalse($first->is($second));
+        $this->assertDatabaseCount('attendances', 2);
+    }
+
+    public function test_offline_duplicate_uses_captured_date(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $trip->update([
+            'starts_at' => now()->subDays(2),
+            'ends_at' => now()->addDay(),
+        ]);
+        $payload = [
+            'captured_at' => now()->subDay()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ];
+        $recorder = app(AttendanceRecorder::class);
+
+        $first = $recorder->record($trip, $employee, [
+            ...$payload,
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862303',
+        ], 'attendance/offline-one.jpg');
+        $duplicate = $recorder->record($trip, $employee, [
+            ...$payload,
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862304',
+        ], 'attendance/offline-two.jpg');
+
+        $this->assertTrue($first->is($duplicate));
+        $this->assertSame(now()->subDay()->toDateString(), $first->attendance_date->toDateString());
+        $this->assertDatabaseCount('attendances', 1);
     }
 
     public function test_outside_radius_and_poor_accuracy_are_flagged(): void
@@ -165,11 +229,45 @@ class DutyAttendanceTest extends TestCase
         $attendance->verifyByHr($hr);
 
         $this->assertSame(AttendanceStatus::Valid, $attendance->fresh()->status);
+        $this->assertSame('Akurasi GPS lebih dari 100 meter.', $attendance->fresh()->review_reason);
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'attendance.verified',
             'subject_id' => $attendance->id,
             'user_id' => $hr->id,
         ]);
+    }
+
+    public function test_face_descriptor_must_contain_128_finite_numbers(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('Data pengenalan wajah tidak valid.');
+
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862305',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+            'face_descriptor' => '[1,2,3]',
+        ], 'attendance/invalid-face.jpg');
+    }
+
+    public function test_small_future_clock_difference_is_tolerated(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+
+        $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862306',
+            'captured_at' => now()->addMinutes(5)->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/clock-tolerance.jpg');
+
+        $this->assertSame(AttendanceStatus::Valid, $attendance->status);
+        $this->assertNull($attendance->review_reason);
     }
 
     public function test_verify_attendance_button_is_only_visible_to_hr(): void
@@ -197,6 +295,67 @@ class DutyAttendanceTest extends TestCase
             ->assertActionHidden(TestAction::make('verify')->table($attendance));
         Livewire::test(ListDutyTrips::class)
             ->assertActionHidden(TestAction::make('verify_attendance')->table($trip));
+    }
+
+    public function test_attendance_needing_review_notifies_only_active_hr(): void
+    {
+        Notification::fake();
+        [$employee, $manager, $trip] = $this->trip();
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $inactiveHr = User::factory()->create(['role' => UserRole::Hr, 'is_active' => false]);
+
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862307',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 150,
+        ], 'attendance/review-notification.jpg');
+
+        Notification::assertSentTo($hr, AttendanceNeedsReview::class);
+        Notification::assertNotSentTo($inactiveHr, AttendanceNeedsReview::class);
+        Notification::assertNotSentTo($manager, AttendanceNeedsReview::class);
+    }
+
+    public function test_attendance_reminder_database_title_has_no_typo(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+
+        $this->assertSame('Absensi Dinas', (new AttendanceReminder($trip))->toDatabase($employee)['title']);
+    }
+
+    public function test_hr_active_trip_widget_handles_outside_radius_status(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862308',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1800,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/outside-widget.jpg');
+
+        filament()->setCurrentPanel('hr');
+        $this->actingAs($hr);
+
+        Livewire::test(HrActiveTripsTable::class)
+            ->assertSuccessful()
+            ->assertSee('Di Luar Radius');
+    }
+
+    public function test_hr_attendance_drop_alert_uses_constant_query_count(): void
+    {
+        $this->trip();
+        $this->trip();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $method = new \ReflectionMethod(HrAttendanceDropAlert::class, 'getStats');
+        $method->invoke(new HrAttendanceDropAlert);
+
+        $this->assertCount(3, DB::getQueryLog());
+        DB::disableQueryLog();
     }
 
     public function test_attendance_before_start_is_rejected_without_leaking_photo(): void
@@ -275,7 +434,20 @@ class DutyAttendanceTest extends TestCase
             ->assertSee('fetch(data.endpoint', false)
             ->assertSee("indexedDB.open('sdm-attendance', 2)", false)
             ->assertSee('error.retryable === false', false)
-            ->assertSee('Penyimpanan luring tidak tersedia', false);
+            ->assertSee('Penyimpanan luring tidak tersedia', false)
+            ->assertDontSee('data.mock_location_suspected = 1', false);
+    }
+
+    public function test_employee_active_trip_widget_generates_attendance_url(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+
+        filament()->setCurrentPanel('employee');
+        $this->actingAs($employee);
+
+        Livewire::test(EmployeeActiveTripsTable::class)
+            ->assertSuccessful()
+            ->assertSee(route('attendance.capture', $trip), false);
     }
 
     /** @return array{User, User, DutyTrip} */

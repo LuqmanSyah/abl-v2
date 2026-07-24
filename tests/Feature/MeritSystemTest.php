@@ -60,6 +60,7 @@ class MeritSystemTest extends TestCase
         $this->assertEquals(60, $result->review_360_score);
         $this->assertEquals(70, $result->total_score);
         $this->assertEquals(700_000, $result->estimated_bonus);
+        $this->assertNotNull($result->calculated_at);
         $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
 
         $result->verifyByManager($manager);
@@ -74,10 +75,41 @@ class MeritSystemTest extends TestCase
             app(MeritCalculator::class)->calculate($period, $employee);
             $this->fail('Hasil merit yang sudah dipublikasikan tidak boleh dihitung ulang.');
         } catch (DomainException $exception) {
-            $this->assertSame('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.', $exception->getMessage());
+            $this->assertSame('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.', $exception->getMessage());
         }
         $this->assertTrue($result->fresh()->published_at->equalTo($publishedAt));
         $this->assertTrue($employee->meritResults()->visibleTo($employee)->exists());
+    }
+
+    public function test_monthly_merit_can_be_recalculated_before_verification_with_update_timestamp(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Juli 2026', 'starts_at' => today()->startOfMonth(), 'ends_at' => today()->endOfMonth(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 1_000_000,
+        ]);
+        $indicator = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 100]);
+        $kpi = EmployeeKpi::create([
+            'review_period_id' => $period->id, 'kpi_indicator_id' => $indicator->id,
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'target' => 100, 'achievement' => 50,
+        ]);
+
+        $first = app(MeritCalculator::class)->calculate($period, $employee);
+        $firstCalculatedAt = $first->calculated_at;
+        $this->assertEquals(50, $first->total_score);
+
+        $this->travel(1)->minute();
+        $kpi->update(['achievement' => 80]);
+        $second = app(MeritCalculator::class)->calculate($period, $employee);
+
+        $this->assertTrue($second->is($first));
+        $this->assertEquals(80, $second->total_score);
+        $this->assertTrue($second->calculated_at->greaterThan($firstCalculatedAt));
+        $this->assertNull($second->manager_verified_at);
+        $this->assertNull($second->published_at);
     }
 
     public function test_discipline_score_counts_duty_trips_without_attendance(): void
@@ -92,7 +124,9 @@ class MeritSystemTest extends TestCase
         $this->attendance($employee, $manager, AttendanceStatus::Valid, '30f26f3e-b3b3-49f6-9bcb-c31ec9862203');
         DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Tanpa absensi',
-            'purpose' => 'Tugas', 'starts_at' => now()->subHours(2), 'ends_at' => now()->subHour(),
+            'purpose' => 'Tugas',
+            'starts_at' => today()->subHours(3),
+            'ends_at' => today()->subHour(),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
             'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Approved,
         ]);
@@ -299,11 +333,10 @@ class MeritSystemTest extends TestCase
         $this->assertDatabaseHas('kpi_indicators', ['id' => $indicator->id, 'weight' => 100]);
     }
 
-    public function test_hr_cannot_publish_a_stale_verification_after_recalculation(): void
+    public function test_verified_merit_cannot_be_recalculated(): void
     {
         $manager = User::factory()->create(['role' => UserRole::Manager]);
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
-        $hr = User::factory()->create(['role' => UserRole::Hr]);
         $period = ReviewPeriod::create([
             'name' => 'Race', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
             'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
@@ -317,19 +350,16 @@ class MeritSystemTest extends TestCase
         ]);
         $result = app(MeritCalculator::class)->calculate($period, $employee);
         $result->verifyByManager($manager);
-        $staleResult = $result->fresh();
-
-        app(MeritCalculator::class)->calculate($period, $employee);
+        $verifiedAt = $result->manager_verified_at;
 
         try {
-            $staleResult->verifyByHr($hr);
-            $this->fail('Verifikasi lama tidak boleh mempublikasikan hasil hitung ulang.');
+            app(MeritCalculator::class)->calculate($period, $employee);
+            $this->fail('Hasil merit yang sudah diverifikasi tidak boleh dihitung ulang.');
         } catch (DomainException $exception) {
-            $this->assertSame('Verifikasi Atasan wajib selesai sebelum verifikasi HR.', $exception->getMessage());
+            $this->assertSame('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.', $exception->getMessage());
         }
 
-        $this->assertNull($result->fresh()->published_at);
-        $this->assertNull($result->fresh()->manager_verified_at);
+        $this->assertTrue($result->fresh()->manager_verified_at->equalTo($verifiedAt));
     }
 
     public function test_review_relationship_is_enforced(): void
@@ -356,14 +386,14 @@ class MeritSystemTest extends TestCase
     {
         $trip = DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Dinas',
-            'purpose' => 'Tugas', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour(),
+            'purpose' => 'Tugas', 'starts_at' => today()->addHours(8), 'ends_at' => today()->addHours(17),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
             'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Completed,
         ]);
 
         return Attendance::create([
             'client_uuid' => $uuid, 'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
-            'captured_at' => now(), 'latitude' => -6.2, 'longitude' => 106.8,
+            'captured_at' => today()->addHours(9), 'latitude' => -6.2, 'longitude' => 106.8,
             'distance_meters' => 0, 'photo_path' => 'attendance/test.jpg', 'status' => $status,
         ]);
     }

@@ -34,8 +34,7 @@ class ViewDutyTrip extends ViewRecord
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Employee
                     && $this->record->employee_id === auth()->id()
                     && $this->record->status === DutyTripStatus::Approved
-                    && now()->greaterThanOrEqualTo($this->record->starts_at)
-                    && ! $this->record->attendance()->exists()),
+                    && ! $this->record->attendances()->whereDate('captured_at', today())->exists()),
             Action::make('verify_attendance')
                 ->label('Verifikasi Absensi')
                 ->icon('heroicon-o-check-badge')
@@ -46,8 +45,9 @@ class ViewDutyTrip extends ViewRecord
                 ->modalSubmitActionLabel('Verifikasi Absensi')
                 ->modalWidth('md')
                 ->visible(fn (): bool => auth()->user()?->role === UserRole::Hr
-                    && $this->record->attendance?->status === AttendanceStatus::NeedsReview)
-                ->action(fn () => $this->record->attendance->verifyByHr(auth()->user()))
+                    && ($latest = $this->record->attendances()->latest()->first())
+                    && $latest->status === AttendanceStatus::NeedsReview)
+                ->action(fn () => $this->record->attendances()->latest()->first()->verifyByHr(auth()->user()))
                 ->successNotificationTitle('Absensi dinas berhasil diverifikasi'),
         ];
     }

@@ -108,8 +108,10 @@ class OperationsReportTest extends TestCase
         }
 
         $response = $this->actingAs($hr)->get(route('hr.reports.index', ['review_period_id' => $period->id]))->assertOk();
-        $row = $response->viewData('rows')->firstWhere('name', $employee->name);
+        $allRows = $response->viewData('rows')->flatMap(fn ($g) => $g['items']);
+        $row = $allRows->firstWhere('name', $employee->name);
 
+        $this->assertNotNull($row);
         $this->assertSame(1, $row['training_count']);
         $this->assertSame(1, $row['completed_training_count']);
         $this->assertSame(1, $row['mentoring_count']);

@@ -215,20 +215,31 @@ kpi_score = (60 + 20) / (60 + 40) × 100 = 80
 Duty trips dalam range periode:
   status = Completed ATAU (Approved DAN ends_at <= now)
 
-discipline_score = valid_attendance_count / total_duty_trip_count × 100
-  Jika total_duty_trip_count = 0 → discipline_score = 100
+Setiap trip dihitung hari kalendernya:
+  calendar_days = starts_at→startOfDay diffInDays ends_at→startOfDay + 1
+
+total_calendar_days = SUM(calendar_days) dari semua trip
+valid_days = COUNT(attendances.status = Valid)
+
+discipline_score = min(valid_days / total_calendar_days × 100, 100)
+  Jika total_calendar_days = 0 → discipline_score = 100
 ```
 
-**Sumber data:** `duty_trips.status`, `attendances.status`
+**Sumber data:** `duty_trips.starts_at`, `duty_trips.ends_at`, `attendances.status`
 
 **Penanggung jawab input:** Otomatis dari sistem absensi
 
 **Contoh:**
 ```
-Total duty trips periode = 2 (1 Completed + hadir, 1 Approved + tidak hadir)
-Valid attendance = 1
+Trip A: 1 hari kalender (start: 01 Aug 06:00, end: 01 Aug 18:00)
+  → 1 attendance Valid
 
-discipline_score = 1 / 2 × 100 = 50
+Trip B: 1 hari kalender (start: 03 Aug 09:00, end: 03 Aug 17:00)
+  → 1 attendance OutsideRadius (tidak dihitung)
+
+Total calendar days = 2, valid days = 1
+
+discipline_score = min(1/2 × 100, 100) = 50
 ```
 
 #### 8.1.3. Manager Score (0-100, bobot default 20%)
@@ -314,7 +325,9 @@ employee_kpis.target         ─┐
 employee_kpis.achievement    ─┤──→ KPI Score (0-120)          
 kpi_indicators.weight        ─┘                                   
                                                                     
-duty_trips.status            ─┐──→ Discipline Score (0-100)    
+duty_trips.starts_at         ─┐
+duty_trips.ends_at           ─┤──→ Discipline Score (0-100)    
+duty_trips.status            ─┤   (per-calendar-day)
 attendances.status           ─┘                                   
                                                             ──→ TOTAL SCORE (tidak di-clamp)
 performance_reviews.score    ─┐──→ Manager Score (0-100)       
@@ -334,7 +347,7 @@ Dari `tests/Feature/MeritSystemTest.php`:
 | Komponen | Hasil | Rumus |
 |----------|-------|-------|
 | kpi_score | 80.00 | (60+20)/(60+40)×100 |
-| discipline_score | 50.00 | 1/2×100 |
+| discipline_score | 50.00 | 1/2×100 (2 trip × 1 hari, 1 valid) |
 | manager_score | 80.00 | 4/5×100 |
 | review_360_score | 60.00 | 3/5×100 |
 | total_score | **70.00** | (80×40+50×20+80×20+60×20)/100 |
@@ -384,9 +397,10 @@ Riwayat KPI mulai tersedia setelah logging `kpi.*` diterapkan. `updated_at` lama
 │  └───────────────────────────────────────────────────┘ │
 │                                                         │
 │  ┌─ DISIPLIN DETAIL ─────────────────────────────────┐ │
-│  │ Tujuan Dinas      │ Tanggal    │ Status Absensi    │ │
-│  │ Kunjungan Kerja 1 │ 01 Aug 26  │ Valid ✅           │ │
-│  │ Kunjungan Kerja 3 │ 03 Aug 26  │ Outside Radius ⚠️ │ │
+│  │ Tujuan Dinas      │ Hari      │ Status Absensi     │ │
+│  │ Kunjungan Kerja 1 │ Day 1     │ Valid ✅            │ │
+│  │ Kunjungan Kerja 1 │ Day 2     │ Tidak ada absensi ✗│ │
+│  │ Kunjungan Kerja 3 │ Day 1     │ Outside Radius ⚠️  │ │
 │  └───────────────────────────────────────────────────┘ │
 │                                                         │
 │  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
@@ -545,3 +559,57 @@ Halaman detail tidak lagi menampilkan seluruh field dalam satu daftar panjang. I
 - **Hasil Merit:** ringkasan merit, komponen nilai, status verifikasi, dan riwayat.
 
 Data teknis dan riwayat dibuat collapsible agar detail utama tetap mudah dipindai. Nama verifikator merit ditampilkan menggantikan ID pengguna.
+
+---
+
+## 13. Revisi Bug & Keamanan (Batch 1)
+
+Diterapkan pada commit `c3ed9ac` + setelahnya. Semua fix telah lolos 58 test.
+
+### 13.1. MeritResult — `with('attendance')` Crash (Critical)
+
+**Lokasi:** `app/Models/MeritResult.php:85`
+**Problem:** Relationship `attendance()` (HasOne) sudah di-rename jadi `attendances()` (HasMany). `breakdownForManager()` masih pakai `with('attendance')` → `RelationNotFoundException` saat manager buka modal rekomendasi training.
+**Fix:** `with('attendance')` → `with('attendances')`
+
+### 13.2. `canAttend()` vs `record()` Conflict (High)
+
+**Lokasi:** `app/Http/Controllers/AttendanceController.php:94`
+**Problem:** `canAttend()` izinkan `[Approved, Completed]` tapi `record()` hanya terima `Approved`. Trip Completed → form tampil, submit selalu gagal.
+**Fix:** Sinkronkan ke `$trip->status === DutyTripStatus::Approved`
+
+### 13.3. Mentoring — Race Condition (High)
+
+**Lokasi:** `app/Models/Mentoring.php:65-113`
+**Problem:** `approve()`, `reject()`, `complete()` tanpa `lockForUpdate()`. Dua request simultan bisa approve mentoring yang sama.
+**Fix:** Implementasi pattern `transition()` dengan `DB::transaction()` + `lockForUpdate()` seperti TrainingRequest.
+
+### 13.4. MC-2 — Discipline = 100 Jika 0 Calendar Days (Medium)
+
+**Lokasi:** `app/Services/MeritCalculator.php:52`
+**Problem:** Pegawai tanpa satupun perintah dinas dalam periode dapat nilai disiplin sempurna 100.
+**Fix:** `$totalDays ? min($validDays / $totalDays * 100, 100) : 0`
+
+### 13.5. B5 — `reviewScore()` Falsy Bug (Low)
+
+**Lokasi:** `app/Services/MeritCalculator.php:85`
+**Problem:** `$average ? (float) $average / 5 * 100 : 0` — jika `avg('score')` = `0.0`, PHP anggap falsy → return 0.
+**Fix:** `$average !== null ? (float) $average / 5 * 100 : 0`
+
+### 13.6. CG-1 — `target_position_id` Null Crash (Low)
+
+**Lokasi:** `app/Services/CareerGapService.php:14`
+**Problem:** Jika `CareerGoal::target_position_id` null, `PositionCompetency::where(...)` query nonsense.
+**Fix:** Guard `if (! $goal->target_position_id || ! $goal->targetPosition) { return collect(); }`
+
+### 13.7. AR-2 — Status Priority Nutup Data Lokasi (Open)
+
+**Lokasi:** `app/Services/AttendanceRecorder.php:62-68`
+**Status:** **Open** — Membutuhkan DB migration (simpan multiple flags). Reorder status di kode menyebabkan OutsideRadius menutup data suspek.
+
+### 13.8. AR-1 — Ends_at Block (Dibatalkan)
+
+**Alasan:** `ends_at` block bertentangan dengan `Late` dan `Backdated` test. Late & NeedsReview classification sudah menangani kasus after-ends_at secara tepat.
+
+
+### 13.9. AR-3 — Masih error saat klik import xlsx (belum diperbaiki)

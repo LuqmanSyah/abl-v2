@@ -51,24 +51,21 @@ class MeritResultsTable
                     ->money('IDR')
                     ->numeric()
                     ->sortable(),
-                TextColumn::make('manager_verified_by')
-                    ->label('ID verifikator Atasan')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('manager_verified_at')
-                    ->label('Diverifikasi Atasan')
+
+                TextColumn::make('calculated_at')
+                    ->label('Di-update')
                     ->dateTime()
                     ->sortable(),
-                TextColumn::make('hr_verified_by')
-                    ->label('ID verifikator HR')
-                    ->numeric()
+                TextColumn::make('manager_verified_at')
+                    ->label('Verifikasi Atasan')
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('hr_verified_at')
-                    ->label('Diverifikasi HR')
+                    ->label('Verifikasi HR')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('published_at')
-                    ->label('Dipublikasikan')
+                    ->label('Publikasi')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('created_at')

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Models\DutyTrip;
@@ -18,7 +17,7 @@ class HrActiveTripsTable extends TableWidget
 
     protected static ?int $sort = 2;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -47,18 +46,15 @@ class HrActiveTripsTable extends TableWidget
                 TextColumn::make('attendance_status')
                     ->label('Status Absensi')
                     ->getStateUsing(function (DutyTrip $record): string {
-                        $latest = $record->attendances()->latest()->first();
+                        $latest = $record->attendances->first();
+
                         return $latest ? $latest->status->label() : 'Belum absen';
                     })
                     ->badge()
                     ->color(function (DutyTrip $record): string {
-                        $latest = $record->attendances()->latest()->first();
-                        if (! $latest) return 'warning';
-                        return match ($latest->status) {
-                            AttendanceStatus::Valid => 'success',
-                            AttendanceStatus::NeedsReview => 'danger',
-                            AttendanceStatus::Invalid => 'danger',
-                        };
+                        $latest = $record->attendances->first();
+
+                        return $latest?->status->color() ?? 'warning';
                     }),
             ])
             ->recordActions([

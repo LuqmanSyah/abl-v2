@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
+use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\Attendance;
@@ -13,6 +14,7 @@ use App\Notifications\AttendanceNeedsReview;
 use App\Support\GeoDistance;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use JsonException;
 use Throwable;
 
@@ -131,13 +133,12 @@ class AttendanceRecorder
             ActivityLog::record('attendance.created', $attendance, $employee);
 
             if ($attendance->status === AttendanceStatus::NeedsReview) {
-                DB::afterCommit(function () use ($trip, $attendance): void {
-                    try {
-                        $trip->manager->notify(new AttendanceNeedsReview($attendance));
-                    } catch (Throwable $exception) {
-                        report($exception);
-                    }
-                });
+                try {
+                    $hrUsers = User::where('role', UserRole::Hr)->where('is_active', true)->get();
+                    Notification::send($hrUsers, new AttendanceNeedsReview($attendance));
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
             }
 
             return $attendance;

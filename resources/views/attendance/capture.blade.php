@@ -412,9 +412,6 @@ form?.addEventListener('submit', async event => {
             if (faceResult.descriptor) {
                 data.face_descriptor = JSON.stringify(faceResult.descriptor);
             }
-            if (faceResult.mismatch) {
-                data.mock_location_suspected = 1;
-            }
             setStatus(faceResult.reason, faceResult.match ? 'info' : 'warning');
         } catch {
             setStatus('Verifikasi wajah tidak tersedia. Data wajah tidak disertakan.', 'warning');

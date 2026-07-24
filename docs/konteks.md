@@ -226,10 +226,10 @@ total_score = (
 
 | ID | Bug | Severity | Area |
 |----|-----|----------|------|
-| B1 | `canAttend()` izinkan Completed, `record()` tolak | **Critical** | Attendance |
+| B1 | `canAttend()` izinkan Completed, `record()` tolak (**Fixed**) | **Critical** | Attendance |
 | B2 | Mentoring approve/reject tanpa locking | **Critical** | Mentoring |
 | B3 | Score 0-255 tanpa validasi max 5 | **High** | Performance Review |
-| B4 | Trip selalu Completed meski absensi flagged | **High** | Attendance |
+| B4 | Trip selalu Completed meski absensi flagged (**Fixed**) | **High** | Attendance |
 | B10 | `guardManager()` baca memory, bukan DB fresh | **High** | Mentoring |
 | B5 | `reviewScore()` falsy 0.0 vs null | **Medium** | Merit |
 | B6 | `captured_at` masa depan valid | **Medium** | Attendance |
@@ -348,10 +348,11 @@ tests/                    — 10 file (1 base, 7 feature, 2 unit)
 ## 13. Tujuan Pengembangan ke Depan
 
 ### 13.1. Jangka Pendek
-- [ ] Fix critical bugs: B1 (status conflict), B2 (mentoring locking)
+- [x] Fix B1: sinkronkan status attendance ke Approved
+- [ ] Fix B2: mentoring locking
 - [x] Implementasi revisi: rekomendasi training oleh atasan per `docs/revisi.md`
 - [ ] Fix B3: validasi max score 5 di PerformanceReview
-- [ ] Fix B4: trip jangan Completed jika absensi flagged
+- [x] Fix B4: trip jangan Completed jika absensi flagged
 
 ### 13.2. Jangka Menengah
 - [ ] Tampilan breakdown merit di modal rekomendasi training (`meritBreakdownForManager()`)

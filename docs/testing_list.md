@@ -397,10 +397,10 @@ Urutan tes harus sesuai alur bisnis. Test tidak bisa loncat sebelum prekondisi s
 
 | ID | Nama | Severity | Area | Status |
 |----|------|----------|------|--------|
-| B1 | `canAttend()` vs `record()` status conflict | **Critical** | Attendance | Belum diperbaiki |
+| B1 | `canAttend()` vs `record()` status conflict | **Critical** | Attendance | Sudah diperbaiki |
 | B2 | Mentoring race condition (no locking) | **Critical** | Mentoring | Belum diperbaiki |
 | B3 | Score = 0-255 tanpa validasi max | **High** | Performance Review | Belum diperbaiki |
-| B4 | Trip selalu Completed meski absensi flagged | **High** | Attendance | Belum diperbaiki |
+| B4 | Trip selalu Completed meski absensi flagged | **High** | Attendance | Sudah diperbaiki |
 | B10 | Mentor `guardManager()` tidak fresh read | **High** | Mentoring | Belum diperbaiki |
 | B5 | `reviewScore()` falsy bug | **Medium** | Merit | Belum diperbaiki |
 | B6 | `captured_at` masa depan valid | **Medium** | Attendance | Belum diperbaiki |

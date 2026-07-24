@@ -19,19 +19,18 @@ class HrAttendanceDropAlert extends StatsOverviewWidget
         $lastMonth = now()->subMonth()->startOfMonth();
         $thisMonth = now()->startOfMonth();
 
-        $employees = User::where('is_active', true)->where('role', UserRole::Employee)->get();
+        $employees = User::where('is_active', true)
+            ->where('role', UserRole::Employee)
+            ->withCount([
+                'attendances as recent_attendance_count' => fn ($query) => $query->whereBetween('captured_at', [$lastMonth, $thisMonth]),
+                'attendances as old_attendance_count' => fn ($query) => $query->whereBetween('captured_at', [$twoMonthsAgo, $lastMonth]),
+            ])
+            ->get();
         $dropped = 0;
 
         foreach ($employees as $employee) {
-            $recentCount = Attendance::where('employee_id', $employee->id)
-                ->whereBetween('captured_at', [$lastMonth, $thisMonth])
-                ->count();
-
-            $oldCount = Attendance::where('employee_id', $employee->id)
-                ->whereBetween('captured_at', [$twoMonthsAgo, $lastMonth])
-                ->count();
-
-            if ($oldCount > 0 && $recentCount < $oldCount * 0.5) {
+            if ($employee->old_attendance_count > 0
+                && $employee->recent_attendance_count < $employee->old_attendance_count * 0.5) {
                 $dropped++;
             }
         }

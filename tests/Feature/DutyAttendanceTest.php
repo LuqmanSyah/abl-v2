@@ -8,14 +8,20 @@ use App\Enums\UserRole;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
 use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
 use App\Filament\Widgets\EmployeeActiveTripsTable;
+use App\Filament\Widgets\HrActiveTripsTable;
+use App\Filament\Widgets\HrAttendanceDropAlert;
 use App\Models\DutyTrip;
 use App\Models\User;
+use App\Notifications\AttendanceNeedsReview;
+use App\Notifications\AttendanceReminder;
 use App\Services\AttendanceRecorder;
 use App\Support\GeoDistance;
 use DomainException;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -291,6 +297,67 @@ class DutyAttendanceTest extends TestCase
             ->assertActionHidden(TestAction::make('verify_attendance')->table($trip));
     }
 
+    public function test_attendance_needing_review_notifies_only_active_hr(): void
+    {
+        Notification::fake();
+        [$employee, $manager, $trip] = $this->trip();
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $inactiveHr = User::factory()->create(['role' => UserRole::Hr, 'is_active' => false]);
+
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862307',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 150,
+        ], 'attendance/review-notification.jpg');
+
+        Notification::assertSentTo($hr, AttendanceNeedsReview::class);
+        Notification::assertNotSentTo($inactiveHr, AttendanceNeedsReview::class);
+        Notification::assertNotSentTo($manager, AttendanceNeedsReview::class);
+    }
+
+    public function test_attendance_reminder_database_title_has_no_typo(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+
+        $this->assertSame('Absensi Dinas', (new AttendanceReminder($trip))->toDatabase($employee)['title']);
+    }
+
+    public function test_hr_active_trip_widget_handles_outside_radius_status(): void
+    {
+        [$employee, $manager, $trip] = $this->trip();
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862308',
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1800,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/outside-widget.jpg');
+
+        filament()->setCurrentPanel('hr');
+        $this->actingAs($hr);
+
+        Livewire::test(HrActiveTripsTable::class)
+            ->assertSuccessful()
+            ->assertSee('Di Luar Radius');
+    }
+
+    public function test_hr_attendance_drop_alert_uses_constant_query_count(): void
+    {
+        $this->trip();
+        $this->trip();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $method = new \ReflectionMethod(HrAttendanceDropAlert::class, 'getStats');
+        $method->invoke(new HrAttendanceDropAlert);
+
+        $this->assertCount(3, DB::getQueryLog());
+        DB::disableQueryLog();
+    }
+
     public function test_attendance_before_start_is_rejected_without_leaking_photo(): void
     {
         Storage::fake('local');
@@ -367,7 +434,8 @@ class DutyAttendanceTest extends TestCase
             ->assertSee('fetch(data.endpoint', false)
             ->assertSee("indexedDB.open('sdm-attendance', 2)", false)
             ->assertSee('error.retryable === false', false)
-            ->assertSee('Penyimpanan luring tidak tersedia', false);
+            ->assertSee('Penyimpanan luring tidak tersedia', false)
+            ->assertDontSee('data.mock_location_suspected = 1', false);
     }
 
     public function test_employee_active_trip_widget_generates_attendance_url(): void

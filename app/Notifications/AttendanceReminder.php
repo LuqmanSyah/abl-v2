@@ -27,7 +27,7 @@ class AttendanceReminder extends Notification
         return "Absensi Dinas\n"
             ."Jangan lupa absen hari ini untuk dinas {$this->trip->destination}.\n"
             ."Lokasi: {$this->trip->location_name}\n"
-            ."Absen: " . url("/pegawai/dinas/{$this->trip->id}/absensi");
+            .'Absen: '.url("/pegawai/dinas/{$this->trip->id}/absensi");
     }
 
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
@@ -42,7 +42,7 @@ class AttendanceReminder extends Notification
     public function toDatabase(User $notifiable): array
     {
         return [
-            'title' => 'Absensi Dinass',
+            'title' => 'Absensi Dinas',
             'body' => "Jangan lupa absen hari ini untuk dinas {$this->trip->destination}.",
             'url' => url("/pegawai/dinas/{$this->trip->id}/absensi"),
             'icon' => 'heroicon-o-camera',

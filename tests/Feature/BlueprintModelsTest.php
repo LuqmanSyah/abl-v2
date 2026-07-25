@@ -131,15 +131,16 @@ class BlueprintModelsTest extends TestCase
             'status' => AttendanceStatus::Normal,
             'recorded_at' => '2026-08-01 17:00:00',
         ]);
-        $summary = DailyAttendanceSummary::create([
-            'user_id' => $employee->id,
-            'attendance_request_id' => $request->id,
-            'date' => '2026-08-01',
-            'check_in_id' => $checkIn->id,
-            'check_out_id' => $checkOut->id,
-            'status' => DailySummaryStatus::Present,
-            'late_minutes' => 0,
-        ]);
+        $summary = DailyAttendanceSummary::updateOrCreate(
+            ['user_id' => $employee->id, 'date' => '2026-08-01 00:00:00'],
+            [
+                'attendance_request_id' => $request->id,
+                'check_in_id' => $checkIn->id,
+                'check_out_id' => $checkOut->id,
+                'status' => DailySummaryStatus::Present,
+                'late_minutes' => 0,
+            ],
+        );
         $kpi = Kpi::create(['name' => 'Delivery', 'category' => 'Performance', 'weight' => 100]);
         $review = PerformanceReview::create([
             'user_id' => $employee->id,

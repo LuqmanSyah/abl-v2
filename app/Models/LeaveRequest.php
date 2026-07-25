@@ -74,7 +74,7 @@ class LeaveRequest extends Model
                 DailyAttendanceSummary::updateOrCreate(
                     [
                         'user_id' => $leave->user_id,
-                        'date' => $date->toDateString(),
+                        'date' => $date->startOfDay(),
                     ],
                     [
                         'status' => DailySummaryStatus::Leave,

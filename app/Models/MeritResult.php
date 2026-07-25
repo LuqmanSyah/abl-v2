@@ -86,7 +86,8 @@ class MeritResult extends Model
 
         $dutyTrips = DutyTrip::with('attendances')
             ->where('employee_id', $this->employee_id)
-            ->whereBetween('starts_at', [$period->starts_at->copy()->startOfDay(), $period->ends_at->copy()->endOfDay()])
+            ->where('starts_at', '<=', $period->ends_at->copy()->endOfDay())
+            ->where('ends_at', '>=', $period->starts_at->copy()->startOfDay())
             ->where(function (Builder $query): void {
                 $query->where('status', DutyTripStatus::Completed)
                     ->orWhere(fn (Builder $query) => $query
@@ -138,7 +139,7 @@ class MeritResult extends Model
             'discipline' => $dutyTrips->map(fn (DutyTrip $trip): array => [
                 'destination' => $trip->destination,
                 'starts_at' => $trip->starts_at,
-                'attendance_status' => $trip->attendances()->latest()->first()?->status?->label() ?? 'Tidak hadir',
+                'attendance_status' => $trip->attendances->sortByDesc('captured_at')->first()?->status?->label() ?? 'Tidak hadir',
             ])->values()->all(),
         ];
     }
@@ -164,7 +165,7 @@ class MeritResult extends Model
         DB::transaction(function () use ($hr): void {
             $result = self::query()->lockForUpdate()->findOrFail($this->id);
 
-            if ($hr->role !== UserRole::Hr || ! $result->manager_verified_at || $result->published_at) {
+            if ($hr->role !== UserRole::Hr || ! $result->calculated_at || ! $result->manager_verified_at || $result->published_at) {
                 throw new BusinessRuleException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
             }
 

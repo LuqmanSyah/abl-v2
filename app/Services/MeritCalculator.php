@@ -79,7 +79,13 @@ class MeritCalculator
 
             ActivityLog::record('merit.calculated', $result);
 
-            $employee->manager?->notify(new MeritReadyForVerification($result));
+            if (! $result->wasRecentlyCreated && $result->wasChanged('total_score')) {
+                ActivityLog::record('merit.recalculated', $result);
+            }
+
+            if ($result->wasRecentlyCreated) {
+                $employee->manager?->notify(new MeritReadyForVerification($result));
+            }
 
             return $result;
         }, 3);

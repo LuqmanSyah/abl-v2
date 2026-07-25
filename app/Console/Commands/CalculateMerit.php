@@ -36,8 +36,9 @@ class CalculateMerit extends Command
         foreach ($periods as $period) {
             $employees = User::where('role', \App\Enums\UserRole::Employee)
                 ->where(fn ($q) => $q
-                    ->whereRelation('dutyTrips', fn ($q) => $q
-                        ->whereBetween('starts_at', [$period->starts_at, $period->ends_at])
+                    ->whereHas('dutyTrips', fn ($q) => $q
+                        ->where('starts_at', '<=', $period->ends_at)
+                        ->where('ends_at', '>=', $period->starts_at)
                     )
                     ->orWhereHas('employeeKpis', fn ($q) => $q
                         ->where('review_period_id', $period->id)

@@ -26,13 +26,15 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'nip' => fake()->unique()->numerify('##################'),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'join_date' => fake()->dateTimeBetween('-10 years')->format('Y-m-d'),
+            'status' => true,
             'role' => UserRole::Employee,
-            'is_active' => true,
         ];
     }
 

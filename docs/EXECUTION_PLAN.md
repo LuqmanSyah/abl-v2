@@ -24,30 +24,30 @@ Bersihkan slate, setup branch, konfigurasi dasar.
 ### Tasks
 
 #### 0.1 — Branch & Cleanup
-- [ ] `git checkout -b rewrite/blueprint-v3`
-- [ ] Hapus semua migration files kecuali `0001_01_01_000000_create_users_table.php` (Laravel default)
-- [ ] Hapus semua migration tambahan (`2026_07_*`)
-- [ ] Hapus semua Models di `app/Models/` kecuali `User.php`
-- [ ] Hapus semua Filament Resources di `app/Filament/Resources/`
-- [ ] Hapus semua Filament Widgets di `app/Filament/Widgets/`
-- [ ] Hapus Panel Providers: `HrPanelProvider.php`, `ManagerPanelProvider.php`, `EmployeePanelProvider.php`
-- [ ] Hapus semua Seeders kecuali `DatabaseSeeder.php`
-- [ ] Hapus `app/Services/` (akan ditulis ulang)
-- [ ] Hapus `app/Console/Commands/` (akan ditulis ulang)
-- [ ] Hapus `app/Enums/` (akan ditulis ulang sesuai blueprint)
-- [ ] Hapus `app/Notifications/` (akan ditulis ulang)
-- [ ] Bersihkan `routes/console.php` (kosongkan schedule)
+- [x] `git checkout -b rewrite/blueprint-v3`
+- [x] Hapus semua migration files kecuali `0001_01_01_000000_create_users_table.php` (Laravel default)
+- [x] Hapus semua migration tambahan (`2026_07_*`)
+- [x] Hapus semua Models di `app/Models/` kecuali `User.php`
+- [x] Hapus semua Filament Resources di `app/Filament/Resources/`
+- [x] Hapus semua Filament Widgets di `app/Filament/Widgets/`
+- [x] Hapus Panel Providers: `HrPanelProvider.php`, `ManagerPanelProvider.php`, `EmployeePanelProvider.php`, `RolePanelProvider.php`
+- [x] Hapus semua Seeders kecuali `DatabaseSeeder.php`
+- [x] Hapus `app/Services/` (akan ditulis ulang)
+- [x] Hapus `app/Console/Commands/` (akan ditulis ulang)
+- [x] Hapus `app/Enums/` (akan ditulis ulang sesuai blueprint)
+- [x] Hapus `app/Notifications/` (akan ditulis ulang)
+- [x] Bersihkan `routes/console.php` (kosongkan schedule)
 
 #### 0.2 — Konfigurasi
-- [ ] `config/app.php`: timezone = `Asia/Jakarta`
-- [ ] Verify Docker container timezone = `Asia/Jakarta` (di `compose.yaml`)
-- [ ] `.env`: `GOOGLE_MAPS_API_KEY` placeholder
-- [ ] `config/services.php`: tambah `google_maps` config block
+- [x] `config/app.php`: timezone = `Asia/Jakarta`
+- [x] Verify Docker container timezone = `Asia/Jakarta` (di `compose.yaml`)
+- [x] `.env`: `GOOGLE_MAPS_API_KEY` placeholder
+- [x] `config/services.php`: tambah `google_maps` config block
 
 #### 0.3 — Port Utility & Base Classes
-- [ ] Port `app/Support/GeoDistance.php` (Haversine formula) — reuse as-is
-- [ ] Port `app/Exceptions/BusinessRuleException.php` — reuse as-is
-- [ ] Buat `app/Enums/` directory (isi di Phase 1)
+- [x] Port `app/Support/GeoDistance.php` (Haversine formula) — reuse as-is
+- [x] Port `app/Exceptions/BusinessRuleException.php` — reuse as-is
+- [x] Buat `app/Enums/` directory (isi di Phase 1)
 
 #### Verification
 ```bash

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuthenticatedSessionController;
+use App\Http\Controllers\FaceVerificationController;
 use App\Http\Controllers\HrReportController;
 use App\Http\Controllers\WebPushController;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,9 @@ Route::middleware(['auth', 'active'])->group(function () {
         ->name('attendance.store');
     Route::get('/absensi/{attendance}/foto', [AttendanceController::class, 'photo'])
         ->name('attendance.photo');
+    Route::post('/api/face/extract', [FaceVerificationController::class, 'extract'])
+        ->middleware('throttle:20,1')
+        ->name('face.extract');
     Route::get('/hr/laporan', [HrReportController::class, 'index'])->name('hr.reports.index');
     Route::get('/hr/laporan/ekspor', [HrReportController::class, 'export'])->name('hr.reports.export');
     Route::get('/hr/laporan/pdf', [HrReportController::class, 'exportPdf'])->name('hr.reports.pdf');

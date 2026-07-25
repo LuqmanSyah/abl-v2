@@ -1,8 +1,23 @@
 const CACHE = 'sdm-portal-v2';
 const PANEL_PATHS = ['/pegawai', '/atasan', '/hr'];
+const MODEL_PATHS = [
+  '/js/face-api.js',
+  '/js/face-verification.js',
+  '/models/tiny_face_detector_model-weights_manifest.json',
+  '/models/tiny_face_detector_model.bin',
+  '/models/face_landmark_68_model-weights_manifest.json',
+  '/models/face_landmark_68_model.bin',
+  '/models/face_landmark_68_tiny_model-weights_manifest.json',
+  '/models/face_landmark_68_tiny_model.bin',
+  '/models/face_recognition_model-weights_manifest.json',
+  '/models/face_recognition_model.bin',
+];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE).then(cache => cache.addAll(MODEL_PATHS).catch(() => {}))
+  );
 });
 
 self.addEventListener('activate', event => {
@@ -30,7 +45,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json') {
+  if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json' || url.pathname.startsWith('/models/')) {
     event.respondWith(
       caches.match(event.request).then(cached => cached || fetch(event.request))
     );

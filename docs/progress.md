@@ -46,7 +46,8 @@
 |------|--------|---------|
 | Capture page audit | ✅ | viewport-fit=cover, responsive ≤560px, playsinline |
 | Viewport + touch targets | ✅ | touch-action: manipulation, min-height 51px |
-| Face-api model caching | ⏳ | Deferred — model already cached by SW |
+| Face-api model caching | ✅ | SW pre-cache + early extraction + preload init |
+| Face verification server-side | ✅ | Python script + endpoint `/api/face/extract` |
 
 ## Fase 5: Backup & Operasional
 
@@ -64,3 +65,16 @@
 | Atasan guide | ✅ | `docs/panel-atasan.md` — 224 lines |
 | HR guide | ✅ | `docs/panel-hr.md` — 342 lines |
 | Quick reference card | ⏳ | Not requested — existing docs cover all roles |
+
+## Fase 7: Merit System Audit & Fix
+
+| # | Bug | Severity | Status | Fix |
+|---|-----|----------|--------|-----|
+| 1 | OR query tanpa grouping di `CalculateMerit` | 🔴 High | ✅ | Wrap `whereRelation` + `orWhereHas` dalam `where(fn)` group + `where('role')` di luar |
+| 2 | Disiplin: attendance di luar periode ikut terhitung | 🔴 High | ✅ | Filter `attendances` dgn `whereBetween('captured_at', [$periodStart, $periodEnd])` |
+| 3 | Trip mulai sebelum periode tidak masuk hitungan | 🔴 High | ✅ | Ganti `whereBetween('starts_at')` jadi `starts_at <= periodEnd AND ends_at >= periodStart` |
+| 4 | MeritResult bisa dibuat manual tanpa kalkulasi | 🟡 Medium | ⏳ | Perlu `booted()` guard di `MeritResult` |
+| 5 | DomainException silent skip | 🟡 Medium | ⏳ | Log level dinaikkan ke `warning` |
+| 6 | N+1 query attendance | 🔵 Low | ✅ | Eager load `attendances` via `with()` |
+| 7 | Integer cast bobot pecahan | 🔵 Low | ⏳ | Cast float / toleransi 99.5-100.5 |
+| 8 | Manajer verify tanpa data lengkap | 🔵 Low | ⏳ | Validasi skor sebelum verify |

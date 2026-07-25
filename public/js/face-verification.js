@@ -1,21 +1,35 @@
 window.FaceVerification = {
   initialized: false,
   modelsUrl: '/models',
+  initPromise: null,
 
   async init() {
     if (this.initialized) return
-    await faceapi.nets.tinyFaceDetector.loadFromUri(this.modelsUrl)
-    await faceapi.nets.faceLandmark68Net.loadFromUri(this.modelsUrl)
-    await faceapi.nets.faceRecognitionNet.loadFromUri(this.modelsUrl)
-    this.initialized = true
+    if (this.initPromise) return this.initPromise
+    this.initPromise = Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(this.modelsUrl),
+      faceapi.nets.faceLandmark68Net.loadFromUri(this.modelsUrl),
+      faceapi.nets.faceRecognitionNet.loadFromUri(this.modelsUrl),
+    ]).then(() => { this.initialized = true })
+    return this.initPromise
   },
 
   async extractDescriptor(imageElement) {
+    await this.init()
     const result = await faceapi
       .detectSingleFace(imageElement, new faceapi.TinyFaceDetectorOptions({ inputSize: 320 }))
       .withFaceLandmarks()
       .withFaceDescriptor()
     return result ? Array.from(result.descriptor) : null
+  },
+
+  async extractFromBlob(blob) {
+    const image = new Image()
+    const url = URL.createObjectURL(blob)
+    image.src = url
+    await image.decode()
+    URL.revokeObjectURL(url)
+    return this.extractDescriptor(image)
   },
 
   async verify(blob, previousDescriptor) {

@@ -149,6 +149,9 @@ const btnRetake = document.querySelector('#btn-retake');
 
 let cameraStream = null;
 let capturedBlob = null;
+let cachedFaceDescriptor = null;
+
+FaceVerification.init().catch(() => {});
 
 function setStatus(message, kind = 'info') {
     statusBox.textContent = message;
@@ -219,12 +222,23 @@ function capturePhoto() {
         btnRetake.hidden = false;
         form.hidden = false;
         stopCamera();
+        extractFaceEarly(blob);
     }, 'image/jpeg', 0.85);
+}
+
+async function extractFaceEarly(blob) {
+    try {
+        const descriptor = await FaceVerification.extractFromBlob(blob);
+        cachedFaceDescriptor = descriptor;
+    } catch {
+        cachedFaceDescriptor = null;
+    }
 }
 
 function retakePhoto() {
     capturedImg.hidden = true;
     capturedBlob = null;
+    cachedFaceDescriptor = null;
     btnRetake.hidden = true;
     form.hidden = true;
     startCamera();
@@ -408,11 +422,29 @@ form?.addEventListener('submit', async event => {
 
         button.textContent = 'Memverifikasi wajah…';
         try {
-            const faceResult = await FaceVerification.verify(capturedBlob, previousDescriptor);
-            if (faceResult.descriptor) {
-                data.face_descriptor = JSON.stringify(faceResult.descriptor);
+            let descriptor = cachedFaceDescriptor;
+            let match = true;
+            let reason = '';
+            if (!descriptor) {
+                const faceResult = await FaceVerification.verify(capturedBlob, previousDescriptor);
+                descriptor = faceResult.descriptor;
+                match = faceResult.match;
+                reason = faceResult.reason;
+            } else {
+                if (previousDescriptor) {
+                    const distance = faceapi.euclideanDistance(descriptor, previousDescriptor);
+                    match = distance < 0.6;
+                    reason = match
+                        ? 'Wajah cocok dengan absensi sebelumnya.'
+                        : `Wajah tidak cocok (jarak: ${distance.toFixed(2)}). Status diubah ke NeedsReview.`;
+                } else {
+                    reason = 'Encoding wajah disimpan sebagai referensi.';
+                }
             }
-            setStatus(faceResult.reason, faceResult.match ? 'info' : 'warning');
+            if (descriptor) {
+                data.face_descriptor = JSON.stringify(descriptor);
+            }
+            setStatus(reason, match ? 'info' : 'warning');
         } catch {
             setStatus('Verifikasi wajah tidak tersedia. Data wajah tidak disertakan.', 'warning');
         }

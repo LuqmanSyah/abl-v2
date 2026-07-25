@@ -413,3 +413,32 @@ Bobot default: 40/20/20/20, wajib total 100%.
 ## Mengaktifkan Fitur Toggle Dark/Light Mode
 - Menghapus konfigurasi `->darkMode(true, true)` pada file `app/Providers/Filament/RolePanelProvider.php`.
 - **Alasan:** Parameter `(true, true)` memaksa Filament untuk selalu menggunakan Dark Mode dan menyembunyikan tombol switch tema. Dengan dihapusnya konfigurasi tersebut, fitur bawaan toggle Dark/Light mode dari Filament kembali aktif.
+
+---
+
+## Optimasi Verifikasi Wajah + Merit System Fix
+
+### Verifikasi Wajah (2026-07-25)
+**Masalah:** Verifikasi wajah lambat — model face-api.js (1.3 MB) + 3 model JSON di-download tiap submit.
+
+**Perubahan:**
+- `public/js/face-verification.js` — Split `init()` dari `verify()`, tambah `extractFromBlob()` method
+- `resources/views/attendance/capture.blade.php` — Preload model saat page load, ekstraksi descriptor segera setelah capture (parallel dgn GPS)
+- `public/sw.js` — Pre-cache model files `/models/*` + `/js/face-api.js` + `/js/face-verification.js`
+- `app/Http/Controllers/FaceVerificationController.php` — Server-side fallback endpoint
+- `resources/python/face_extract.py` — Python script ekstraksi descriptor (optional, via `pip install face_recognition`)
+- `routes/web.php` — Route `POST /api/face/extract`
+
+**Dampak:** User klik submit descriptor sudah siap di cache. Tidak nunggu download + detect.
+
+### Merit System Fix — HIGH Priority Bugs (2026-07-25)
+
+| # | Bug | File | Fix |
+|---|-----|------|-----|
+| 1 | OR query tanpa grouping — non-Employee ikut terhitung | `CalculateMerit.php:37-41` | Bungkus OR dalam `where(fn)` group, `where('role')` di luar |
+| 2 | Disiplin: attendance di luar periode ikut terhitung | `MeritCalculator.php:51` | Filter `whereBetween('captured_at', [$periodStart, $periodEnd])` |
+| 3 | Trip mulai sebelum periode tidak masuk hitungan | `MeritCalculator.php:39` | Overlap query `starts_at <= periodEnd AND ends_at >= periodStart` |
+| 4 | N+1 query attendance | `MeritCalculator.php:51` | Eager load via `with(['attendances' => fn => ...])` |
+
+**Dokumentasi:** `docs/perbaikan-absensi-dinas/verifikasi-wajah.md`
+

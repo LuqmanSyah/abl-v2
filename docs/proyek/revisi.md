@@ -652,3 +652,31 @@ Diterapkan bersamaan dengan penghapusan fitur WhatsApp. Semua fix lolos 87 test.
 **Problem:** Merit skip (DomainException) tercatat di log `info` — mudah terlewat dalam volume log harian.
 
 **Fix:** `Log::info` → `Log::warning` agar muncul di channel default monitoring.
+
+---
+
+## 15. Minor Fixes Batch 3 (2026-07-25)
+
+### 15.1. AttendanceRecorder — Variable Shadowing (Low)
+
+**Lokasi:** `app/Services/AttendanceRecorder.php:131`
+**Problem:** Variable `$distance` (geo distance) di-overwrite oleh face distance (`sqrt($sum)`). Tidak ada efek runtime karena `$distance` (geo) tidak dipakai setelah block, tapi code tidak bersih.
+**Fix:** Rename jadi `$faceDistance`.
+
+### 15.2. AttendanceRecorder — Missing lockForUpdate (Low)
+
+**Lokasi:** `app/Services/AttendanceRecorder.php:33,46`
+**Problem:** UUID & date duplicate query tanpa `lockForUpdate()`. Race condition → PDO exception (DB unique constraint) daripada clean BusinessRuleException.
+**Fix:** Tambah `->lockForUpdate()` di kedua query.
+
+### 15.3. MeritCalculator — Overlapping Trip Inflate Days (Low)
+
+**Lokasi:** `app/Services/MeritCalculator.php:52-58`
+**Problem:** `$totalDays = Σ trip days`. Jika 2 trip di tanggal sama, tgl dihitung 2x. ValidDays juga double-count.
+**Fix:** Collect unique dates dari semua trip, lalu hitung count.
+
+### 15.4. CareerGapService — Gap Analysis Tidak Disortir (Low)
+
+**Lokasi:** `app/Services/CareerGapService.php:28-40`
+**Problem:** Hasil `analyze()` dalam urutan DB query. Gap besar tidak muncul pertama.
+**Fix:** Tambah `->sortByDesc('gap')->values()`.

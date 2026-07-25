@@ -37,7 +37,7 @@ class CareerGapService
                 'gap' => $gap,
                 'recommendations' => $gap ? ($names ?: 'Ajukan mentoring') : 'Terpenuhi',
             ];
-        });
+        })->sortByDesc('gap')->values();
     }
 
     public function summary(CareerGoal $goal): string

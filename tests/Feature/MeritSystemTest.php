@@ -55,11 +55,11 @@ class MeritSystemTest extends TestCase
         $result = app(MeritCalculator::class)->calculate($period, $employee);
 
         $this->assertEquals(80, $result->kpi_score);
-        $this->assertEquals(50, $result->discipline_score);
+        $this->assertEquals(100, $result->discipline_score);
         $this->assertEquals(80, $result->manager_score);
         $this->assertEquals(60, $result->review_360_score);
-        $this->assertEquals(70, $result->total_score);
-        $this->assertEquals(700_000, $result->estimated_bonus);
+        $this->assertEquals(80, $result->total_score);
+        $this->assertEquals(800_000, $result->estimated_bonus);
         $this->assertNotNull($result->calculated_at);
         $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
 
@@ -125,8 +125,8 @@ class MeritSystemTest extends TestCase
         DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Tanpa absensi',
             'purpose' => 'Tugas',
-            'starts_at' => today()->subHours(3),
-            'ends_at' => today()->subHour(),
+            'starts_at' => today()->subDay()->addHours(8),
+            'ends_at' => today()->subDay()->addHours(17),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
             'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Approved,
         ]);

@@ -115,6 +115,24 @@
 - **Deskripsi**: `PositionCompetency::where('position_id', $goal->target_position_id)`. Jika `CareerGoal` punya `target_position_id` null (DB constraint mencegah, tapi via kode bisa), `where('position_id', null)` return empty, `$standards` empty, tidak error tapi hasil meaningless. Jika `$goal->targetPosition` null → N+1 crash.
 - **Fix**: Tambah null guard di method `analyze()`.
 
+#### 19. AttendanceRecorder — Variable Shadowing + Missing lockForUpdate (Minor)
+- **Lokasi**: `app/Services/AttendanceRecorder.php:33,46,131`
+- **Tingkat**: **Low**
+- **Deskripsi**: Variable `$distance` di-overwrite oleh face distance. UUID & date duplicate query tidak pakai `lockForUpdate()`.
+- **Fix**: Rename variable face → `$faceDistance`. Tambah `lockForUpdate()` di duplicate check queries.
+
+#### 20. MeritCalculator — Overlapping Trip Inflate Discipline Days (Minor)
+- **Lokasi**: `app/Services/MeritCalculator.php:52-58`
+- **Tingkat**: **Low**
+- **Deskripsi**: Dua trip di tanggal sama dihitung 2x untuk totalDays & validDays. Disiplin bisa >100% karena overlap.
+- **Fix**: Hitung unique dates dari semua trip, bukan jumlah hari per-trip.
+
+#### 21. CareerGapService — Hasil Tidak Diurutkan (Minor)
+- **Lokasi**: `app/Services/CareerGapService.php:28-40`
+- **Tingkat**: **Low**
+- **Deskripsi**: Gap analysis tidak di-sort. Gap besar tidak muncul pertama.
+- **Fix**: Tambah `->sortByDesc('gap')->values()` sebelum return.
+
 ---
 
 ### B. ALUR PENGUJIAN

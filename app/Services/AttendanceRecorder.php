@@ -32,7 +32,7 @@ class AttendanceRecorder
                 throw new BusinessRuleException('Absensi hanya tersedia untuk pegawai yang ditugaskan.');
             }
 
-            if ($existing = Attendance::where('client_uuid', $data['client_uuid'])->first()) {
+            if ($existing = Attendance::where('client_uuid', $data['client_uuid'])->lockForUpdate()->first()) {
                 if ($existing->duty_trip_id !== $trip->id || $existing->employee_id !== $employee->id) {
                     throw new BusinessRuleException('ID sinkronisasi telah digunakan.');
                 }
@@ -43,7 +43,7 @@ class AttendanceRecorder
             $capturedAt = CarbonImmutable::parse($data['captured_at']);
             $attendanceDate = $capturedAt->toDateString();
 
-            if ($existing = $trip->attendances()->whereDate('attendance_date', $attendanceDate)->first()) {
+            if ($existing = $trip->attendances()->whereDate('attendance_date', $attendanceDate)->lockForUpdate()->first()) {
                 return $existing;
             }
 
@@ -128,9 +128,9 @@ class AttendanceRecorder
                         foreach ($prev as $i => $v) {
                             $sum += ($v - $curr[$i]) ** 2;
                         }
-                        $distance = sqrt($sum);
+                        $faceDistance = sqrt($sum);
 
-                        if ($distance > 0.6) {
+                        if ($faceDistance > 0.6) {
                             $attendance->update([
                                 'status' => $attendance->status !== AttendanceStatus::NeedsReview
                                     ? AttendanceStatus::NeedsReview

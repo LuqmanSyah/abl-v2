@@ -49,13 +49,18 @@ class MeritCalculator
                     ->where('status', AttendanceStatus::Valid)
                     ->whereBetween('captured_at', [$periodStart, $periodEnd]),
                 ])->get();
-            $totalDays = 0;
-            $validDays = 0;
+            $allDates = collect();
+            $validDates = collect();
             foreach ($dutyTrips as $trip) {
-                $days = $trip->starts_at->startOfDay()->diffInDays($trip->ends_at->startOfDay()) + 1;
-                $totalDays += $days;
-                $validDays += $trip->attendances->count();
+                $range = collect(\Carbon\CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
+                    ->map(fn ($d) => $d->toDateString());
+                $allDates = $allDates->merge($range)->unique();
+                $validDates = $validDates->merge(
+                    $trip->attendances->pluck('attendance_date')->map(fn ($d) => $d instanceof \Carbon\CarbonImmutable ? $d->toDateString() : $d)
+                )->unique();
             }
+            $totalDays = $allDates->count();
+            $validDays = $validDates->count();
             $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
 
             $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);

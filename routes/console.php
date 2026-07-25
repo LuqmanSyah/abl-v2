@@ -26,7 +26,7 @@ Artisan::command('attendance:purge-photos {--days=365}', function () {
     $this->info("{$deleted} foto kedaluwarsa dihapus.");
 })->purpose('Hapus foto absensi melewati masa retensi');
 
-Artisan::command('backup:database {--keep=14}', function () {
+Artisan::command('backup:database {--keep=14} {--no-cloud}', function () {
     if (DB::getDriverName() !== 'sqlite') {
         $this->error('Backup bawaan hanya mendukung SQLite. Gunakan alat native database untuk driver ini.');
 
@@ -45,14 +45,23 @@ Artisan::command('backup:database {--keep=14}', function () {
     $path = $directory.'/database-'.now()->format('Ymd-His-u').'.sqlite';
     app(SqliteBackup::class)->create($database, $path);
 
+    if (! $this->option('no-cloud')) {
+        $cloudDisk = config('filesystems.cloud');
+        if ($cloudDisk && $cloudDisk !== 'local' && config("filesystems.disks.{$cloudDisk}.key")) {
+            $remote = 'backups/'.basename($path);
+            Storage::disk($cloudDisk)->put($remote, File::get($path));
+            $this->info("Backup diupload ke cloud: {$remote}");
+        }
+    }
+
     collect(File::files($directory))
         ->filter(fn ($file) => $file->getExtension() === 'sqlite')
         ->sortByDesc(fn ($file) => $file->getMTime())
         ->skip(max(1, (int) $this->option('keep')))
         ->each(fn ($file) => File::delete($file->getPathname()));
 
-    $this->info("Backup dibuat: {$path}");
-})->purpose('Buat backup konsisten database SQLite');
+    $this->info("Backup lokal: {$path}");
+})->purpose('Backup SQLite ke lokal + cloud (S3/GCS)');
 
 if (config('database.default') === 'sqlite') {
     Schedule::command('backup:database --keep='.config('hr.backup_keep'))->dailyAt('02:00')->withoutOverlapping();

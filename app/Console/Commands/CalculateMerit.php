@@ -34,11 +34,15 @@ class CalculateMerit extends Command
         $errors = 0;
 
         foreach ($periods as $period) {
-            $employees = User::whereRelation('dutyTrips', fn ($q) => $q
-                ->whereBetween('starts_at', [$period->starts_at, $period->ends_at])
-            )->orWhereHas('employeeKpis', fn ($q) => $q
-                ->where('review_period_id', $period->id)
-            )->where('role', \App\Enums\UserRole::Employee)->get();
+            $employees = User::where('role', \App\Enums\UserRole::Employee)
+                ->where(fn ($q) => $q
+                    ->whereRelation('dutyTrips', fn ($q) => $q
+                        ->whereBetween('starts_at', [$period->starts_at, $period->ends_at])
+                    )
+                    ->orWhereHas('employeeKpis', fn ($q) => $q
+                        ->where('review_period_id', $period->id)
+                    )
+                )->get();
 
             foreach ($employees as $employee) {
                 try {

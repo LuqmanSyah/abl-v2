@@ -35,20 +35,26 @@ class MeritCalculator
                 ? $kpis->sum(fn (EmployeeKpi $kpi) => min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2) * $kpi->indicator->weight) / $indicatorWeight * 100
                 : 0;
 
+            $periodStart = $period->starts_at->startOfDay();
+            $periodEnd = $period->ends_at->endOfDay();
             $dutyTrips = DutyTrip::where('employee_id', $employee->id)
-                ->whereBetween('starts_at', [$period->starts_at->startOfDay(), $period->ends_at->endOfDay()])
+                ->where('starts_at', '<=', $periodEnd)
+                ->where('ends_at', '>=', $periodStart)
                 ->where(function ($query): void {
                     $query->where('status', DutyTripStatus::Completed)
                         ->orWhere(fn ($query) => $query
                             ->where('status', DutyTripStatus::Approved)
                             ->where('ends_at', '<=', now()));
-                })->get();
+                })                ->with(['attendances' => fn ($q) => $q
+                    ->where('status', AttendanceStatus::Valid)
+                    ->whereBetween('captured_at', [$periodStart, $periodEnd]),
+                ])->get();
             $totalDays = 0;
             $validDays = 0;
             foreach ($dutyTrips as $trip) {
                 $days = $trip->starts_at->startOfDay()->diffInDays($trip->ends_at->startOfDay()) + 1;
                 $totalDays += $days;
-                $validDays += $trip->attendances()->where('status', AttendanceStatus::Valid)->count();
+                $validDays += $trip->attendances->count();
             }
             $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
 

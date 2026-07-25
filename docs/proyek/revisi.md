@@ -613,3 +613,41 @@ Diterapkan pada commit `c3ed9ac` + setelahnya. Semua fix telah lolos 58 test.
 
 
 ### 13.9. AR-3 — Masih error saat klik import xlsx (belum diperbaiki)
+
+---
+
+## 14. Revisi Bug Merit (Batch 2 — 2026-07-25)
+
+Diterapkan bersamaan dengan penghapusan fitur WhatsApp. Semua fix lolos 87 test.
+
+### 14.1. MC-1 — `$kpi->indicator` Null Crash (High)
+
+**Lokasi:** `app/Services/MeritCalculator.php:32-35`, `app/Models/MeritResult.php:118`
+
+**Problem:** `EmployeeKpi::with('indicator')->get()` — jika FK `kpi_indicator_id` mengarah ke id terhapus, `$kpi->indicator` jadi null. Akses `$kpi->indicator->weight` → **null pointer crash**.
+
+**Fix:** Guard null coalescing di semua akses `$kpi->indicator?->weight ?? 0` di MeritCalculator + MeritResult/breakdownForManager.
+
+### 14.2. Weights Sum — Float Tolerance (Low)
+
+**Lokasi:** `app/Models/ReviewPeriod.php:40`
+
+**Problem:** `$total !== 100` menggunakan strict comparison. Input float seperti `40.5 + 20.25 + ... = 100.0` bisa gagal karena float precision.
+
+**Fix:** `abs($total - 100) > 0.01` — tolerance 0.01.
+
+### 14.3. Manager Verify — Cek `calculated_at` (Low)
+
+**Lokasi:** `app/Models/MeritResult.php:152`
+
+**Problem:** Manager bisa verify merit meski skor belum pernah dihitung. `calculated_at` tetap null.
+
+**Fix:** Tambah `! $result->calculated_at` di guard `verifyByManager()`. Manager perlu data lengkap untuk pengambilan keputusan.
+
+### 14.4. DomainException Log Level (Low)
+
+**Lokasi:** `app/Console/Commands/CalculateMerit.php:55`
+
+**Problem:** Merit skip (DomainException) tercatat di log `info` — mudah terlewat dalam volume log harian.
+
+**Fix:** `Log::info` → `Log::warning` agar muncul di channel default monitoring.

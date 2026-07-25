@@ -31,13 +31,6 @@ class AttendanceNeedsReview extends Notification implements ShouldQueue
         return $this->resolveChannels($notifiable, $base);
     }
 
-    public function toWhatsApp(User $notifiable): string
-    {
-        return "Absensi Perlu Pemeriksaan\n"
-            ."Absensi {$this->attendance->employee->name} untuk dinas {$this->attendance->dutyTrip->destination} memerlukan pemeriksaan.\n"
-            .'Periksa: '.url("/hr/attendances/{$this->attendance->id}");
-    }
-
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
     {
         return (new WebPushMessage)

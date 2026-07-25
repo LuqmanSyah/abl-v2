@@ -22,14 +22,6 @@ class TripAssigned extends Notification
         return $this->resolveChannels($notifiable, ['database', 'mail', 'webpush']);
     }
 
-    public function toWhatsApp(User $notifiable): string
-    {
-        return "Perintah Dinas Baru\n"
-            ."Anda ditugaskan {$this->trip->destination} oleh {$this->trip->manager->name}.\n"
-            ."Lokasi: {$this->trip->location_name}\n"
-            ."Jadwal: {$this->trip->starts_at->translatedFormat('d M Y, H:i')} – {$this->trip->ends_at->translatedFormat('d M Y, H:i')}";
-    }
-
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
     {
         return (new WebPushMessage)

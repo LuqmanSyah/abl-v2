@@ -303,9 +303,9 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 | Notifikasi | Trigger | Penerima | Channel |
 |-----------|---------|----------|---------|
-| `TripAssigned` | DutyTrip created | Employee | DB + Email + WA |
-| `AttendanceReminder` | Scheduler harian | Employee | DB + Email + WA |
-| `AttendanceNeedsReview` | Attendance status NeedsReview | Manager + HR | DB + Email + WA |
+| `TripAssigned` | DutyTrip created | Employee | DB + Web Push + Email |
+| `AttendanceReminder` | Scheduler harian | Employee | DB + Web Push + Email |
+| `AttendanceNeedsReview` | Attendance status NeedsReview | Manager + HR | DB + Web Push + Email |
 | `MentoringPending` | Mentoring created | Manager | DB |
 | `MentoringScheduled` | Mentoring approved | Employee | DB |
 | `MeritPublished` | MeritResult verifyByHr | Employee | DB + Email |
@@ -330,53 +330,31 @@ Bobot default: 40/20/20/20, wajib total 100%.
 
 ---
 
-## 16. Multi-channel Notifikasi — WhatsApp ✅
-
-**WA channel untuk 3 notif urgent:** TripAssigned, AttendanceReminder, AttendanceNeedsReview.
-
-### Perubahan:
-
-| File | Perubahan |
-|------|-----------|
-| `database/migrations/2026_07_19_030000_add_notification_preferences_to_users.php` | Kolom `notification_preferences` JSON |
-| `app/Models/User.php` | Cast `array` + default on creating (inapp/wp/email=true, wa=false) |
-| `app/Models/Concerns/HasDynamicChannels.php` | Trait: `resolveChannels()` — filter `$baseChannels` by preferences, tambah `wa` jika enabled |
-| `app/Channels/WhatsAppChannel.php` | Custom channel — dispatch queue job `SendWhatsAppNotification` |
-| `app/Jobs/SendWhatsAppNotification.php` | HTTP POST ke WA API (Fonnte/Wablas) via Guzzle |
-| `app/Notifications/TripAssigned.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
-| `app/Notifications/AttendanceReminder.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
-| `app/Notifications/AttendanceNeedsReview.php` | Pakai `HasDynamicChannels` trait + `toWhatsApp()` |
-| `app/Providers/AppServiceProvider.php` | Daftar `wa` channel ke `ChannelManager` |
-| `app/Filament/Resources/Users/Schemas/UserForm.php` | Section Preferensi Notifikasi: toggle inapp, webpush, email, wa |
-| `config/services.php` | Config `wa.base_url` + `wa.api_key` |
-| `.env` | `WA_BASE_URL`, `WA_API_KEY` |
-
-### Detail:
-- **WA hanya untuk urgent:** Trip baru (employee), absen hari ini (employee), absensi perlu pemeriksaan (manager/HR)
-- **Preference per user:** Masing-masing user bisa toggle ON/OFF untuk in-app, web push, email, WA
-- **Queue:** WA dikirim via job `SendWhatsAppNotification` — tidak blocking request
-- **Provider:** Bisa pakai Fonnte (fonnte.com), Wablas (wablas.com), atau API WA lain. Cukup ganti `WA_BASE_URL` + `WA_API_KEY` di `.env`.
-
----
-
 ## Bug Tracker Status
 
 | ID | Deskripsi | Status |
 |----|-----------|--------|
-| B1 | `canAttend()` vs `record()` status conflict | **Fixed** — disinkronkan ke `Approved` saja |
-| B2 | Mentoring state tanpa DB locking | **Fixed** — implementasi `transition()` lockForUpdate |
-| B4 | Trip auto-Completed untuk semua status | **Fixed** — tidak auto-Completed lagi |
-| B5 | `reviewScore()` falsy `$average ?` bug | **Fixed** — `$average !== null` |
-| MC-2 | Discipline = 100 jika 0 trips | **Fixed** — fallback `: 100` → `: 0` |
-| CG-1 | `target_position_id` null crash | **Fixed** — early return guard |
+| B1 | `canAttend()` vs `record()` status conflict | **Fixed** |
+| B2 | Mentoring state tanpa DB locking | **Fixed** |
+| B3 | Score 0-255 tanpa validasi max | **Fixed** |
+| B4 | Trip auto-Completed untuk semua status | **Fixed** |
+| B5 | `reviewScore()` falsy `$average ?` bug | **Fixed** |
+| B6 | `captured_at` masa depan valid | **Fixed** (→ NeedsReview via clock mismatch) |
+| B7 | No throttle attendance | **Fixed** |
+| B8 | CSV injection parsial | **Fixed** (League\Csv) |
+| B9 | Double inactive check | **Fixed** |
+| B10 | guardManager tidak fresh read | **Fixed** (HasWorkflow lockForUpdate) |
+| MC-1 | `$kpi->indicator` null crash | **Fixed** |
+| MC-2 | Discipline = 100 jika 0 trips | **Fixed** |
+| MC-3 | Recalculation hapus verifikasi | **Fixed** |
+| CG-1 | `target_position_id` null crash | **Fixed** |
 | AR-2 | Status priority nutup data lokasi | **Open** — perlu DB migration |
-| Lainnya | 11 bug lain di testing_list.md | Open |
 
 ---
 
 ## Test Suite
 
-**58 tests passing** (486 assertions, 8.31s):
+**87 tests passing** (514 assertions, 4.62s):
 - DutyAttendanceTest: 13 ✓
 - MeritSystemTest: 11 ✓
 - CareerDevelopmentTest: 9 ✓
@@ -387,7 +365,7 @@ Bobot default: 40/20/20/20, wajib total 100%.
 - ExampleTest: 3 ✓
 - Unit/SqliteBackupTest: 1 ✓
 
-**Coverage gap:** Notifikasi terpicu via observer/event + WA channel via queue — perlu test integration di skenario yang tepat.
+**Coverage gap:** Notifikasi terpicu via observer/event — perlu test integration di skenario yang tepat.
 
 ---
 
@@ -441,4 +419,53 @@ Bobot default: 40/20/20/20, wajib total 100%.
 | 4 | N+1 query attendance | `MeritCalculator.php:51` | Eager load via `with(['attendances' => fn => ...])` |
 
 **Dokumentasi:** `docs/perbaikan-absensi-dinas/verifikasi-wajah.md`
+
+---
+
+## 18. Hapus Fitur WhatsApp — Service Removal (2026-07-25)
+
+**Keputusan:** Fitur WhatsApp Notification dihapus. Notifikasi urgent tetap via in-app + web push + email.
+
+### File dihapus:
+- `app/Channels/WhatsAppChannel.php`
+- `app/Jobs/SendWhatsAppNotification.php`
+
+### Perubahan:
+| File | Perubahan |
+|------|-----------|
+| `app/Providers/AppServiceProvider.php` | Hapus import `WhatsAppChannel` + registrasi channel `'wa'` |
+| `app/Models/Concerns/HasDynamicChannels.php` | Hapus logic WA (`$prefs['wa']` → `'wa'` channel) |
+| `app/Notifications/TripAssigned.php` | Hapus `toWhatsApp()` |
+| `app/Notifications/AttendanceReminder.php` | Hapus `toWhatsApp()` |
+| `app/Notifications/AttendanceNeedsReview.php` | Hapus `toWhatsApp()` |
+| `app/Models/User.php` | Hapus default `'wa' => false` dari `notification_preferences` |
+| `app/Filament/Pages/EditProfile.php` | Hapus WA toggle + helper text |
+| `app/Filament/Resources/Users/Schemas/UserForm.php` | Hapus WA toggle + helper text |
+| `config/services.php` | Hapus `'wa'` config block |
+| `.env` | Hapus `WA_BASE_URL`, `WA_API_KEY` |
+
+## 19. Revisi Bug Merit (Batch 2)
+
+| # | Bug | Severity | File | Fix |
+|---|-----|----------|------|-----|
+| 1 | MC-1 — `$kpi->indicator` null crash | **High** | `MeritCalculator.php`, `MeritResult.php` | Null coalescing `?->weight ?? 0` |
+| 2 | Bobot total — float precision | **Low** | `ReviewPeriod.php` | `!== 100` → `abs($total - 100) > 0.01` |
+| 3 | Manager verify tanpa `calculated_at` | **Low** | `MeritResult.php:152` | Guard `! $result->calculated_at` |
+| 4 | DomainException silent skip | **Low** | `CalculateMerit.php:55` | `Log::info` → `Log::warning` |
+
+### Test Suite
+**87 tests passing** (514 assertions, 4.62s):
+- DutyAttendanceTest: 13 ✓
+- MeritSystemTest: 11 ✓
+- CareerDevelopmentTest: 9 ✓
+- FilamentAccessTest: 15 ✓
+- FlowTest: 1 ✓
+- OperationsReportTest: 3 ✓
+- DatabaseSeederTest: 1 ✓
+- ExampleTest: 3 ✓
+- Unit/SqliteBackupTest: 1 ✓
+- DutyTripManagementTest: 6 ✓
+- TrainingWorkflowTest: 7 ✓
+- MentoringWorkflowTest: 7 ✓
+- **Total:** 87 ✓ (naik dari 58) | Merupakan hasil Batch 1 + 2 fix
 

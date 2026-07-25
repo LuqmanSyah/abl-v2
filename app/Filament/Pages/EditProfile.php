@@ -32,7 +32,6 @@ class EditProfile extends BaseEditProfile
             'inapp' => true,
             'webpush' => true,
             'email' => true,
-            'wa' => false,
         ];
 
         return $data;
@@ -53,8 +52,7 @@ class EditProfile extends BaseEditProfile
                         TextInput::make('phone')
                             ->label('Telepon')
                             ->tel()
-                            ->columnSpan(1)
-                            ->helperText('Nomor untuk notifikasi WhatsApp urgensi.'),
+                            ->columnSpan(1),
                     ]),
                 Section::make('Informasi Kepegawaian')
                     ->description('Data kepegawaian — tidak dapat diubah dari sini.')
@@ -79,7 +77,6 @@ class EditProfile extends BaseEditProfile
                             ->dehydrated(false),
                     ]),
                 Section::make('Preferensi Notifikasi')
-                    ->description('WA hanya untuk notifikasi urgensi: Trip Baru, Absen Hari Ini, Absensi Perlu Pemeriksaan.')
                     ->columns(2)
                     ->schema([
                         Toggle::make('notification_preferences.inapp')
@@ -91,9 +88,6 @@ class EditProfile extends BaseEditProfile
                         Toggle::make('notification_preferences.email')
                             ->label('Email')
                             ->default(true),
-                        Toggle::make('notification_preferences.wa')
-                            ->label('WhatsApp')
-                            ->default(false),
                     ]),
                 $this->getPasswordSectionComponent(),
             ]);

@@ -77,14 +77,12 @@ class UserForm
                     ->unique(ignoreRecord: true),
                 TextInput::make('phone')
                     ->label('Telepon')
-                    ->tel()
-                    ->helperText('Digunakan untuk notifikasi WhatsApp urgensi (trip baru, absen hari ini).'),
+                    ->tel(),
                 Toggle::make('is_active')
                     ->label('Aktif')
                     ->default(true)
                     ->required(),
                 Section::make('Preferensi Notifikasi')
-                    ->description('WA hanya untuk notifikasi urgent: Trip Baru, Absen Hari Ini, Absensi Perlu Pemeriksaan')
                     ->columns(2)
                     ->schema([
                         Toggle::make('notification_preferences.inapp')
@@ -96,9 +94,6 @@ class UserForm
                         Toggle::make('notification_preferences.email')
                             ->label('Email')
                             ->default(true),
-                        Toggle::make('notification_preferences.wa')
-                            ->label('WhatsApp')
-                            ->default(false),
                     ]),
             ]);
     }

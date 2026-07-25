@@ -38,7 +38,7 @@ class ReviewPeriod extends Model
             }
 
             $total = $period->kpi_weight + $period->discipline_weight + $period->manager_weight + $period->review_360_weight;
-            if ($total !== 100) {
+            if (abs($total - 100) > 0.01) {
                 throw new BusinessRuleException('Total bobot merit wajib 100%.');
             }
             if ($period->ends_at->isBefore($period->starts_at)) {

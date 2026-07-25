@@ -22,14 +22,6 @@ class AttendanceReminder extends Notification
         return $this->resolveChannels($notifiable, ['database', 'mail', 'webpush']);
     }
 
-    public function toWhatsApp(User $notifiable): string
-    {
-        return "Absensi Dinas\n"
-            ."Jangan lupa absen hari ini untuk dinas {$this->trip->destination}.\n"
-            ."Lokasi: {$this->trip->location_name}\n"
-            .'Absen: '.url("/pegawai/dinas/{$this->trip->id}/absensi");
-    }
-
     public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
     {
         return (new WebPushMessage)

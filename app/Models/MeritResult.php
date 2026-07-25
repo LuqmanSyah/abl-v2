@@ -115,11 +115,11 @@ class MeritResult extends Model
                 $ratio = min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2);
 
                 return [
-                    'indicator' => $kpi->indicator->name,
+                    'indicator' => $kpi->indicator?->name ?? 'Indikator dihapus',
                     'target' => $kpi->target,
                     'achievement' => $kpi->achievement,
                     'score' => round($ratio * 100, 2),
-                    'weight' => $kpi->indicator->weight,
+                    'weight' => $kpi->indicator?->weight ?? 0,
                     'history' => $kpiLogs->get($kpi->id, collect())->map(fn (ActivityLog $log): array => [
                         'action' => $log->action,
                         'user' => $log->user?->name ?? 'Sistem',
@@ -149,7 +149,7 @@ class MeritResult extends Model
             $result = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($result->employee->manager_id !== $manager->id || $manager->role !== UserRole::Manager
-                || $result->manager_verified_at || $result->published_at) {
+                || ! $result->calculated_at || $result->manager_verified_at || $result->published_at) {
                 throw new BusinessRuleException('Hasil merit tidak dapat diverifikasi pengguna ini.');
             }
 

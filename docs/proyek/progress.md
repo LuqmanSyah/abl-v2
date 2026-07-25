@@ -73,8 +73,8 @@
 | 1 | OR query tanpa grouping di `CalculateMerit` | 🔴 High | ✅ | Wrap `whereRelation` + `orWhereHas` dalam `where(fn)` group + `where('role')` di luar |
 | 2 | Disiplin: attendance di luar periode ikut terhitung | 🔴 High | ✅ | Filter `attendances` dgn `whereBetween('captured_at', [$periodStart, $periodEnd])` |
 | 3 | Trip mulai sebelum periode tidak masuk hitungan | 🔴 High | ✅ | Ganti `whereBetween('starts_at')` jadi `starts_at <= periodEnd AND ends_at >= periodStart` |
-| 4 | MeritResult bisa dibuat manual tanpa kalkulasi | 🟡 Medium | ⏳ | Perlu `booted()` guard di `MeritResult` |
-| 5 | DomainException silent skip | 🟡 Medium | ⏳ | Log level dinaikkan ke `warning` |
+| 4 | MeritResult bisa dibuat manual tanpa kalkulasi | 🟡 Medium | ⏳ | Skipped — booted() guard terlalu ketat untuk factory/test |
+| 5 | DomainException silent skip | 🟡 Medium | ✅ | Log level info → warning |
 | 6 | N+1 query attendance | 🔵 Low | ✅ | Eager load `attendances` via `with()` |
-| 7 | Integer cast bobot pecahan | 🔵 Low | ⏳ | Cast float / toleransi 99.5-100.5 |
-| 8 | Manajer verify tanpa data lengkap | 🔵 Low | ⏳ | Validasi skor sebelum verify |
+| 7 | Integer cast bobot pecahan | 🔵 Low | ✅ | `!== 100` → `abs($total - 100) > 0.01` |
+| 8 | Manajer verify tanpa data lengkap | 🔵 Low | ✅ | Cek `calculated_at` sebelum verify |

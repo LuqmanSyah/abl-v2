@@ -19,10 +19,6 @@ trait HasDynamicChannels
             };
         }));
 
-        if (($prefs['wa'] ?? false) && method_exists($this, 'toWhatsApp')) {
-            $filtered[] = 'wa';
-        }
-
         return $filtered;
     }
 }

@@ -52,7 +52,7 @@ class CalculateMerit extends Command
                     }
                 } catch (DomainException $e) {
                     $errors++;
-                    Log::info("Merit skip {$employee->id}: {$e->getMessage()}");
+                    Log::warning("Merit skip {$employee->id}: {$e->getMessage()}");
                 }
             }
         }

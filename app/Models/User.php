@@ -27,7 +27,6 @@ class User extends Authenticatable implements FilamentUser
                 'inapp' => true,
                 'webpush' => true,
                 'email' => true,
-                'wa' => false,
             ];
         });
 

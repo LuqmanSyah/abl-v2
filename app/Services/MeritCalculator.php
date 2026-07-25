@@ -30,9 +30,9 @@ class MeritCalculator
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
-            $indicatorWeight = $kpis->sum(fn (EmployeeKpi $kpi) => $kpi->indicator->weight);
+            $indicatorWeight = $kpis->sum(fn (EmployeeKpi $kpi) => $kpi->indicator?->weight ?? 0);
             $kpiScore = $indicatorWeight
-                ? $kpis->sum(fn (EmployeeKpi $kpi) => min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2) * $kpi->indicator->weight) / $indicatorWeight * 100
+                ? $kpis->sum(fn (EmployeeKpi $kpi) => min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2) * ($kpi->indicator?->weight ?? 0)) / $indicatorWeight * 100
                 : 0;
 
             $periodStart = $period->starts_at->startOfDay();

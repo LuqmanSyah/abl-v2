@@ -279,12 +279,12 @@ feat: leave request CRUD with auto daily summary creation
 ### 2.2 — Attendance Request (Tugas Luar)
 
 #### Files
-- `app/Filament/Resources/AttendanceRequestResource.php` + Pages
-- Business logic di `AttendanceRequest` model:
-  - Top-down: auto-approve (`status = approved`, `approved_by = created_by`)
-  - Bottom-up: `status = pending`, butuh approval
-  - Overlap validation: cek terhadap `attendance_requests` lain DAN `leave_requests` approved (formula interval overlap dari blueprint)
-  - Multi-hari: 1 `attendance_request` bisa span beberapa hari
+- [x] `app/Filament/Resources/AttendanceRequestResource.php` + Pages
+- [x] Business logic di `AttendanceRequest` model:
+  - [x] Top-down: auto-approve (`status = approved`, `approved_by = created_by`)
+  - [x] Bottom-up: `status = pending`, butuh approval
+  - [x] Overlap validation: cek terhadap `attendance_requests` lain DAN `leave_requests` approved (formula interval overlap dari blueprint)
+  - [x] Multi-hari: 1 `attendance_request` bisa span beberapa hari
 
 #### Verification
 ```bash

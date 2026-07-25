@@ -90,11 +90,12 @@
 - **Deskripsi**: Cuma cek `$receivedAt->isBefore($trip->starts_at)`. Tidak ada cek `$receivedAt->isAfter($trip->ends_at)`. Employee bisa submit lama setelah dinas selesai. Clock mismatch flag cuma `NeedsReview`, bukan block.
 - **Fix**: Tambah `$receivedAt->isAfter($trip->ends_at)` → throw "Sesi absensi sudah berakhir."
 
-#### 15. AttendanceRecorder — Status Priority Nutup Data Lokasi (AR-2)
+#### 15. AttendanceRecorder — Status Priority Nutup Data Lokasi (AR-2) ✅
 - **Lokasi**: `app/Services/AttendanceRecorder.php:62-67`
 - **Tingkat**: **Medium**
+- **Status**: **Fixed**
 - **Deskripsi**: `$suspected` (NeedsReview) diperiksa pertama. Jika clock mismatch + outside radius → cuma `NeedsReview`, HR tidak lihat bahwa lokasi juga salah. Informasi geografi hilang.
-- **Fix**: Ubah status priority: cek `outside_radius` dan `late` dulu. Jika suspected, simpan data asli di `data` JSON column Attendance. Atau simpan multiple flags.
+- **Fix**: Reorder status: cek `outside_radius`/`late` dulu, lalu override jika `$suspected`. Face verification override juga diperbaiki. `review_reason` sudah simpan semua alasan. Flag individual bisa di-derive dari existing columns (`distance_meters`, `mock_location_suspected`, `accuracy_meters`, `synced_at`-`captured_at`).
 
 #### 16. MeritCalculator — Discipline = 100 Jika 0 Calendar Days (MC-2)
 - **Lokasi**: `app/Services/MeritCalculator.php:52`

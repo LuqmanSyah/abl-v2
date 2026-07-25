@@ -602,17 +602,18 @@ Diterapkan pada commit `c3ed9ac` + setelahnya. Semua fix telah lolos 58 test.
 **Problem:** Jika `CareerGoal::target_position_id` null, `PositionCompetency::where(...)` query nonsense.
 **Fix:** Guard `if (! $goal->target_position_id || ! $goal->targetPosition) { return collect(); }`
 
-### 13.7. AR-2 — Status Priority Nutup Data Lokasi (Open)
+### 13.7. AR-2 — Status Priority Nutup Data Lokasi (Fixed)
 
-**Lokasi:** `app/Services/AttendanceRecorder.php:62-68`
-**Status:** **Open** — Membutuhkan DB migration (simpan multiple flags). Reorder status di kode menyebabkan OutsideRadius menutup data suspek.
+**Lokasi:** `app/Services/AttendanceRecorder.php:70-75,122`
+**Status:** **Fixed** — Reorder status: cek `outside_radius`/`late` dulu, override ke `NeedsReview` jika `$suspected`. Face verification override jg diperbaiki (sekarang semua status bukan `NeedsReview` akan di-override). `review_reason` sudah simpan semua alasan; flag individual bisa di-derive dari existing columns tanpa migration.
 
 ### 13.8. AR-1 — Ends_at Block (Dibatalkan)
 
 **Alasan:** `ends_at` block bertentangan dengan `Late` dan `Backdated` test. Late & NeedsReview classification sudah menangani kasus after-ends_at secara tepat.
 
+### 13.9. AR-3 — Import XLSX (Dibatalkan)
 
-### 13.9. AR-3 — Masih error saat klik import xlsx (belum diperbaiki)
+**Alasan:** Tidak ada fitur import xlsx di codebase. Hanya ada export. Issue berdasarkan misinformasi.
 
 ---
 

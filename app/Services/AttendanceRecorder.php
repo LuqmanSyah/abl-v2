@@ -68,11 +68,14 @@ class AttendanceRecorder
             $suspected = $mockLocation || $poorAccuracy || $clockMismatch;
 
             $status = match (true) {
-                $suspected => AttendanceStatus::NeedsReview,
                 $distance > $trip->radius_meters => AttendanceStatus::OutsideRadius,
                 $capturedAt->isAfter($trip->ends_at) => AttendanceStatus::Late,
                 default => AttendanceStatus::Valid,
             };
+
+            if ($suspected) {
+                $status = AttendanceStatus::NeedsReview;
+            }
 
             $reasons = array_filter([
                 $mockLocation ? 'Perangkat mendeteksi lokasi palsu.' : null,
@@ -119,7 +122,7 @@ class AttendanceRecorder
 
                         if ($distance > 0.6) {
                             $attendance->update([
-                                'status' => $attendance->status === AttendanceStatus::Valid
+                                'status' => $attendance->status !== AttendanceStatus::NeedsReview
                                     ? AttendanceStatus::NeedsReview
                                     : $attendance->status,
                                 'review_reason' => trim($attendance->review_reason.' Data pengenalan wajah tidak cocok dengan absensi sebelumnya.'),

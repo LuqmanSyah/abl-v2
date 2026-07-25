@@ -15,6 +15,8 @@ use App\Support\GeoDistance;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use JsonException;
 use Throwable;
 
@@ -85,7 +87,14 @@ class AttendanceRecorder
                 $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,
             ]);
 
-            $faceDescriptor = $this->validatedFaceDescriptor($data['face_descriptor'] ?? null);
+            $faceData = $this->validatedFaceDescriptor($data['face_descriptor'] ?? null);
+            $faceDescriptorPath = null;
+
+            if ($faceData !== null) {
+                $filename = ($data['client_uuid'] ?? (string) Str::uuid()) . '.json';
+                $faceDescriptorPath = 'face-descriptors/' . $filename;
+                Storage::disk('local')->put($faceDescriptorPath, json_encode($faceData));
+            }
 
             $attendance = Attendance::create([
                 ...$data,
@@ -94,24 +103,25 @@ class AttendanceRecorder
                 'attendance_date' => $attendanceDate,
                 'distance_meters' => $distance,
                 'photo_path' => $photoPath,
-                'face_descriptor' => $faceDescriptor,
+                'face_descriptor_path' => $faceDescriptorPath,
                 'status' => $status,
                 'review_reason' => $reasons ? implode(' ', $reasons) : null,
                 'mock_location_suspected' => $suspected,
                 'synced_at' => $receivedAt,
             ]);
 
-            if ($faceDescriptor !== null) {
+            if ($faceData !== null) {
                 $previous = Attendance::where('duty_trip_id', $trip->id)
                     ->where('employee_id', $employee->id)
-                    ->whereNotNull('face_descriptor')
+                    ->whereNotNull('face_descriptor_path')
                     ->where('id', '!=', $attendance->id)
                     ->latest('captured_at')
                     ->first();
 
-                if ($previous && $previous->face_descriptor) {
-                    $prev = json_decode($previous->face_descriptor, true);
-                    $curr = json_decode($faceDescriptor, true);
+                if ($previous && $previous->face_descriptor_path) {
+                    $prevContent = Storage::disk('local')->get($previous->face_descriptor_path);
+                    $prev = $prevContent !== false ? json_decode($prevContent, true) : null;
+                    $curr = $faceData;
 
                     if (is_array($prev) && is_array($curr) && count($prev) === count($curr)) {
                         $sum = 0;
@@ -148,7 +158,7 @@ class AttendanceRecorder
         }, 3);
     }
 
-    private function validatedFaceDescriptor(mixed $descriptor): ?string
+    private function validatedFaceDescriptor(mixed $descriptor): ?array
     {
         if ($descriptor === null || $descriptor === '') {
             return null;
@@ -174,6 +184,6 @@ class AttendanceRecorder
             }
         }
 
-        return json_encode(array_map('floatval', $values), JSON_THROW_ON_ERROR);
+        return array_map('floatval', $values);
     }
 }

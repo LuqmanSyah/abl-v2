@@ -16,7 +16,7 @@ class Attendance extends Model
 
     protected $fillable = [
         'client_uuid', 'duty_trip_id', 'employee_id', 'attendance_date', 'captured_at', 'latitude', 'longitude',
-        'accuracy_meters', 'distance_meters', 'photo_path', 'face_descriptor',
+        'accuracy_meters', 'distance_meters', 'photo_path', 'face_descriptor', 'face_descriptor_path',
         'status', 'review_reason', 'mock_location_suspected', 'synced_at',
     ];
 

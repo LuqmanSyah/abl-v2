@@ -8,7 +8,9 @@ docs/
 ├── panel/                  Panduan panel (pegawai, atasan, HR)
 ├── operasional/            Deployment, backup, changelog
 └── modul/                  Dokumentasi per modul
-    └── perbaikan-absensi-dinas/  Absensi dinas & verifikasi wajah
+    ├── absensi-dinas/           Absensi dinas & verifikasi wajah
+    ├── merit-system/            Merit kalkulasi & review
+    └── pembinaan-karir/         Gap analysis, training, mentoring
 ```
 
 ## Cepat
@@ -20,4 +22,6 @@ docs/
 | Panduan panel Pegawai | [panel/pegawai.md](panel/pegawai.md) |
 | Panduan panel Atasan | [panel/atasan.md](panel/atasan.md) |
 | Panduan panel HR | [panel/hr.md](panel/hr.md) |
-| Verifikasi wajah | [modul/perbaikan-absensi-dinas/verifikasi-wajah.md](modul/perbaikan-absensi-dinas/verifikasi-wajah.md) |
+| Verifikasi wajah | [modul/absensi-dinas/verifikasi-wajah.md](modul/absensi-dinas/verifikasi-wajah.md) |
+| Formula merit & bobot | [modul/merit-system/README.md](modul/merit-system/README.md) |
+| Gap analysis & training | [modul/pembinaan-karir/README.md](modul/pembinaan-karir/README.md) |

@@ -22,11 +22,20 @@ class AttendanceController extends Controller
     {
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
-        $previousDescriptor = Attendance::where('duty_trip_id', $dutyTrip->id)
+        $prev = Attendance::where('duty_trip_id', $dutyTrip->id)
             ->where('employee_id', $request->user()->id)
-            ->whereNotNull('face_descriptor')
+            ->where(function ($q) {
+                $q->whereNotNull('face_descriptor_path')->orWhereNotNull('face_descriptor');
+            })
             ->latest('captured_at')
-            ->value('face_descriptor');
+            ->first();
+
+        $previousDescriptor = null;
+        if ($prev) {
+            $previousDescriptor = $prev->face_descriptor_path
+                ? Storage::disk('local')->get($prev->face_descriptor_path)
+                : $prev->face_descriptor;
+        }
 
         return view('attendance.capture', [
             'trip' => $dutyTrip->load('employee', 'attendances'),

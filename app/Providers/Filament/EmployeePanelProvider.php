@@ -46,6 +46,7 @@ class EmployeePanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            ->discoverWidgets(in: app_path('Filament/Widgets/Employee'), for: 'App\\Filament\\Widgets\\Employee')
             ->userMenuItems([
                 Action::make('admin-panel')
                     ->label('Panel Admin')

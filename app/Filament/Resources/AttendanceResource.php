@@ -40,6 +40,7 @@ class AttendanceResource extends RoleAwareResource
         return $schema->components([
             Select::make('type')
                 ->options(AttendanceType::class)
+                ->default(fn (): ?string => request()->query('type'))
                 ->required()
                 ->live()
                 ->label('Jenis Presensi'),

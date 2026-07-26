@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Console\Commands\AggregateDailyAttendance;
 use App\Console\Commands\PopulateHolidaySummaries;
 use App\Enums\DailySummaryStatus;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
 class Holiday extends Model
@@ -25,16 +26,20 @@ class Holiday extends Model
                 return;
             }
 
-            $oldDate = $holiday->getOriginal('date');
-
-            DailyAttendanceSummary::query()
-                ->whereDate('date', $oldDate)
-                ->where('status', DailySummaryStatus::Holiday)
-                ->delete();
-
-            app(AggregateDailyAttendance::class)->aggregate($oldDate);
+            static::rebuildSummaries($holiday->getOriginal('date'));
         });
 
         static::saved(fn (self $holiday) => app(PopulateHolidaySummaries::class)->populate($holiday));
+        static::deleted(fn (self $holiday) => static::rebuildSummaries($holiday->date));
+    }
+
+    private static function rebuildSummaries(CarbonInterface|string $date): void
+    {
+        DailyAttendanceSummary::query()
+            ->whereDate('date', $date)
+            ->where('status', DailySummaryStatus::Holiday)
+            ->delete();
+
+        app(AggregateDailyAttendance::class)->aggregate($date);
     }
 }

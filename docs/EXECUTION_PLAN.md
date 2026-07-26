@@ -379,9 +379,9 @@ feat: daily attendance aggregation cron with priority hierarchy
 ### 2.5 — Holiday & Branch Office Management
 
 #### Files
-- `app/Filament/Resources/HolidayResource.php` (CRUD)
-- `app/Filament/Resources/BranchOfficeResource.php` (CRUD + Google Maps widget)
-- `app/Filament/Resources/WorkScheduleResource.php` (CRUD)
+- [x] `app/Filament/Resources/HolidayResource.php` (CRUD)
+- [x] `app/Filament/Resources/BranchOfficeResource.php` (CRUD + Google Maps widget)
+- [x] `app/Filament/Resources/WorkScheduleResource.php` (CRUD)
 
 #### Commit
 ```

@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReviewKpiDetail extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (self $detail): void {
+            $detail->weight ??= $detail->kpi()->value('weight');
+            $detail->subtotal_score = $detail->manager_score === null
+                ? null
+                : round((float) $detail->manager_score * (float) $detail->weight / 100, 2);
+        });
+    }
+
     protected $fillable = [
         'performance_review_id',
         'kpi_id',

@@ -400,14 +400,14 @@ Performance review, KPI scoring, attendance score calculation, merit grading, ca
 ### 3.1 — KPI Management
 
 #### Files
-- `app/Filament/Resources/KpiResource.php` (CRUD master KPI)
-- `app/Filament/Resources/PerformanceReviewResource.php` + Pages
-- `app/Filament/Resources/ReviewKpiDetailResource.php` (inline di PerformanceReview)
-- Business logic di models:
-  - `ReviewKpiDetail`: auto-calc `subtotal_score = manager_score × weight / 100`
-  - `PerformanceReview`: cannot submit sebelum SEMUA `review_kpi_details` punya `manager_score` (mandatory completion constraint)
-  - Weight constraint: `Σ weight = 100` pada `review_kpi_details` sebelum status `submitted`
-  - Snapshot weight dari master `kpis` saat rapor dibuat
+- [x] `app/Filament/Resources/KpiResource.php` (CRUD master KPI)
+- [x] `app/Filament/Resources/PerformanceReviewResource.php` + Pages
+- [x] `app/Filament/Resources/ReviewKpiDetailResource.php` (inline di PerformanceReview)
+- [x] Business logic di models:
+  - [x] `ReviewKpiDetail`: auto-calc `subtotal_score = manager_score × weight / 100`
+  - [x] `PerformanceReview`: cannot submit sebelum SEMUA `review_kpi_details` punya `manager_score` (mandatory completion constraint)
+  - [x] Weight constraint: `Σ weight = 100` pada `review_kpi_details` sebelum status `submitted`
+  - [x] Snapshot weight dari master `kpis` saat rapor dibuat
 
 #### Verification
 ```bash

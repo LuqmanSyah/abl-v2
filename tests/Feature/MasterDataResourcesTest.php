@@ -5,13 +5,18 @@ namespace Tests\Feature;
 use App\Enums\DailySummaryStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\BranchOfficeResource\Pages\ListBranchOffices;
+use App\Filament\Resources\DepartmentResource\Pages\ListDepartments;
 use App\Filament\Resources\HolidayResource\Pages\ListHolidays;
+use App\Filament\Resources\PositionResource\Pages\ListPositions;
+use App\Filament\Resources\SkillResource\Pages\ListSkills;
+use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Filament\Resources\WorkScheduleResource\Pages\ListWorkSchedules;
 use App\Models\BranchOffice;
 use App\Models\DailyAttendanceSummary;
 use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\Position;
+use App\Models\Skill;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Filament\Actions\Testing\TestAction;
@@ -44,12 +49,13 @@ class MasterDataResourcesTest extends TestCase
             'allowed_radius_meters' => 100,
         ]);
 
-        $this->actingAs(User::factory()->create([
+        $hrAdmin = User::factory()->create([
             'position_id' => $position->id,
             'work_schedule_id' => $schedule->id,
             'branch_office_id' => $branch->id,
             'role' => UserRole::HrAdmin,
-        ]));
+        ]);
+        $this->actingAs($hrAdmin);
 
         Livewire::test(ListHolidays::class)
             ->callAction('create', data: [
@@ -81,10 +87,59 @@ class MasterDataResourcesTest extends TestCase
             ])
             ->assertHasNoFormErrors();
 
+        Livewire::test(ListDepartments::class)
+            ->callAction('create', data: [
+                'name' => 'Operations',
+                'code' => 'OPS',
+            ])
+            ->assertHasNoFormErrors();
+
+        Livewire::test(ListPositions::class)
+            ->callAction('create', data: [
+                'department_id' => $department->id,
+                'title' => 'HR Officer',
+                'level' => 2,
+            ])
+            ->assertHasNoFormErrors();
+
+        Livewire::test(ListSkills::class)
+            ->callAction('create', data: [
+                'name' => 'Recruitment',
+                'category' => 'Functional',
+            ])
+            ->assertHasNoFormErrors();
+
+        $this->actingAs(User::factory()->create([
+            'position_id' => $position->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::ItAdmin,
+        ]));
+
+        Livewire::test(ListUsers::class)
+            ->callAction('create', data: [
+                'nip' => 'EMP-001',
+                'name' => 'New Employee',
+                'email' => 'new.employee@example.com',
+                'password' => 'password',
+                'position_id' => $position->id,
+                'work_schedule_id' => $schedule->id,
+                'branch_office_id' => $branch->id,
+                'join_date' => '2026-08-01',
+                'role' => UserRole::Employee->value,
+                'status' => true,
+            ])
+            ->assertHasNoFormErrors();
+
         $this->assertTrue(Holiday::query()->whereDate('date', '2026-08-17')->exists());
         $this->assertDatabaseHas(BranchOffice::class, ['code' => 'JKT']);
         $this->assertDatabaseHas(WorkSchedule::class, ['name' => 'Reguler']);
+        $this->assertDatabaseHas(Department::class, ['code' => 'OPS']);
+        $this->assertDatabaseHas(Position::class, ['title' => 'HR Officer']);
+        $this->assertDatabaseHas(Skill::class, ['name' => 'Recruitment']);
+        $this->assertDatabaseHas(User::class, ['nip' => 'EMP-001']);
 
+        $this->actingAs($hrAdmin);
         $holiday = Holiday::query()->whereDate('date', '2026-08-17')->firstOrFail();
         Livewire::test(ListHolidays::class)
             ->callAction(TestAction::make('delete')->table($holiday));

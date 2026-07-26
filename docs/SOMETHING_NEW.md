@@ -17,11 +17,10 @@
 * Seluruh penyimpanan dan pemrosesan waktu (`recorded_at`, `duty_start_datetime`, `duty_end_datetime`, serta eksekusi *Scheduled Job*) **WAJIB** menggunakan zona waktu `Asia/Jakarta` secara konsisten, baik pada konfigurasi Laravel (`config/app.php`), database container, maupun server OS untuk memastikan batas akhir hari (23:59 WIB) berjalan tepat waktu.
 
 
-* **Location Services:** **Google Maps Platform API + Fallback Server-Side**
+* **Location Services:** **Google Maps Platform + Server-Side Geofencing**
 * *Geocoding API:* Menerjemahkan koordinat GPS ke alamat fisik (*Reverse Geocoding*).
-* *Distance Matrix API:* Memvalidasi jarak titik presensi terhadap lokasi kantor atau lokasi *meeting*.
 * *Maps JavaScript API:* Widget peta interaktif di Dashboard Filament.
-* *Server-Side Haversine Fallback:* Formula matematika independen di Laravel untuk kalkulasi jarak jika Google API mengalami kendala.
+* *Server-Side Haversine:* Formula matematika independen di Laravel untuk validasi radius garis lurus.
 
 
 
@@ -57,16 +56,15 @@ $$\text{Overlap} \iff (\text{new\_start} < \text{existing\_end}) \land (\text{ne
 * **Jendela Check-In Awal (Early Check-In):** Tombol presensi *check-in* baru aktif paling awal **90 menit** sebelum jam masuk acuan (`check_in_time` atau `duty_start_datetime`). Presensi yang dilakukan lebih dari 90 menit sebelum jam masuk ditolak oleh sistem untuk mencegah kecurangan kehadiran.
 * **Batas Keterlambatan vs Alfa (`alfa_cutoff_minutes`):** Jika *check-in* dilakukan melebihi $\text{jam masuk acuan} + \text{alfa\_cutoff\_minutes}$ (default: 120 menit), status sesi/harian tersebut otomatis ditetapkan sebagai **Alfa**.
 
-#### 4. Geofencing Dual-Check & Fallback Mechanism (Haversine)
+#### 4. Geofencing Radius (Haversine)
 
-* **API Validation:** Menggunakan Google Distance Matrix API untuk menghitung $distance\_to\_target\_meters$. Presensi sah jika $distance\_to\_target \le allowed\_radius$.
-* **3x Retry & Haversine Fallback:** Jika koneksi API ke Google gagal, sistem mencoba ulang 3 kali dengan jeda 2 detik. Jika tetap gagal, sistem beralih menggunakan **Rumus Haversine** di server Laravel:
+* **Server-Side Validation:** Sistem menggunakan **Rumus Haversine** untuk menghitung jarak garis lurus antara titik presensi dan target. Presensi sah jika $distance\_to\_target \le allowed\_radius$:
 
 $$d = 2r \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)}\right)$$
 
 
 
-Hasil Haversine disimpan di `distance_to_target_meters` dengan `is_fallback = true` pada tabel `attendances`.
+Hasil Haversine disimpan di `distance_to_target_meters`. Google Geocoding hanya dipakai untuk mengambil alamat dan kegagalannya tidak memengaruhi validasi radius.
 * **Check-Out Pengecualian (Out of Radius):** Jika *check-out* berada di luar radius, karyawan wajib mengisi form **"Check-Out Luar Radius"** (`exception_reason` + *Live Selfie*), tersimpan dengan `is_radius_exception = true` dan `status = pending_verification`.
 * **Approved:** Status *check-out* menjadi sah.
 * **Rejected / Timeout (Pukul 23:59 WIB):** Jika ditolak atau tidak diverifikasi hingga pukul 23:59 WIB, hari tersebut dianggap `missing_checkout` dan dikenakan penalti kedisiplinan (-5 poin).

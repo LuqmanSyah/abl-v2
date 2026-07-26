@@ -309,14 +309,10 @@ feat: attendance request with top-down/bottom-up flow and overlap validation
     - `attendance_request_id` terisi: pakai `attendance_requests` target coordinates
   - Early check-in window: aktif 90 menit sebelum `check_in_time` / `duty_start_datetime`
   - Alfa cutoff: > `alfa_cutoff_minutes` setelah jam masuk = status Alfa
-  - Geofencing dual-check:
-    1. Google Distance Matrix API call
-    2. 3x retry dengan 2s delay
-    3. Fallback Haversine (reuse `GeoDistance`)
-    4. `is_fallback = true` jika pakai Haversine
+  - Geofencing radius memakai Haversine (`GeoDistance`) untuk jarak garis lurus
   - Check-out exception: luar radius = wajib form (`exception_reason` + photo), `is_radius_exception = true`, `status = pending_verification`
   - Last-day flexibility: check-out di kantor asal diizinkan setelah `duty_end_datetime`
-- `app/Services/GoogleMapsService.php` — wrapper Google Distance Matrix API + Geocoding
+- `app/Services/GoogleMapsService.php` — wrapper reverse Geocoding
 - `app/Filament/Resources/AttendanceResource.php` + Pages:
   - `CreateAttendance` page: GPS capture, photo upload, geofencing validation
   - Check-out exception form
@@ -335,12 +331,12 @@ feat: attendance request with top-down/bottom-up flow and overlap validation
 # Test: check-out exception flow
 # Test: early check-in > 90 menit (rejected)
 # Test: late check-in > alfa_cutoff (Alfa status)
-# Test: Google API fail, fallback Haversine, is_fallback = true
+# Test: radius memakai Haversine tanpa Distance Matrix API
 ```
 
 #### Commit
 ```
-feat: GPS attendance service with geofencing, API fallback, and exception flow
+feat: GPS attendance service with Haversine geofencing and exception flow
 ```
 
 ---
@@ -608,8 +604,9 @@ feat: notification system for all blueprint workflows
 Schedule::command('attendance:aggregate')->dailyAt('23:59')->timezone('Asia/Jakarta');
 Schedule::command('career:scan-candidates')->monthlyOn(1, '00:30')->timezone('Asia/Jakarta');
 Schedule::command('career:expire-promotions')->dailyAt('00:15')->timezone('Asia/Jakarta');
-Schedule::command('db:backup')->dailyAt('02:00');
 ```
+
+Backup MySQL dijadwalkan pada host atau layanan infrastruktur; lihat `docs/operasional/operations.md`.
 
 #### Commit
 ```
@@ -673,7 +670,6 @@ test: add unit and feature tests for all blueprint business rules
 app/
 ├── Console/Commands/
 │   ├── AggregateDailyAttendance.php
-│   ├── BackupDatabase.php
 │   ├── ExpireProposedPromotions.php
 │   └── ScanCandidatePool.php
 ├── Enums/

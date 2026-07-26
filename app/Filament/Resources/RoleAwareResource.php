@@ -52,12 +52,17 @@ abstract class RoleAwareResource extends Resource
 
             BranchOfficeResource::class,
             CareerPathResource::class,
+            DepartmentResource::class,
             HolidayResource::class,
             IndividualDevelopmentPlanResource::class,
             KpiResource::class,
             LeaveRequestResource::class,
+            PositionResource::class,
+            SkillResource::class,
             UserSkillResource::class,
             WorkScheduleResource::class => [UserRole::HrAdmin],
+
+            UserResource::class => [UserRole::ItAdmin],
 
             default => [],
         };

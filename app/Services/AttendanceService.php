@@ -60,7 +60,7 @@ class AttendanceService
                 $branch->name,
             ];
 
-        [$distance, $isFallback] = $this->distance(
+        $distance = GeoDistance::meters(
             $latitude,
             $longitude,
             $targetLatitude,
@@ -71,7 +71,7 @@ class AttendanceService
             && $request
             && $distance > $radius
             && $this->canCheckOutAtBranch($request, $recordedAt)) {
-            [$branchDistance, $branchFallback] = $this->distance(
+            $branchDistance = GeoDistance::meters(
                 $latitude,
                 $longitude,
                 (float) $branch->latitude,
@@ -80,7 +80,6 @@ class AttendanceService
 
             if ($branchDistance <= $branch->allowed_radius_meters) {
                 $distance = $branchDistance;
-                $isFallback = $branchFallback;
                 $radius = $branch->allowed_radius_meters;
                 $address = $branch->name;
             }
@@ -115,7 +114,7 @@ class AttendanceService
             'latitude' => $latitude,
             'longitude' => $longitude,
             'distance_to_target_meters' => $distance,
-            'is_fallback' => $isFallback,
+            'is_fallback' => false,
             'address_snapshot' => $address,
             'photo_path' => $photoPath,
             'is_radius_exception' => $outsideRadius,
@@ -190,31 +189,5 @@ class AttendanceService
     {
         return $recordedAt->isSameDay($request->duty_end_datetime)
             && $recordedAt->gte($request->duty_end_datetime);
-    }
-
-    /**
-     * @return array{int, bool}
-     */
-    private function distance(
-        float $fromLatitude,
-        float $fromLongitude,
-        float $toLatitude,
-        float $toLongitude,
-    ): array {
-        try {
-            return [$this->googleMaps->distance(
-                $fromLatitude,
-                $fromLongitude,
-                $toLatitude,
-                $toLongitude,
-            ), false];
-        } catch (Throwable) {
-            return [GeoDistance::meters(
-                $fromLatitude,
-                $fromLongitude,
-                $toLatitude,
-                $toLongitude,
-            ), true];
-        }
     }
 }

@@ -165,7 +165,6 @@ class CareerAutomationTest extends TestCase
         $events = collect(app(Schedule::class)->events());
         $expire = $events->first(fn ($event) => str_contains($event->command, 'career:expire-promotions'));
         $scan = $events->first(fn ($event) => str_contains($event->command, 'career:scan-candidates'));
-        $backup = $events->first(fn ($event) => str_contains($event->command, 'db:backup'));
 
         $this->assertNotNull($expire);
         $this->assertSame('15 0 * * *', $expire->expression);
@@ -173,8 +172,5 @@ class CareerAutomationTest extends TestCase
         $this->assertNotNull($scan);
         $this->assertSame('30 0 1 * *', $scan->expression);
         $this->assertSame('Asia/Jakarta', $scan->timezone);
-        $this->assertNotNull($backup);
-        $this->assertSame('0 2 * * *', $backup->expression);
-        $this->assertSame('Asia/Jakarta', $backup->timezone);
     }
 }

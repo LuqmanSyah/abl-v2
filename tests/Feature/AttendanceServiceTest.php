@@ -21,9 +21,7 @@ use App\Models\WorkSchedule;
 use App\Services\AttendanceService;
 use App\Services\GoogleMapsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Mockery;
-use RuntimeException;
 use Tests\TestCase;
 
 class AttendanceServiceTest extends TestCase
@@ -33,9 +31,7 @@ class AttendanceServiceTest extends TestCase
     public function test_office_check_in_within_radius_is_recorded_once_per_day(): void
     {
         $user = $this->employee();
-        $maps = Mockery::mock(GoogleMapsService::class);
-        $maps->shouldReceive('distance')->twice()->andReturn(20);
-        $service = new AttendanceService($maps);
+        $service = app(AttendanceService::class);
 
         $attendance = $service->record(
             $user,
@@ -62,7 +58,7 @@ class AttendanceServiceTest extends TestCase
 
     public function test_office_check_in_outside_radius_is_rejected(): void
     {
-        $service = $this->serviceReturning(101);
+        $service = app(AttendanceService::class);
 
         $this->expectException(BusinessRuleException::class);
         $service->record(
@@ -79,7 +75,7 @@ class AttendanceServiceTest extends TestCase
     {
         $user = $this->employee();
         $approved = $this->attendanceRequest($user, AttendanceRequestStatus::Approved, '2026-08-01');
-        $service = $this->serviceReturning(10, 10);
+        $service = app(AttendanceService::class);
 
         $service->record(
             $user,
@@ -207,7 +203,7 @@ class AttendanceServiceTest extends TestCase
     public function test_early_check_in_is_rejected_and_past_cutoff_is_alfa(): void
     {
         $user = $this->employee();
-        $service = $this->serviceReturning(10);
+        $service = app(AttendanceService::class);
 
         try {
             $service->record(
@@ -235,10 +231,10 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame(AttendanceStatus::Alfa, $attendance->status);
     }
 
-    public function test_google_failure_falls_back_to_haversine(): void
+    public function test_geofencing_uses_haversine_without_google_distance_api(): void
     {
         $maps = Mockery::mock(GoogleMapsService::class);
-        $maps->shouldReceive('distance')->once()->andThrow(new RuntimeException('API unavailable'));
+        $maps->shouldNotReceive('distance');
 
         $attendance = (new AttendanceService($maps))->record(
             $this->employee(),
@@ -249,14 +245,14 @@ class AttendanceServiceTest extends TestCase
             recordedAt: now()->setDate(2026, 8, 1)->setTime(8, 0),
         );
 
-        $this->assertTrue($attendance->is_fallback);
+        $this->assertFalse($attendance->is_fallback);
         $this->assertEquals(0, $attendance->distance_to_target_meters);
     }
 
     public function test_outside_radius_check_out_requires_exception_and_is_pending(): void
     {
         $user = $this->employee();
-        $service = $this->serviceReturning(500, 500);
+        $service = app(AttendanceService::class);
 
         try {
             $service->record(
@@ -290,10 +286,8 @@ class AttendanceServiceTest extends TestCase
     {
         $user = $this->employee();
         $request = $this->attendanceRequest($user, AttendanceRequestStatus::Approved, '2026-08-01');
-        $maps = Mockery::mock(GoogleMapsService::class);
-        $maps->shouldReceive('distance')->twice()->andReturn(500, 10);
 
-        $attendance = (new AttendanceService($maps))->record(
+        $attendance = app(AttendanceService::class)->record(
             $user,
             AttendanceType::CheckOut,
             -6.2088,
@@ -305,24 +299,6 @@ class AttendanceServiceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::Normal, $attendance->status);
         $this->assertSame('Kantor Pusat', $attendance->address_snapshot);
-    }
-
-    public function test_google_distance_matrix_retries_three_times(): void
-    {
-        config()->set('services.google_maps.key', 'test-key');
-        Http::fakeSequence()
-            ->push([], 500)
-            ->push([], 500)
-            ->push([
-                'status' => 'OK',
-                'rows' => [['elements' => [[
-                    'status' => 'OK',
-                    'distance' => ['value' => 42],
-                ]]]],
-            ]);
-
-        $this->assertSame(42, (new GoogleMapsService(0))->distance(-6.2, 106.8, -6.1, 106.9));
-        Http::assertSentCount(3);
     }
 
     public function test_attendance_form_renders_gps_capture_and_photo_fields(): void
@@ -389,14 +365,5 @@ class AttendanceServiceTest extends TestCase
             'status' => $status,
             'approved_by' => $status === AttendanceRequestStatus::Approved ? $user->id : null,
         ]);
-    }
-
-    private function serviceReturning(int ...$distances): AttendanceService
-    {
-        $maps = Mockery::mock(GoogleMapsService::class);
-        $expectation = $maps->shouldReceive('distance')->times(count($distances));
-        $expectation->andReturn(...$distances);
-
-        return new AttendanceService($maps);
     }
 }

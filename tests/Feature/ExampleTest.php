@@ -2,11 +2,19 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Enums\UserRole;
+use App\Models\BranchOffice;
+use App\Models\Department;
+use App\Models\Position;
+use App\Models\User;
+use App\Models\WorkSchedule;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * A basic test example.
      */
@@ -40,5 +48,40 @@ class ExampleTest extends TestCase
                 'email' => 'email kantor wajib diisi.',
                 'password' => 'kata sandi wajib diisi.',
             ]);
+    }
+
+    public function test_employee_login_redirects_to_employee_panel(): void
+    {
+        $department = Department::create(['name' => 'Technology', 'code' => 'TECH']);
+        $position = Position::create(['department_id' => $department->id, 'title' => 'Engineer', 'level' => 1]);
+        $schedule = WorkSchedule::create([
+            'name' => 'Regular',
+            'check_in_time' => '08:00',
+            'check_out_time' => '17:00',
+            'late_tolerance_minutes' => 15,
+            'alfa_cutoff_minutes' => 120,
+        ]);
+        $branch = BranchOffice::create([
+            'name' => 'Head Office',
+            'code' => 'HQ',
+            'latitude' => -6.2088,
+            'longitude' => 106.8456,
+            'allowed_radius_meters' => 100,
+        ]);
+        $user = User::factory()->create([
+            'email' => 'employee@example.com',
+            'password' => 'password',
+            'role' => UserRole::Employee,
+            'position_id' => $position->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+        ]);
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ])->assertRedirect('/app');
+
+        $this->assertAuthenticatedAs($user);
     }
 }

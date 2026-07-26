@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class AuthenticatedSessionController extends Controller
 
         $remember = (bool) ($credentials['remember'] ?? false);
         unset($credentials['remember']);
-        $credentials['is_active'] = true;
+        $credentials['status'] = true;
 
         if (! Auth::attempt($credentials, $remember)) {
             return back()
@@ -40,6 +41,8 @@ class AuthenticatedSessionController extends Controller
 
     private function redirectToPanel(User $user): RedirectResponse
     {
-        return redirect('/'.$user->role->value);
+        return redirect(in_array($user->role, [UserRole::Employee, UserRole::Manager], true)
+            ? '/app'
+            : '/admin');
     }
 }

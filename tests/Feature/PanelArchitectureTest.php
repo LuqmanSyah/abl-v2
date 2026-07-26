@@ -6,11 +6,15 @@ use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceRequestResource;
 use App\Filament\Resources\AttendanceResource;
 use App\Filament\Resources\BranchOfficeResource;
+use App\Filament\Resources\DepartmentResource;
 use App\Filament\Resources\IndividualDevelopmentPlanResource;
 use App\Filament\Resources\LeaveRequestResource;
 use App\Filament\Resources\PerformanceReviewResource;
+use App\Filament\Resources\PositionResource;
 use App\Filament\Resources\PromotionResource;
 use App\Filament\Resources\ReviewKpiDetailResource;
+use App\Filament\Resources\SkillResource;
+use App\Filament\Resources\UserResource;
 use App\Filament\Resources\UserSkillResource;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -84,8 +88,12 @@ class PanelArchitectureTest extends TestCase
 
         $this->actingAs(User::factory()->make(['role' => UserRole::HrAdmin]));
         $this->assertTrue(BranchOfficeResource::canAccess());
+        $this->assertTrue(DepartmentResource::canAccess());
+        $this->assertTrue(PositionResource::canAccess());
+        $this->assertTrue(SkillResource::canAccess());
         $this->assertTrue(LeaveRequestResource::canAccess());
         $this->assertTrue(PromotionResource::canAccess());
+        $this->assertFalse(UserResource::canAccess());
 
         $this->actingAs(User::factory()->make(['role' => UserRole::Director]));
         $this->assertTrue(PromotionResource::canAccess());
@@ -94,6 +102,7 @@ class PanelArchitectureTest extends TestCase
         $this->actingAs(User::factory()->make(['role' => UserRole::ItAdmin]));
         $this->assertFalse(AttendanceResource::canAccess());
         $this->assertFalse(BranchOfficeResource::canAccess());
+        $this->assertTrue(UserResource::canAccess());
     }
 
     public function test_only_manager_sees_panel_switcher(): void

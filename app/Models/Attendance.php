@@ -4,10 +4,13 @@ namespace App\Models;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
+use App\Enums\UserRole;
 use App\Events\AttendanceDataChanged;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\CheckOutExceptionPending;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Notification;
 
 class Attendance extends Model
 {
@@ -63,6 +66,23 @@ class Attendance extends Model
 
         static::saved(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
         static::deleted(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
+
+        static::created(function (self $attendance): void {
+            if ($attendance->status !== AttendanceStatus::PendingVerification) {
+                return;
+            }
+
+            $recipients = User::query()
+                ->where('role', UserRole::HrAdmin)
+                ->where('status', true)
+                ->get();
+
+            if ($manager = $attendance->user->manager) {
+                $recipients->push($manager);
+            }
+
+            Notification::send($recipients, new CheckOutExceptionPending($attendance));
+        });
     }
 
     private static function dispatchMeritRecalculation(self $attendance): void

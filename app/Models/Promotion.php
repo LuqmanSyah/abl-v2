@@ -3,12 +3,38 @@
 namespace App\Models;
 
 use App\Enums\PromotionStatus;
+use App\Enums\UserRole;
+use App\Notifications\PromotionApproved;
+use App\Notifications\PromotionProposed;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Notification;
 
 class Promotion extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (self $promotion): void {
+            if ($promotion->status === PromotionStatus::Proposed) {
+                Notification::send(
+                    User::query()
+                        ->where('role', UserRole::HrAdmin)
+                        ->where('status', true)
+                        ->get(),
+                    new PromotionProposed($promotion),
+                );
+            }
+        });
+
+        static::updated(function (self $promotion): void {
+            if ($promotion->wasChanged('status')
+                && $promotion->status === PromotionStatus::ApprovedByDirector) {
+                $promotion->user->notify(new PromotionApproved($promotion));
+            }
+        });
+    }
+
     public function scopeCandidatePool(Builder $query): void
     {
         $query

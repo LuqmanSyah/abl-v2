@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ReviewStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\MeritScorePublished;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -35,6 +36,12 @@ class PerformanceReview extends Model
                     'kpi_id' => $kpi->id,
                     'weight' => $kpi->weight,
                 ]));
+        });
+
+        static::updated(function (self $review): void {
+            if ($review->wasChanged('status') && $review->status === ReviewStatus::Approved) {
+                $review->user->notify(new MeritScorePublished($review));
+            }
         });
     }
 

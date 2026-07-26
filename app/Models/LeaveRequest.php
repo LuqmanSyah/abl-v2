@@ -8,6 +8,8 @@ use App\Enums\LeaveStatus;
 use App\Enums\LeaveType;
 use App\Events\AttendanceDataChanged;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\LeaveRequestApproved;
+use App\Notifications\LeaveRequestRejected;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -92,6 +94,18 @@ class LeaveRequest extends Model
                 $leave->start_date->toDateString(),
                 $leave->end_date->toDateString(),
             );
+        });
+
+        static::updated(function (self $leave): void {
+            if (! $leave->wasChanged('status')) {
+                return;
+            }
+
+            match ($leave->status) {
+                LeaveStatus::Approved => $leave->user->notify(new LeaveRequestApproved($leave)),
+                LeaveStatus::Rejected => $leave->user->notify(new LeaveRequestRejected($leave)),
+                default => null,
+            };
         });
     }
 

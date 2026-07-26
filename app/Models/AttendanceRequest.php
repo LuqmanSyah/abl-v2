@@ -6,6 +6,8 @@ use App\Enums\AttendanceRequestStatus;
 use App\Enums\FlowType;
 use App\Enums\LeaveStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\AttendanceRequestApproved;
+use App\Notifications\AttendanceRequestAssigned;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -76,6 +78,20 @@ class AttendanceRequest extends Model
             if (! $request->exists && $request->flow_type === FlowType::TopDown) {
                 $request->status = AttendanceRequestStatus::Approved;
                 $request->approved_by = $request->created_by;
+            }
+        });
+
+        static::created(function (self $request): void {
+            if ($request->flow_type === FlowType::TopDown) {
+                $request->user->notify(new AttendanceRequestAssigned($request));
+            }
+        });
+
+        static::updated(function (self $request): void {
+            if ($request->flow_type === FlowType::BottomUp
+                && $request->wasChanged('status')
+                && $request->status === AttendanceRequestStatus::Approved) {
+                $request->user->notify(new AttendanceRequestApproved($request));
             }
         });
     }

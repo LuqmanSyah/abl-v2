@@ -18,6 +18,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -47,6 +48,7 @@ class EmployeePanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets/Employee'), for: 'App\\Filament\\Widgets\\Employee')
+            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('pwa.register')->render())
             ->userMenuItems([
                 Action::make('admin-panel')
                     ->label('Panel Admin')

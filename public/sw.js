@@ -1,5 +1,5 @@
-const CACHE = 'sdm-portal-v2';
-const PANEL_PATHS = ['/pegawai', '/atasan', '/hr'];
+const CACHE = 'sdm-portal-v3';
+const PANEL_PATHS = ['/app', '/admin'];
 const MODEL_PATHS = [
   '/js/face-api.js',
   '/js/face-verification.js',

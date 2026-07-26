@@ -7,25 +7,28 @@ use App\Enums\FlowType;
 use App\Filament\Resources\AttendanceRequestResource\Pages;
 use App\Models\AttendanceRequest;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class AttendanceRequestResource extends RoleAwareResource
 {
+    private const DATE_TIME_FORMAT = 'd M Y H:i';
+
     protected static ?string $model = AttendanceRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
@@ -41,7 +44,7 @@ class AttendanceRequestResource extends RoleAwareResource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
-                ->default(fn () => auth()->id())
+                ->default(fn () => Auth::id())
                 ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->dehydrated()
                 ->required()
@@ -54,7 +57,7 @@ class AttendanceRequestResource extends RoleAwareResource
                 ->required()
                 ->searchable()
                 ->preload()
-                ->default(fn () => auth()->id())
+                ->default(fn () => Auth::id())
                 ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->dehydrated()
                 ->label('Dibuat Oleh'),
@@ -135,12 +138,12 @@ class AttendanceRequestResource extends RoleAwareResource
                     ->label('Tujuan'),
 
                 TextColumn::make('duty_start_datetime')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime(self::DATE_TIME_FORMAT)
                     ->sortable()
                     ->label('Mulai'),
 
                 TextColumn::make('duty_end_datetime')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime(self::DATE_TIME_FORMAT)
                     ->sortable()
                     ->label('Selesai'),
 
@@ -163,7 +166,7 @@ class AttendanceRequestResource extends RoleAwareResource
                     ->placeholder('-'),
 
                 TextColumn::make('created_at')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime(self::DATE_TIME_FORMAT)
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->label('Dibuat'),
@@ -189,7 +192,7 @@ class AttendanceRequestResource extends RoleAwareResource
                     ->action(function (AttendanceRequest $record): void {
                         $record->update([
                             'status' => AttendanceRequestStatus::Approved,
-                            'approved_by' => auth()->id(),
+                            'approved_by' => Auth::id(),
                         ]);
                     }),
 
@@ -222,7 +225,7 @@ class AttendanceRequestResource extends RoleAwareResource
         $query = parent::getEloquentQuery();
 
         return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(auth()->user())
+            ? $query->whereBelongsTo(Auth::user())
             : $query;
     }
 
@@ -231,7 +234,7 @@ class AttendanceRequestResource extends RoleAwareResource
         return parent::canEdit($record)
             && (Filament::getCurrentPanel()?->getId() !== 'employee'
                 || ($record instanceof AttendanceRequest
-                    && $record->user_id === auth()->id()
+                    && $record->user_id === Auth::id()
                     && $record->status === AttendanceRequestStatus::Pending));
     }
 

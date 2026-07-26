@@ -7,20 +7,21 @@ use App\Enums\LeaveType;
 use App\Filament\Resources\LeaveRequestResource\Pages;
 use App\Models\LeaveRequest;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class LeaveRequestResource extends RoleAwareResource
@@ -40,7 +41,7 @@ class LeaveRequestResource extends RoleAwareResource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
-                ->default(fn () => auth()->id())
+                ->default(fn () => Auth::id())
                 ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->dehydrated()
                 ->required()
@@ -140,7 +141,7 @@ class LeaveRequestResource extends RoleAwareResource
                     ->action(function (LeaveRequest $record): void {
                         $record->update([
                             'status' => LeaveStatus::Approved,
-                            'approved_by' => auth()->id(),
+                            'approved_by' => Auth::id(),
                             'approved_at' => now(),
                         ]);
                     }),
@@ -174,7 +175,7 @@ class LeaveRequestResource extends RoleAwareResource
         $query = parent::getEloquentQuery();
 
         return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(auth()->user())
+            ? $query->whereBelongsTo(Auth::user())
             : $query;
     }
 
@@ -183,7 +184,7 @@ class LeaveRequestResource extends RoleAwareResource
         return parent::canEdit($record)
             && (Filament::getCurrentPanel()?->getId() !== 'employee'
                 || ($record instanceof LeaveRequest
-                    && $record->user_id === auth()->id()
+                    && $record->user_id === Auth::id()
                     && $record->status === LeaveStatus::Pending));
     }
 

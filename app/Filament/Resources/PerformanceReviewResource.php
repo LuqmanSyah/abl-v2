@@ -19,6 +19,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class PerformanceReviewResource extends RoleAwareResource
@@ -149,7 +150,7 @@ class PerformanceReviewResource extends RoleAwareResource
         $query = parent::getEloquentQuery();
 
         return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(auth()->user())
+            ? $query->whereBelongsTo(Auth::user())
             : $query;
     }
 
@@ -163,7 +164,7 @@ class PerformanceReviewResource extends RoleAwareResource
         return parent::canEdit($record)
             && (Filament::getCurrentPanel()?->getId() !== 'employee'
                 || ($record instanceof PerformanceReview
-                    && $record->user_id === auth()->id()
+                    && $record->user_id === Auth::id()
                     && $record->status === ReviewStatus::Draft));
     }
 

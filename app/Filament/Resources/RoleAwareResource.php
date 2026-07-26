@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
+use Illuminate\Support\Facades\Auth;
 
 abstract class RoleAwareResource extends Resource
 {
@@ -15,7 +16,7 @@ abstract class RoleAwareResource extends Resource
             return false;
         }
 
-        $user = auth()->user();
+        $user = Auth::user();
 
         if (! $user instanceof User) {
             return false;

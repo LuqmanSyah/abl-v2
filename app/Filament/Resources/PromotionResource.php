@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class PromotionResource extends RoleAwareResource
@@ -56,7 +57,7 @@ class PromotionResource extends RoleAwareResource
 
             Select::make('proposed_by')
                 ->relationship('proposer', 'name')
-                ->default(fn () => auth()->id())
+                ->default(fn () => Auth::id())
                 ->required()
                 ->searchable()
                 ->preload()

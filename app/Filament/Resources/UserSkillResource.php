@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class UserSkillResource extends RoleAwareResource
@@ -33,7 +34,7 @@ class UserSkillResource extends RoleAwareResource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
-                ->default(fn () => auth()->id())
+                ->default(fn () => Auth::id())
                 ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->dehydrated()
                 ->required()
@@ -88,7 +89,7 @@ class UserSkillResource extends RoleAwareResource
         $query = parent::getEloquentQuery();
 
         return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(auth()->user())
+            ? $query->whereBelongsTo(Auth::user())
             : $query;
     }
 

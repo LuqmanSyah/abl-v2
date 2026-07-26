@@ -21,6 +21,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class AttendanceResource extends RoleAwareResource
@@ -47,7 +48,7 @@ class AttendanceResource extends RoleAwareResource
 
             Select::make('attendance_request_id')
                 ->options(fn () => AttendanceRequest::query()
-                    ->where('user_id', auth()->id())
+                    ->where('user_id', Auth::id())
                     ->where('status', AttendanceRequestStatus::Approved)
                     ->whereDate('duty_start_datetime', '<=', today())
                     ->whereDate('duty_end_datetime', '>=', today())
@@ -118,7 +119,7 @@ class AttendanceResource extends RoleAwareResource
         $query = parent::getEloquentQuery();
 
         return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(auth()->user())
+            ? $query->whereBelongsTo(Auth::user())
             : $query;
     }
 

@@ -426,18 +426,18 @@ feat: KPI management with mandatory completion and weight constraints
 ### 3.2 — Attendance Score Calculation
 
 #### Files
-- `app/Services/AttendanceScoreService.php`
-  - Input: `user_id`, `start_date`, `end_date`
-  - Formula (blueprint Section 2B.2):
+- [x] `app/Services/AttendanceScoreService.php`
+  - [x] Input: `user_id`, `start_date`, `end_date`
+  - [x] Formula (blueprint Section 2B.2):
     ```
     Tanggal Mulai Hitung = max(start_date, join_date)
     Hari Kerja Efektif = Total Hari - Weekend - Holidays - Approved Leave
     n_alfa = max(0, Hari Kerja Efektif - n_hadir)
     Attendance Score = max(0, 100 - (2×n_late + 5×n_missing_checkout + 10×n_alfa))
     ```
-  - Query `daily_attendance_summaries` untuk `n_hadir`, `n_late`, `n_missing_checkout`
-  - Query `holidays` untuk count
-  - Query `leave_requests` approved untuk leave days (handle partial overlap)
+  - [x] Query `daily_attendance_summaries` untuk `n_hadir`, `n_late`, `n_missing_checkout`
+  - [x] Query `holidays` untuk count
+  - [x] Query `leave_requests` approved untuk leave days (handle partial overlap)
 
 #### Verification
 ```bash

@@ -1,5 +1,4 @@
-const CACHE = 'sdm-portal-v3';
-const PANEL_PATHS = ['/app', '/admin'];
+const CACHE = 'sdm-portal-v4';
 const MODEL_PATHS = [
   '/js/face-api.js',
   '/js/face-verification.js',
@@ -22,28 +21,17 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(k => k !== CACHE).map(k => caches.delete(k))
-    ))
+    Promise.all([
+      caches.keys().then(keys => Promise.all(
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      )),
+      self.clients.claim(),
+    ])
   );
 });
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  if (PANEL_PATHS.some(path => url.pathname.startsWith(path))) {
-    event.respondWith(
-      caches.match(event.request).then(cached => {
-        const fetched = fetch(event.request).then(response => {
-          const clone = response.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, clone));
-          return response;
-        }).catch(() => cached);
-        return cached || fetched;
-      })
-    );
-    return;
-  }
 
   if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json' || url.pathname.startsWith('/models/')) {
     event.respondWith(

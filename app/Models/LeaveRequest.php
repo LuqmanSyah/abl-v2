@@ -6,6 +6,7 @@ use App\Enums\AttendanceRequestStatus;
 use App\Enums\DailySummaryStatus;
 use App\Enums\LeaveStatus;
 use App\Enums\LeaveType;
+use App\Events\AttendanceDataChanged;
 use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -85,6 +86,12 @@ class LeaveRequest extends Model
                     ],
                 );
             }
+
+            AttendanceDataChanged::dispatch(
+                $leave->user_id,
+                $leave->start_date->toDateString(),
+                $leave->end_date->toDateString(),
+            );
         });
     }
 

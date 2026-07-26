@@ -29,12 +29,17 @@ class DailyAttendanceAggregationTest extends TestCase
         $user = $this->employee();
         $checkIn = $this->attendance($user, AttendanceType::CheckIn, '2026-08-01 08:00:00');
         $this->attendance($user, AttendanceType::CheckOut, '2026-08-01 17:00:00');
-        DailyAttendanceSummary::create([
-            'user_id' => $user->id,
-            'date' => '2026-08-01',
-            'status' => DailySummaryStatus::Leave,
-            'late_minutes' => 0,
-        ]);
+        DailyAttendanceSummary::query()
+            ->where('user_id', $user->id)
+            ->whereDate('date', '2026-08-01')
+            ->firstOrFail()
+            ->update([
+                'attendance_request_id' => null,
+                'check_in_id' => null,
+                'check_out_id' => null,
+                'status' => DailySummaryStatus::Leave,
+                'late_minutes' => 0,
+            ]);
 
         $this->artisan('attendance:aggregate', ['--date' => '2026-08-01'])->assertSuccessful();
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Console\Commands\AggregateDailyAttendance;
 use App\Console\Commands\PopulateHolidaySummaries;
 use App\Enums\DailySummaryStatus;
+use App\Events\AttendanceDataChanged;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,11 +27,20 @@ class Holiday extends Model
                 return;
             }
 
-            static::rebuildSummaries($holiday->getOriginal('date'));
+            $oldDate = $holiday->getOriginal('date');
+            static::rebuildSummaries($oldDate);
+            static::dispatchMeritRecalculation($oldDate);
         });
 
-        static::saved(fn (self $holiday) => app(PopulateHolidaySummaries::class)->populate($holiday));
-        static::deleted(fn (self $holiday) => static::rebuildSummaries($holiday->date));
+        static::saved(function (self $holiday): void {
+            app(PopulateHolidaySummaries::class)->populate($holiday);
+            static::dispatchMeritRecalculation($holiday->date);
+        });
+
+        static::deleted(function (self $holiday): void {
+            static::rebuildSummaries($holiday->date);
+            static::dispatchMeritRecalculation($holiday->date);
+        });
     }
 
     private static function rebuildSummaries(CarbonInterface|string $date): void
@@ -41,5 +51,12 @@ class Holiday extends Model
             ->delete();
 
         app(AggregateDailyAttendance::class)->aggregate($date);
+    }
+
+    private static function dispatchMeritRecalculation(CarbonInterface|string $date): void
+    {
+        $date = $date instanceof CarbonInterface ? $date->toDateString() : $date;
+
+        AttendanceDataChanged::dispatch(null, $date, $date);
     }
 }

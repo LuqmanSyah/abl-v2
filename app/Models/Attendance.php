@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
+use App\Events\AttendanceDataChanged;
 use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,6 +60,16 @@ class Attendance extends Model
                 throw new BusinessRuleException('Check-in untuk sesi ini sudah tercatat hari ini.');
             }
         });
+
+        static::saved(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
+        static::deleted(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
+    }
+
+    private static function dispatchMeritRecalculation(self $attendance): void
+    {
+        $date = $attendance->attendance_date->toDateString();
+
+        AttendanceDataChanged::dispatch($attendance->user_id, $date, $date, true);
     }
 
     public function user(): BelongsTo

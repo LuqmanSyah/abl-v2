@@ -13,9 +13,13 @@ Schedule::command('attendance:aggregate')
     ->timezone('Asia/Jakarta');
 
 Schedule::command('career:expire-promotions')
-    ->dailyAt('00:05')
+    ->dailyAt('00:15')
     ->timezone('Asia/Jakarta');
 
 Schedule::command('career:scan-candidates')
-    ->monthlyOn(1, '00:10')
+    ->monthlyOn(1, '00:30')
+    ->timezone('Asia/Jakarta');
+
+Schedule::command('db:backup')
+    ->dailyAt('02:00')
     ->timezone('Asia/Jakarta');

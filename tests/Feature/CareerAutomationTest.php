@@ -160,17 +160,21 @@ class CareerAutomationTest extends TestCase
             ->assertActionExists(TestAction::make('edit')->table(Promotion::first()));
     }
 
-    public function test_career_commands_are_scheduled(): void
+    public function test_automation_commands_are_scheduled(): void
     {
         $events = collect(app(Schedule::class)->events());
         $expire = $events->first(fn ($event) => str_contains($event->command, 'career:expire-promotions'));
         $scan = $events->first(fn ($event) => str_contains($event->command, 'career:scan-candidates'));
+        $backup = $events->first(fn ($event) => str_contains($event->command, 'db:backup'));
 
         $this->assertNotNull($expire);
-        $this->assertSame('5 0 * * *', $expire->expression);
+        $this->assertSame('15 0 * * *', $expire->expression);
         $this->assertSame('Asia/Jakarta', $expire->timezone);
         $this->assertNotNull($scan);
-        $this->assertSame('10 0 1 * *', $scan->expression);
+        $this->assertSame('30 0 1 * *', $scan->expression);
         $this->assertSame('Asia/Jakarta', $scan->timezone);
+        $this->assertNotNull($backup);
+        $this->assertSame('0 2 * * *', $backup->expression);
+        $this->assertSame('Asia/Jakarta', $backup->timezone);
     }
 }

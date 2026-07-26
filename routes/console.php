@@ -11,3 +11,11 @@ Artisan::command('inspire', function () {
 Schedule::command('attendance:aggregate')
     ->dailyAt('23:59')
     ->timezone('Asia/Jakarta');
+
+Schedule::command('career:expire-promotions')
+    ->dailyAt('00:05')
+    ->timezone('Asia/Jakarta');
+
+Schedule::command('career:scan-candidates')
+    ->monthlyOn(1, '00:10')
+    ->timezone('Asia/Jakarta');

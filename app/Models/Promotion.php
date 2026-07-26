@@ -3,11 +3,19 @@
 namespace App\Models;
 
 use App\Enums\PromotionStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Promotion extends Model
 {
+    public function scopeCandidatePool(Builder $query): void
+    {
+        $query
+            ->where('status', PromotionStatus::Proposed)
+            ->where('created_at', '>=', now()->subDays(30));
+    }
+
     protected $fillable = [
         'user_id',
         'from_position_id',

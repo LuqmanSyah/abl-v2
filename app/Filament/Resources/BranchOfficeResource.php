@@ -10,7 +10,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -18,7 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Support\HtmlString;
 use UnitEnum;
 
-class BranchOfficeResource extends Resource
+class BranchOfficeResource extends RoleAwareResource
 {
     protected static ?string $model = BranchOffice::class;
 

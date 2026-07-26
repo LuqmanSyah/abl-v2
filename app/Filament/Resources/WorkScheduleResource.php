@@ -10,13 +10,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-class WorkScheduleResource extends Resource
+class WorkScheduleResource extends RoleAwareResource
 {
     protected static ?string $model = WorkSchedule::class;
 

@@ -2,6 +2,13 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Resources\AttendanceRequestResource;
+use App\Filament\Resources\AttendanceResource;
+use App\Filament\Resources\IndividualDevelopmentPlanResource;
+use App\Filament\Resources\LeaveRequestResource;
+use App\Filament\Resources\PerformanceReviewResource;
+use App\Filament\Resources\ReviewKpiDetailResource;
+use App\Filament\Resources\UserSkillResource;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
@@ -18,26 +25,33 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
-class AdminPanelProvider extends PanelProvider
+class EmployeePanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->default()
-            ->id('admin')
-            ->path('admin')
+            ->id('employee')
+            ->path('app')
             ->login()
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->spa()
+            ->resources([
+                AttendanceResource::class,
+                AttendanceRequestResource::class,
+                LeaveRequestResource::class,
+                PerformanceReviewResource::class,
+                ReviewKpiDetailResource::class,
+                IndividualDevelopmentPlanResource::class,
+                UserSkillResource::class,
+            ])
             ->pages([
                 Dashboard::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->userMenuItems([
-                Action::make('employee-panel')
-                    ->label('Panel Karyawan')
+                Action::make('admin-panel')
+                    ->label('Panel Admin')
                     ->icon('heroicon-o-arrow-path')
-                    ->url(fn (): string => Filament::getPanel('employee')->getUrl())
-                    ->visible(fn (): bool => auth()->user()?->canAccessPanel(Filament::getPanel('employee')) ?? false),
+                    ->url(fn (): string => Filament::getPanel('admin')->getUrl())
+                    ->visible(fn (): bool => auth()->user()?->canAccessPanel(Filament::getPanel('admin')) ?? false),
             ])
             ->middleware([
                 EncryptCookies::class,

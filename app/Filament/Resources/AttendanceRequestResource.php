@@ -7,11 +7,11 @@ use App\Enums\FlowType;
 use App\Filament\Resources\AttendanceRequestResource\Pages;
 use App\Models\AttendanceRequest;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -20,15 +20,17 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
-class AttendanceRequestResource extends Resource
+class AttendanceRequestResource extends RoleAwareResource
 {
     protected static ?string $model = AttendanceRequest::class;
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-paper-airplane';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Kehadiran';
+    protected static string|UnitEnum|null $navigationGroup = 'Kehadiran';
 
     protected static ?string $modelLabel = 'Izin Tugas Luar';
 
@@ -39,6 +41,9 @@ class AttendanceRequestResource extends Resource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
+                ->default(fn () => auth()->id())
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->dehydrated()
                 ->required()
                 ->searchable()
                 ->preload()
@@ -50,10 +55,15 @@ class AttendanceRequestResource extends Resource
                 ->searchable()
                 ->preload()
                 ->default(fn () => auth()->id())
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->dehydrated()
                 ->label('Dibuat Oleh'),
 
             Select::make('flow_type')
                 ->options(FlowType::class)
+                ->default(FlowType::BottomUp->value)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->dehydrated()
                 ->required()
                 ->label('Tipe Alur'),
 
@@ -174,7 +184,8 @@ class AttendanceRequestResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (AttendanceRequest $record) => $record->status === AttendanceRequestStatus::Pending)
+                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        && $record->status === AttendanceRequestStatus::Pending)
                     ->action(function (AttendanceRequest $record): void {
                         $record->update([
                             'status' => AttendanceRequestStatus::Approved,
@@ -187,7 +198,8 @@ class AttendanceRequestResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (AttendanceRequest $record) => $record->status === AttendanceRequestStatus::Pending)
+                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        && $record->status === AttendanceRequestStatus::Pending)
                     ->action(function (AttendanceRequest $record): void {
                         $record->update([
                             'status' => AttendanceRequestStatus::Rejected,
@@ -195,11 +207,42 @@ class AttendanceRequestResource extends Resource
                     }),
 
                 ViewAction::make(),
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        || $record->status === AttendanceRequestStatus::Pending),
             ])
             ->bulkActions([
-                DeleteBulkAction::make(),
+                DeleteBulkAction::make()
+                    ->hidden(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->whereBelongsTo(auth()->user())
+            : $query;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record)
+            && (Filament::getCurrentPanel()?->getId() !== 'employee'
+                || ($record instanceof AttendanceRequest
+                    && $record->user_id === auth()->id()
+                    && $record->status === AttendanceRequestStatus::Pending));
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
     }
 
     public static function getRelations(): array

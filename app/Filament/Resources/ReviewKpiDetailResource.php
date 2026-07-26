@@ -3,14 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Models\ReviewKpiDetail;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
 
-class ReviewKpiDetailResource extends Resource
+class ReviewKpiDetailResource extends RoleAwareResource
 {
     protected static ?string $model = ReviewKpiDetail::class;
 
@@ -42,20 +42,24 @@ class ReviewKpiDetailResource extends Resource
                 ->numeric()
                 ->minValue(0)
                 ->maxValue(100)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() !== 'employee')
                 ->label('Nilai Diri'),
 
             Textarea::make('self_notes')
                 ->maxLength(1000)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() !== 'employee')
                 ->label('Catatan Diri'),
 
             TextInput::make('manager_score')
                 ->numeric()
                 ->minValue(0)
                 ->maxValue(100)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->label('Nilai Manager'),
 
             Textarea::make('manager_notes')
                 ->maxLength(1000)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->label('Catatan Manager'),
 
             TextInput::make('subtotal_score')

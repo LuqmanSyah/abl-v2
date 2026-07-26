@@ -8,18 +8,20 @@ use App\Models\IndividualDevelopmentPlan;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
-class IndividualDevelopmentPlanResource extends Resource
+class IndividualDevelopmentPlanResource extends RoleAwareResource
 {
     protected static ?string $model = IndividualDevelopmentPlan::class;
 
@@ -36,6 +38,7 @@ class IndividualDevelopmentPlanResource extends Resource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->searchable()
                 ->preload()
@@ -43,17 +46,20 @@ class IndividualDevelopmentPlanResource extends Resource
 
             Select::make('mentor_id')
                 ->relationship('mentor', 'name')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->searchable()
                 ->preload()
                 ->label('Mentor'),
 
             TextInput::make('title')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->maxLength(255)
                 ->label('Judul'),
 
             Textarea::make('action_plan')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->columnSpanFull()
                 ->label('Rencana Aksi'),
@@ -68,12 +74,14 @@ class IndividualDevelopmentPlanResource extends Resource
                 ->label('Progress'),
 
             DatePicker::make('target_completion_date')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->label('Target Selesai'),
 
             Select::make('status')
                 ->options(IdpStatus::class)
                 ->default(IdpStatus::Active->value)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->label('Status'),
         ]);
@@ -119,8 +127,35 @@ class IndividualDevelopmentPlanResource extends Resource
             ])
             ->actions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->hidden(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->whereBelongsTo(auth()->user())
+            : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record)
+            && (Filament::getCurrentPanel()?->getId() !== 'employee'
+                || ($record instanceof IndividualDevelopmentPlan && $record->user_id === auth()->id()));
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
     }
 
     public static function getPages(): array

@@ -7,10 +7,10 @@ use App\Enums\LeaveType;
 use App\Filament\Resources\LeaveRequestResource\Pages;
 use App\Models\LeaveRequest;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\DeleteBulkAction;
@@ -19,15 +19,17 @@ use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
-class LeaveRequestResource extends Resource
+class LeaveRequestResource extends RoleAwareResource
 {
     protected static ?string $model = LeaveRequest::class;
 
-    protected static string | BackedEnum | null $navigationIcon = 'heroicon-o-calendar-days';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
-    protected static string | UnitEnum | null $navigationGroup = 'Kehadiran';
+    protected static string|UnitEnum|null $navigationGroup = 'Kehadiran';
 
     protected static ?string $modelLabel = 'Pengajuan Cuti';
 
@@ -38,6 +40,9 @@ class LeaveRequestResource extends Resource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
+                ->default(fn () => auth()->id())
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->dehydrated()
                 ->required()
                 ->searchable()
                 ->preload()
@@ -65,6 +70,8 @@ class LeaveRequestResource extends Resource
             Select::make('status')
                 ->options(LeaveStatus::class)
                 ->default(LeaveStatus::Pending->value)
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->dehydrated()
                 ->required()
                 ->label('Status'),
         ]);
@@ -128,7 +135,8 @@ class LeaveRequestResource extends Resource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (LeaveRequest $record) => $record->status === LeaveStatus::Pending)
+                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        && $record->status === LeaveStatus::Pending)
                     ->action(function (LeaveRequest $record): void {
                         $record->update([
                             'status' => LeaveStatus::Approved,
@@ -142,7 +150,8 @@ class LeaveRequestResource extends Resource
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (LeaveRequest $record) => $record->status === LeaveStatus::Pending)
+                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        && $record->status === LeaveStatus::Pending)
                     ->action(function (LeaveRequest $record): void {
                         $record->update([
                             'status' => LeaveStatus::Rejected,
@@ -150,11 +159,42 @@ class LeaveRequestResource extends Resource
                     }),
 
                 ViewAction::make(),
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        || $record->status === LeaveStatus::Pending),
             ])
             ->bulkActions([
-                DeleteBulkAction::make(),
+                DeleteBulkAction::make()
+                    ->hidden(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->whereBelongsTo(auth()->user())
+            : $query;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record)
+            && (Filament::getCurrentPanel()?->getId() !== 'employee'
+                || ($record instanceof LeaveRequest
+                    && $record->user_id === auth()->id()
+                    && $record->status === LeaveStatus::Pending));
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
     }
 
     public static function getRelations(): array

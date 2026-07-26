@@ -8,18 +8,20 @@ use App\Models\PerformanceReview;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
-class PerformanceReviewResource extends Resource
+class PerformanceReviewResource extends RoleAwareResource
 {
     protected static ?string $model = PerformanceReview::class;
 
@@ -36,6 +38,7 @@ class PerformanceReviewResource extends Resource
         return $schema->components([
             Select::make('user_id')
                 ->relationship('user', 'name')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->searchable()
                 ->preload()
@@ -43,21 +46,25 @@ class PerformanceReviewResource extends Resource
 
             Select::make('reviewer_id')
                 ->relationship('reviewer', 'name')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->searchable()
                 ->preload()
                 ->label('Reviewer'),
 
             TextInput::make('period')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->maxLength(255)
                 ->label('Periode'),
 
             DatePicker::make('start_date')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->label('Tanggal Mulai'),
 
             DatePicker::make('end_date')
+                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->required()
                 ->afterOrEqual('start_date')
                 ->label('Tanggal Selesai'),
@@ -126,7 +133,8 @@ class PerformanceReviewResource extends Resource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (PerformanceReview $record): bool => $record->status === ReviewStatus::Draft)
+                    ->visible(fn (PerformanceReview $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                        && $record->status === ReviewStatus::Draft)
                     ->action(fn (PerformanceReview $record) => $record->update([
                         'status' => ReviewStatus::Submitted,
                     ])),
@@ -134,6 +142,29 @@ class PerformanceReviewResource extends Resource
                 EditAction::make()
                     ->visible(fn (PerformanceReview $record): bool => $record->status === ReviewStatus::Draft),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->whereBelongsTo(auth()->user())
+            : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return parent::canEdit($record)
+            && (Filament::getCurrentPanel()?->getId() !== 'employee'
+                || ($record instanceof PerformanceReview
+                    && $record->user_id === auth()->id()
+                    && $record->status === ReviewStatus::Draft));
     }
 
     public static function getPages(): array

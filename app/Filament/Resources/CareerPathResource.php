@@ -9,13 +9,12 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-class CareerPathResource extends Resource
+class CareerPathResource extends RoleAwareResource
 {
     protected static ?string $model = CareerPath::class;
 

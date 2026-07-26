@@ -9,20 +9,21 @@ use App\Filament\Resources\AttendanceResource\Pages;
 use App\Models\Attendance;
 use App\Models\AttendanceRequest;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Resources\Resource;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
-class AttendanceResource extends Resource
+class AttendanceResource extends RoleAwareResource
 {
     protected static ?string $model = Attendance::class;
 
@@ -109,6 +110,15 @@ class AttendanceResource extends Resource
                     ->label('Waktu'),
             ])
             ->defaultSort('recorded_at', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->whereBelongsTo(auth()->user())
+            : $query;
     }
 
     public static function getPages(): array

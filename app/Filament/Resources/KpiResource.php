@@ -8,13 +8,12 @@ use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 
-class KpiResource extends Resource
+class KpiResource extends RoleAwareResource
 {
     protected static ?string $model = Kpi::class;
 

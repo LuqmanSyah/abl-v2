@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\GoogleMapsException;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 class GoogleMapsService
 {
@@ -12,7 +12,7 @@ class GoogleMapsService
         $key = config('services.google_maps.key');
 
         if (! $key) {
-            throw new RuntimeException('Google Maps API key belum dikonfigurasi.');
+            throw new GoogleMapsException('Google Maps API key belum dikonfigurasi.');
         }
 
         $response = Http::get('https://maps.googleapis.com/maps/api/geocode/json', [
@@ -23,7 +23,7 @@ class GoogleMapsService
         $address = $response->json('results.0.formatted_address');
 
         if ($response->json('status') !== 'OK' || ! is_string($address)) {
-            throw new RuntimeException('Google Geocoding tidak mengembalikan alamat yang valid.');
+            throw new GoogleMapsException('Google Geocoding tidak mengembalikan alamat yang valid.');
         }
 
         return $address;

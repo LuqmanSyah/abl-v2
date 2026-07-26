@@ -18,6 +18,7 @@ class AttendanceService
 {
     public function __construct(private readonly GoogleMapsService $googleMaps) {}
 
+    /** @SuppressWarnings("php:S107") */
     public function record(
         User $user,
         AttendanceType $type,

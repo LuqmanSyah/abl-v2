@@ -4,7 +4,9 @@ namespace App\Filament\Widgets\Admin;
 
 use App\Enums\UserRole;
 use App\Models\PerformanceReview;
+use App\Models\User;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Auth;
 
 class MeritDistribution extends ChartWidget
 {
@@ -14,7 +16,9 @@ class MeritDistribution extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->role === UserRole::Director;
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::Director;
     }
 
     protected function getData(): array

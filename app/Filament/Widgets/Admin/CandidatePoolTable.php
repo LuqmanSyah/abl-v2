@@ -4,9 +4,11 @@ namespace App\Filament\Widgets\Admin;
 
 use App\Enums\UserRole;
 use App\Models\Promotion;
+use App\Models\User;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Facades\Auth;
 
 class CandidatePoolTable extends TableWidget
 {
@@ -16,7 +18,10 @@ class CandidatePoolTable extends TableWidget
 
     public static function canView(): bool
     {
-        return in_array(auth()->user()?->role, [UserRole::HrAdmin, UserRole::Director], true);
+        $user = Auth::user();
+
+        return $user instanceof User
+            && in_array($user->role, [UserRole::HrAdmin, UserRole::Director], true);
     }
 
     public function table(Table $table): Table

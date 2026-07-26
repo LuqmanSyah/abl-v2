@@ -5,9 +5,11 @@ namespace App\Filament\Widgets\Admin;
 use App\Enums\DailySummaryStatus;
 use App\Enums\UserRole;
 use App\Models\DailyAttendanceSummary;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Auth;
 
 class AttendanceDropAlert extends StatsOverviewWidget
 {
@@ -15,7 +17,9 @@ class AttendanceDropAlert extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->role === UserRole::HrAdmin;
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::HrAdmin;
     }
 
     protected function getStats(): array

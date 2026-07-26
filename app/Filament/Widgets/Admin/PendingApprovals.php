@@ -8,9 +8,11 @@ use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceRequestResource;
 use App\Models\AttendanceRequest;
 use App\Models\LeaveRequest;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class PendingApprovals extends StatsOverviewWidget
 {
@@ -18,12 +20,14 @@ class PendingApprovals extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->role === UserRole::Manager;
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::Manager;
     }
 
     protected function getStats(): array
     {
-        $subordinate = fn (Builder $query): Builder => $query->where('manager_id', auth()->id());
+        $subordinate = fn (Builder $query): Builder => $query->where('manager_id', Auth::id());
         $attendance = AttendanceRequest::query()
             ->where('status', AttendanceRequestStatus::Pending)
             ->whereHas('user', $subordinate)

@@ -5,9 +5,11 @@ namespace App\Filament\Widgets\Admin;
 use App\Enums\DailySummaryStatus;
 use App\Enums\UserRole;
 use App\Models\DailyAttendanceSummary;
+use App\Models\User;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Facades\Auth;
 
 class HrAttendanceOverview extends TableWidget
 {
@@ -17,7 +19,9 @@ class HrAttendanceOverview extends TableWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->role === UserRole::HrAdmin;
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::HrAdmin;
     }
 
     public function table(Table $table): Table

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class WebPushController extends Controller
+class WebPushController
 {
     public function subscribe(Request $request): JsonResponse
     {

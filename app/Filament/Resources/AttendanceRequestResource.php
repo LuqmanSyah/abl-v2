@@ -245,11 +245,6 @@ class AttendanceRequestResource extends RoleAwareResource
         return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
     public static function getPages(): array
     {
         return [

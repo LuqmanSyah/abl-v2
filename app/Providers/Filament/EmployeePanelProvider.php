@@ -35,6 +35,7 @@ class EmployeePanelProvider extends PanelProvider
             ->path('app')
             ->login()
             ->spa()
+            ->viteTheme('resources/css/app.css')
             ->resources([
                 AttendanceResource::class,
                 AttendanceRequestResource::class,

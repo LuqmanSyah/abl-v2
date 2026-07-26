@@ -22,16 +22,7 @@ abstract class RoleAwareResource extends Resource
         }
 
         return match (Filament::getCurrentPanel()?->getId() ?? 'admin') {
-            'employee' => in_array($user->role, [UserRole::Employee, UserRole::Manager], true)
-                && in_array(static::class, [
-                    AttendanceResource::class,
-                    AttendanceRequestResource::class,
-                    LeaveRequestResource::class,
-                    PerformanceReviewResource::class,
-                    ReviewKpiDetailResource::class,
-                    IndividualDevelopmentPlanResource::class,
-                    UserSkillResource::class,
-                ], true),
+            'employee' => in_array($user->role, [UserRole::Employee, UserRole::Manager], true),
             'admin' => in_array($user->role, static::adminRoles(), true),
             default => false,
         };

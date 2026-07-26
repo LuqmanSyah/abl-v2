@@ -117,6 +117,20 @@ class MeritScoreServiceTest extends TestCase
         $this->assertSame('B', $review->grade);
     }
 
+    public function test_merit_grade_thresholds(): void
+    {
+        $review = $this->makeReview('2030-01-06');
+
+        foreach ([82 => 'A', 63 => 'B', 44 => 'C', 43 => 'D'] as $managerScore => $grade) {
+            $review->reviewKpiDetails()->update(['manager_score' => $managerScore]);
+
+            $this->assertSame(
+                $grade,
+                app(MeritScoreService::class)->calculate($review)->grade,
+            );
+        }
+    }
+
     private function makeReview(string $date, ReviewStatus $status = ReviewStatus::Draft): PerformanceReview
     {
         $this->seed();

@@ -83,8 +83,8 @@ class BlueprintModelsTest extends TestCase
         $leave = LeaveRequest::create([
             'user_id' => $employee->id,
             'type' => LeaveType::PaidLeave,
-            'start_date' => '2026-08-01',
-            'end_date' => '2026-08-02',
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-04',
             'reason' => 'Family',
             'status' => LeaveStatus::Approved,
             'approved_by' => $manager->id,

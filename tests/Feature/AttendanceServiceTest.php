@@ -6,11 +6,15 @@ use App\Enums\AttendanceRequestStatus;
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
 use App\Enums\FlowType;
+use App\Enums\LeaveStatus;
+use App\Enums\LeaveType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Models\AttendanceRequest;
 use App\Models\BranchOffice;
+use App\Models\DailyAttendanceSummary;
 use App\Models\Department;
+use App\Models\LeaveRequest;
 use App\Models\Position;
 use App\Models\User;
 use App\Models\WorkSchedule;
@@ -109,6 +113,94 @@ class AttendanceServiceTest extends TestCase
             'attendance/pending.jpg',
             $pending,
             recordedAt: now()->setDate(2026, 8, 2)->setTime(8, 0),
+        );
+    }
+
+    public function test_top_down_attendance_request_is_auto_approved(): void
+    {
+        $user = $this->employee();
+        $manager = User::factory()->create([
+            'position_id' => $user->position_id,
+            'work_schedule_id' => $user->work_schedule_id,
+            'branch_office_id' => $user->branch_office_id,
+            'role' => UserRole::Manager,
+        ]);
+        $user->update(['manager_id' => $manager->id]);
+
+        $request = $this->attendanceRequest(
+            $user,
+            AttendanceRequestStatus::Pending,
+            '2026-08-01',
+            FlowType::TopDown,
+            $manager,
+        );
+
+        $this->assertSame(AttendanceRequestStatus::Approved, $request->status);
+        $this->assertSame($manager->id, $request->approved_by);
+    }
+
+    public function test_approved_leave_blocks_same_day_attendance_request(): void
+    {
+        $user = $this->employee();
+        LeaveRequest::create([
+            'user_id' => $user->id,
+            'type' => LeaveType::PaidLeave,
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-01',
+            'reason' => 'Cuti',
+            'status' => LeaveStatus::Approved,
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+        ]);
+
+        $this->expectExceptionMessage('Tugas luar tumpang tindih dengan cuti yang sudah disetujui.');
+
+        $this->attendanceRequest($user, AttendanceRequestStatus::Pending, '2026-08-01');
+    }
+
+    public function test_approved_attendance_request_blocks_same_day_leave(): void
+    {
+        $user = $this->employee();
+        $this->attendanceRequest($user, AttendanceRequestStatus::Approved, '2026-08-01');
+
+        $this->expectExceptionMessage('Cuti tumpang tindih dengan tugas luar yang sudah disetujui.');
+
+        LeaveRequest::create([
+            'user_id' => $user->id,
+            'type' => LeaveType::PaidLeave,
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-01',
+            'reason' => 'Cuti',
+            'status' => LeaveStatus::Pending,
+        ]);
+    }
+
+    public function test_leave_approval_creates_summaries_for_inclusive_date_range(): void
+    {
+        $user = $this->employee();
+        $leave = LeaveRequest::create([
+            'user_id' => $user->id,
+            'type' => LeaveType::PaidLeave,
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-03',
+            'reason' => 'Cuti',
+            'status' => LeaveStatus::Pending,
+        ]);
+
+        $leave->update([
+            'status' => LeaveStatus::Approved,
+            'approved_by' => $user->id,
+            'approved_at' => now(),
+        ]);
+
+        $this->assertSame(
+            ['2026-08-01', '2026-08-02', '2026-08-03'],
+            DailyAttendanceSummary::query()
+                ->where('user_id', $user->id)
+                ->orderBy('date')
+                ->pluck('date')
+                ->map->toDateString()
+                ->all(),
         );
     }
 
@@ -279,11 +371,13 @@ class AttendanceServiceTest extends TestCase
         User $user,
         AttendanceRequestStatus $status,
         string $date,
+        FlowType $flowType = FlowType::BottomUp,
+        ?User $creator = null,
     ): AttendanceRequest {
         return AttendanceRequest::create([
             'user_id' => $user->id,
-            'created_by' => $user->id,
-            'flow_type' => FlowType::BottomUp,
+            'created_by' => $creator?->id ?? $user->id,
+            'flow_type' => $flowType,
             'destination_name' => 'Client Office',
             'destination_address' => 'Jakarta',
             'target_latitude' => -6.1754,

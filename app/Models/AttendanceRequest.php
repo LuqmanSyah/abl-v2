@@ -66,8 +66,8 @@ class AttendanceRequest extends Model
             $leaveOverlap = LeaveRequest::query()
                 ->where('user_id', $request->user_id)
                 ->where('status', LeaveStatus::Approved)
-                ->where('start_date', '<', $request->duty_end_datetime->toDateString())
-                ->where('end_date', '>=', $request->duty_start_datetime->toDateString())
+                ->whereDate('start_date', '<=', $request->duty_end_datetime)
+                ->whereDate('end_date', '>=', $request->duty_start_datetime)
                 ->exists();
 
             if ($leaveOverlap) {

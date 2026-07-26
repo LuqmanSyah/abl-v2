@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\DailySummaryStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\BranchOfficeResource\Pages\ListBranchOffices;
+use App\Filament\Resources\DailyAttendanceSummaryResource\Pages\ListDailyAttendanceSummaries;
 use App\Filament\Resources\DepartmentResource\Pages\ListDepartments;
 use App\Filament\Resources\HolidayResource\Pages\ListHolidays;
 use App\Filament\Resources\PositionResource\Pages\ListPositions;
@@ -56,6 +57,8 @@ class MasterDataResourcesTest extends TestCase
             'role' => UserRole::HrAdmin,
         ]);
         $this->actingAs($hrAdmin);
+        Livewire::test(ListDailyAttendanceSummaries::class)
+            ->assertSee('Rekap Kehadiran');
 
         Livewire::test(ListHolidays::class)
             ->callAction('create', data: [
@@ -94,11 +97,17 @@ class MasterDataResourcesTest extends TestCase
             ])
             ->assertHasNoFormErrors();
 
+        $requiredSkill = Skill::create(['name' => 'Leadership', 'category' => 'Behavioral']);
+
         Livewire::test(ListPositions::class)
             ->callAction('create', data: [
                 'department_id' => $department->id,
                 'title' => 'HR Officer',
                 'level' => 2,
+                'positionSkills' => [[
+                    'skill_id' => $requiredSkill->id,
+                    'min_required_level' => 3,
+                ]],
             ])
             ->assertHasNoFormErrors();
 
@@ -136,6 +145,11 @@ class MasterDataResourcesTest extends TestCase
         $this->assertDatabaseHas(WorkSchedule::class, ['name' => 'Reguler']);
         $this->assertDatabaseHas(Department::class, ['code' => 'OPS']);
         $this->assertDatabaseHas(Position::class, ['title' => 'HR Officer']);
+        $this->assertDatabaseHas('position_skills', [
+            'position_id' => Position::query()->where('title', 'HR Officer')->value('id'),
+            'skill_id' => $requiredSkill->id,
+            'min_required_level' => 3,
+        ]);
         $this->assertDatabaseHas(Skill::class, ['name' => 'Recruitment']);
         $this->assertDatabaseHas(User::class, ['nip' => 'EMP-001']);
 

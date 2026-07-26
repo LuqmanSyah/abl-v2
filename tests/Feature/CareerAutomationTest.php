@@ -110,6 +110,8 @@ class CareerAutomationTest extends TestCase
         $employee = User::query()->where('role', UserRole::Employee)->firstOrFail();
         $from = Position::query()->where('title', 'Akuntan')->firstOrFail();
         $to = Position::query()->where('title', 'Finance Manager')->firstOrFail();
+        $employee->update(['position_id' => $from->id]);
+        $manager = $employee->manager;
         $this->actingAs($admin);
 
         Livewire::test(ListCareerPaths::class)
@@ -133,14 +135,11 @@ class CareerAutomationTest extends TestCase
             ])
             ->assertHasNoFormErrors();
 
+        $this->actingAs($manager);
         Livewire::test(ListPromotions::class)
             ->callAction('create', data: [
                 'user_id' => $employee->id,
-                'from_position_id' => $from->id,
                 'to_position_id' => $to->id,
-                'proposed_by' => $admin->id,
-                'readiness_score' => 88,
-                'status' => PromotionStatus::Proposed->value,
             ])
             ->assertHasNoFormErrors();
 
@@ -152,12 +151,27 @@ class CareerAutomationTest extends TestCase
             'user_id' => $employee->id,
             'progress_percentage' => 10,
         ]);
-        $this->assertDatabaseHas(Promotion::class, [
-            'user_id' => $employee->id,
-            'readiness_score' => 88,
-        ]);
+        $promotion = Promotion::query()->where('user_id', $employee->id)->latest('id')->firstOrFail();
+        $this->assertSame($from->id, $promotion->from_position_id);
+        $this->assertSame($manager->id, $promotion->proposed_by);
+        $this->assertSame(
+            app(ReadinessScoreService::class)->calculate($employee, $to),
+            (float) $promotion->readiness_score,
+        );
+
+        $this->actingAs($admin);
         Livewire::test(ListPromotions::class)
-            ->assertActionExists(TestAction::make('edit')->table(Promotion::first()));
+            ->callAction(TestAction::make('approve_hr')->table($promotion));
+        $this->assertSame(PromotionStatus::ApprovedByHr, $promotion->fresh()->status);
+
+        $director = User::query()->where('role', UserRole::Director)->firstOrFail();
+        $this->actingAs($director);
+        Livewire::test(ListPromotions::class)
+            ->callAction(
+                TestAction::make('approve_director')->table($promotion),
+                data: ['effective_date' => '2027-01-01'],
+            );
+        $this->assertSame(PromotionStatus::ApprovedByDirector, $promotion->fresh()->status);
     }
 
     public function test_automation_commands_are_scheduled(): void

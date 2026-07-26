@@ -120,7 +120,8 @@ class DashboardWidgetsTest extends TestCase
         $this->assertTrue(HrAttendanceOverview::canView());
         $this->assertTrue(CandidatePoolTable::canView());
         $this->assertTrue(AttendanceDropAlert::canView());
-        $this->assertFalse(PendingApprovals::canView());
+        $this->assertTrue(PendingApprovals::canView());
+        Livewire::test(PendingApprovals::class)->assertSee('Cuti Pending');
         Livewire::test(HrAttendanceOverview::class)
             ->assertSee('Kehadiran Hari Ini')
             ->assertSee('Technology')

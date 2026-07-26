@@ -35,7 +35,6 @@ class EmployeePanelProvider extends PanelProvider
         return $panel
             ->id('employee')
             ->path('app')
-            ->login()
             ->spa()
             ->viteTheme('resources/css/app.css')
             ->resources([

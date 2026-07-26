@@ -10,6 +10,7 @@ use App\Enums\LeaveStatus;
 use App\Enums\LeaveType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
+use App\Filament\Resources\AttendanceResource\Pages\ListAttendances;
 use App\Models\AttendanceRequest;
 use App\Models\BranchOffice;
 use App\Models\DailyAttendanceSummary;
@@ -20,7 +21,10 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\AttendanceService;
 use App\Services\GoogleMapsService;
+use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
 
@@ -280,6 +284,21 @@ class AttendanceServiceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::PendingVerification, $attendance->status);
         $this->assertTrue($attendance->is_radius_exception);
+
+        $manager = User::factory()->create([
+            'position_id' => $user->position_id,
+            'work_schedule_id' => $user->work_schedule_id,
+            'branch_office_id' => $user->branch_office_id,
+            'role' => UserRole::Manager,
+        ]);
+        $user->update(['manager_id' => $manager->id]);
+        $this->actingAs($manager);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        Livewire::test(ListAttendances::class)
+            ->callAction(TestAction::make('approve_exception')->table($attendance));
+
+        $this->assertSame(AttendanceStatus::Normal, $attendance->fresh()->status);
     }
 
     public function test_last_day_check_out_at_home_branch_is_allowed(): void
@@ -307,10 +326,13 @@ class AttendanceServiceTest extends TestCase
         $user->update(['role' => UserRole::Manager]);
 
         $this->actingAs($user)
-            ->get(route('filament.admin.resources.attendances.create'))
+            ->get(route('filament.employee.resources.attendances.create'))
             ->assertOk()
             ->assertSee('Ambil Lokasi GPS')
             ->assertSee('Foto');
+
+        $this->get(route('filament.admin.resources.attendances.create'))
+            ->assertForbidden();
     }
 
     private function employee(): User

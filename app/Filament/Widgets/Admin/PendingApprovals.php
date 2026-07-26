@@ -6,6 +6,7 @@ use App\Enums\AttendanceRequestStatus;
 use App\Enums\LeaveStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceRequestResource;
+use App\Filament\Resources\LeaveRequestResource;
 use App\Models\AttendanceRequest;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -22,18 +23,31 @@ class PendingApprovals extends StatsOverviewWidget
     {
         $user = Auth::user();
 
-        return $user instanceof User && $user->role === UserRole::Manager;
+        return $user instanceof User
+            && in_array($user->role, [UserRole::Manager, UserRole::HrAdmin], true);
     }
 
     protected function getStats(): array
     {
-        $subordinate = fn (Builder $query): Builder => $query->where('manager_id', Auth::id());
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->role === UserRole::HrAdmin) {
+            $leave = LeaveRequest::query()
+                ->where('status', LeaveStatus::Pending)
+                ->count();
+
+            return [
+                Stat::make('Cuti Pending', $leave)
+                    ->description('Pengajuan menunggu verifikasi HR')
+                    ->color($leave ? 'warning' : 'success')
+                    ->url(LeaveRequestResource::getUrl(panel: 'admin')),
+            ];
+        }
+
+        $subordinate = fn (Builder $query): Builder => $query->where('manager_id', $user->id);
         $attendance = AttendanceRequest::query()
             ->where('status', AttendanceRequestStatus::Pending)
-            ->whereHas('user', $subordinate)
-            ->count();
-        $leave = LeaveRequest::query()
-            ->where('status', LeaveStatus::Pending)
             ->whereHas('user', $subordinate)
             ->count();
 
@@ -42,10 +56,6 @@ class PendingApprovals extends StatsOverviewWidget
                 ->description('Pengajuan bawahan menunggu keputusan')
                 ->color($attendance ? 'warning' : 'success')
                 ->url(AttendanceRequestResource::getUrl(panel: 'admin')),
-
-            Stat::make('Cuti Pending', $leave)
-                ->description('Pengajuan bawahan untuk dipantau')
-                ->color($leave ? 'warning' : 'success'),
         ];
     }
 }

@@ -110,5 +110,19 @@ class KpiManagementTest extends TestCase
             ->assertOk()
             ->assertSee('Detail KPI')
             ->assertSee('Kepuasan Pelanggan');
+
+        $review->reviewKpiDetails->each->update(['manager_score' => 80]);
+        Livewire::test(ListPerformanceReviews::class)
+            ->callAction(TestAction::make('submit')->table($review));
+        $this->assertSame(ReviewStatus::Submitted, $review->fresh()->status);
+
+        Livewire::test(ListPerformanceReviews::class)
+            ->callAction(TestAction::make('approve')->table($review));
+        $this->assertSame(ReviewStatus::Approved, $review->fresh()->status);
+        $this->assertNotNull($review->fresh()->final_merit_score);
+
+        Livewire::test(ListPerformanceReviews::class)
+            ->callAction(TestAction::make('lock')->table($review));
+        $this->assertSame(ReviewStatus::Locked, $review->fresh()->status);
     }
 }

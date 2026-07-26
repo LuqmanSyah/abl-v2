@@ -54,6 +54,7 @@ class HrAttendanceOverview extends TableWidget
                     ->suffix('%')
                     ->label('Tingkat Kehadiran'),
             ])
+            ->defaultKeySort(false)
             ->paginated(false);
     }
 }

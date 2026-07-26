@@ -3,18 +3,20 @@
 namespace App\Filament\Resources;
 
 use App\Enums\PromotionStatus;
+use App\Enums\UserRole;
 use App\Filament\Resources\PromotionResource\Pages;
 use App\Models\Promotion;
+use App\Models\User;
 use BackedEnum;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -34,51 +36,22 @@ class PromotionResource extends RoleAwareResource
     {
         return $schema->components([
             Select::make('user_id')
-                ->relationship('user', 'name')
+                ->relationship(
+                    name: 'user',
+                    titleAttribute: 'name',
+                    modifyQueryUsing: fn (Builder $query) => $query->where('manager_id', Auth::id()),
+                )
                 ->required()
                 ->searchable()
                 ->preload()
                 ->label('Karyawan'),
 
-            Select::make('from_position_id')
-                ->relationship('fromPosition', 'title')
-                ->required()
-                ->searchable()
-                ->preload()
-                ->label('Posisi Asal'),
-
             Select::make('to_position_id')
                 ->relationship('toPosition', 'title')
                 ->required()
-                ->different('from_position_id')
                 ->searchable()
                 ->preload()
                 ->label('Posisi Tujuan'),
-
-            Select::make('proposed_by')
-                ->relationship('proposer', 'name')
-                ->default(fn () => Auth::id())
-                ->required()
-                ->searchable()
-                ->preload()
-                ->label('Diusulkan Oleh'),
-
-            TextInput::make('readiness_score')
-                ->required()
-                ->numeric()
-                ->minValue(0)
-                ->maxValue(100)
-                ->suffix('%')
-                ->label('Readiness Score'),
-
-            Select::make('status')
-                ->options(PromotionStatus::class)
-                ->default(PromotionStatus::Proposed->value)
-                ->required()
-                ->label('Status'),
-
-            DatePicker::make('effective_date')
-                ->label('Tanggal Efektif'),
         ]);
     }
 
@@ -126,9 +99,73 @@ class PromotionResource extends RoleAwareResource
                     ->label('Status'),
             ])
             ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
+                Action::make('approve_hr')
+                    ->label('Verifikasi HR')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (Promotion $record): bool => static::isRole(UserRole::HrAdmin)
+                        && $record->status === PromotionStatus::Proposed)
+                    ->action(fn (Promotion $record) => $record->update([
+                        'status' => PromotionStatus::ApprovedByHr,
+                    ])),
+                Action::make('approve_director')
+                    ->label('Setujui')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->schema([
+                        DatePicker::make('effective_date')
+                            ->required()
+                            ->label('Tanggal Efektif'),
+                    ])
+                    ->visible(fn (Promotion $record): bool => static::isRole(UserRole::Director)
+                        && $record->status === PromotionStatus::ApprovedByHr)
+                    ->action(fn (Promotion $record, array $data) => $record->update([
+                        'status' => PromotionStatus::ApprovedByDirector,
+                        'effective_date' => $data['effective_date'],
+                    ])),
+                Action::make('reject')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (Promotion $record): bool => (static::isRole(UserRole::HrAdmin)
+                        && $record->status === PromotionStatus::Proposed)
+                        || (static::isRole(UserRole::Director)
+                            && $record->status === PromotionStatus::ApprovedByHr))
+                    ->action(fn (Promotion $record) => $record->update([
+                        'status' => PromotionStatus::Rejected,
+                    ])),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return static::isRole(UserRole::Manager)
+            ? $query->where('proposed_by', Auth::id())
+            : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::isRole(UserRole::Manager) && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return false;
     }
 
     public static function getPages(): array
@@ -136,5 +173,12 @@ class PromotionResource extends RoleAwareResource
         return [
             'index' => Pages\ListPromotions::route('/'),
         ];
+    }
+
+    private static function isRole(UserRole ...$roles): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && in_array($user->role, $roles, true);
     }
 }

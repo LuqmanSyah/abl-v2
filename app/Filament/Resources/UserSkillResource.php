@@ -14,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -91,6 +92,26 @@ class UserSkillResource extends RoleAwareResource
         return Filament::getCurrentPanel()?->getId() === 'employee'
             ? $query->whereBelongsTo(Auth::user())
             : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canEdit($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
     }
 
     public static function getPages(): array

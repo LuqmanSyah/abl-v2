@@ -54,6 +54,8 @@ abstract class RoleAwareResource extends Resource
             UserSkillResource::class,
             WorkScheduleResource::class => [UserRole::HrAdmin],
 
+            DailyAttendanceSummaryResource::class => [UserRole::HrAdmin, UserRole::Director],
+
             UserResource::class => [UserRole::ItAdmin],
 
             default => [],

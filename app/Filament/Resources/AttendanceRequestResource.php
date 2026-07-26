@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Enums\AttendanceRequestStatus;
 use App\Enums\FlowType;
+use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceRequestResource\Pages;
 use App\Models\AttendanceRequest;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
@@ -43,7 +45,14 @@ class AttendanceRequestResource extends RoleAwareResource
     {
         return $schema->components([
             Select::make('user_id')
-                ->relationship('user', 'name')
+                ->relationship(
+                    name: 'user',
+                    titleAttribute: 'name',
+                    modifyQueryUsing: fn (Builder $query) => Auth::user() instanceof User
+                        && Auth::user()->role === UserRole::Manager
+                        ? $query->where('manager_id', Auth::id())
+                        : $query,
+                )
                 ->default(fn () => Auth::id())
                 ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
                 ->dehydrated()
@@ -224,8 +233,14 @@ class AttendanceRequestResource extends RoleAwareResource
     {
         $query = parent::getEloquentQuery();
 
-        return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(Auth::user())
+        if (Filament::getCurrentPanel()?->getId() === 'employee') {
+            return $query->whereBelongsTo(Auth::user());
+        }
+
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::Manager
+            ? $query->whereHas('user', fn (Builder $query) => $query->where('manager_id', $user->id))
             : $query;
     }
 

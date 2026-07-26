@@ -5,10 +5,13 @@ namespace App\Filament\Resources;
 use App\Enums\AttendanceRequestStatus;
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
+use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceResource\Pages;
 use App\Models\Attendance;
 use App\Models\AttendanceRequest;
+use App\Models\User;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -19,6 +22,7 @@ use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -111,16 +115,54 @@ class AttendanceResource extends RoleAwareResource
                     ->sortable()
                     ->label('Waktu'),
             ])
-            ->defaultSort('recorded_at', 'desc');
+            ->defaultSort('recorded_at', 'desc')
+            ->filters([
+                SelectFilter::make('status')
+                    ->options(AttendanceStatus::class)
+                    ->label('Status'),
+            ])
+            ->actions([
+                Action::make('approve_exception')
+                    ->label('Setujui')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (Attendance $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
+                        && $record->status === AttendanceStatus::PendingVerification)
+                    ->action(fn (Attendance $record) => $record->update([
+                        'status' => AttendanceStatus::Normal,
+                    ])),
+                Action::make('reject_exception')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (Attendance $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
+                        && $record->status === AttendanceStatus::PendingVerification)
+                    ->action(fn (Attendance $record) => $record->update([
+                        'status' => AttendanceStatus::Rejected,
+                    ])),
+            ]);
     }
 
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
 
-        return Filament::getCurrentPanel()?->getId() === 'employee'
-            ? $query->whereBelongsTo(Auth::user())
+        if (Filament::getCurrentPanel()?->getId() === 'employee') {
+            return $query->whereBelongsTo(Auth::user());
+        }
+
+        $user = Auth::user();
+
+        return $user instanceof User && $user->role === UserRole::Manager
+            ? $query->whereHas('user', fn (Builder $query) => $query->where('manager_id', $user->id))
             : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() === 'employee' && parent::canCreate();
     }
 
     public static function getPages(): array

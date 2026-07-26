@@ -7,6 +7,7 @@ use App\Models\Position;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
@@ -35,6 +36,28 @@ class PositionResource extends RoleAwareResource
                 ->label('Departemen'),
             TextInput::make('title')->required()->maxLength(255)->label('Nama Jabatan'),
             TextInput::make('level')->required()->integer()->minValue(1)->maxValue(255)->label('Level'),
+            Repeater::make('positionSkills')
+                ->relationship()
+                ->defaultItems(0)
+                ->schema([
+                    Select::make('skill_id')
+                        ->relationship('skill', 'name')
+                        ->required()
+                        ->distinct()
+                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                        ->searchable()
+                        ->preload()
+                        ->label('Keahlian'),
+                    TextInput::make('min_required_level')
+                        ->required()
+                        ->integer()
+                        ->minValue(1)
+                        ->maxValue(255)
+                        ->label('Level Minimum'),
+                ])
+                ->columns(2)
+                ->columnSpanFull()
+                ->label('Persyaratan Keahlian'),
         ]);
     }
 

@@ -9,6 +9,7 @@ use App\Filament\Resources\LeaveRequestResource;
 use App\Filament\Resources\PerformanceReviewResource;
 use App\Filament\Resources\ReviewKpiDetailResource;
 use App\Filament\Resources\UserSkillResource;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
@@ -24,6 +25,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class EmployeePanelProvider extends PanelProvider
@@ -55,7 +57,12 @@ class EmployeePanelProvider extends PanelProvider
                     ->label('Panel Admin')
                     ->icon('heroicon-o-arrow-path')
                     ->url(fn (): string => Filament::getPanel('admin')->getUrl())
-                    ->visible(fn (): bool => auth()->user()?->canAccessPanel(Filament::getPanel('admin')) ?? false),
+                    ->visible(function (): bool {
+                        $user = Auth::user();
+
+                        return $user instanceof User
+                            && $user->canAccessPanel(Filament::getPanel('admin'));
+                    }),
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -106,9 +106,7 @@ class PromotionResource extends RoleAwareResource
                     ->requiresConfirmation()
                     ->visible(fn (Promotion $record): bool => static::isRole(UserRole::HrAdmin)
                         && $record->status === PromotionStatus::Proposed)
-                    ->action(fn (Promotion $record) => $record->update([
-                        'status' => PromotionStatus::ApprovedByHr,
-                    ])),
+                    ->action(fn (Promotion $record) => $record->transitionTo(PromotionStatus::ApprovedByHr)),
                 Action::make('approve_director')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-badge')
@@ -120,10 +118,10 @@ class PromotionResource extends RoleAwareResource
                     ])
                     ->visible(fn (Promotion $record): bool => static::isRole(UserRole::Director)
                         && $record->status === PromotionStatus::ApprovedByHr)
-                    ->action(fn (Promotion $record, array $data) => $record->update([
-                        'status' => PromotionStatus::ApprovedByDirector,
-                        'effective_date' => $data['effective_date'],
-                    ])),
+                    ->action(fn (Promotion $record, array $data) => $record->transitionTo(
+                        PromotionStatus::ApprovedByDirector,
+                        ['effective_date' => $data['effective_date']],
+                    )),
                 Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
@@ -133,9 +131,7 @@ class PromotionResource extends RoleAwareResource
                         && $record->status === PromotionStatus::Proposed)
                         || (static::isRole(UserRole::Director)
                             && $record->status === PromotionStatus::ApprovedByHr))
-                    ->action(fn (Promotion $record) => $record->update([
-                        'status' => PromotionStatus::Rejected,
-                    ])),
+                    ->action(fn (Promotion $record) => $record->transitionTo(PromotionStatus::Rejected)),
             ]);
     }
 

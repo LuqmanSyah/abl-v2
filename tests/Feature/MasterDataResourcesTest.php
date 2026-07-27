@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\DailySummaryStatus;
 use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use App\Filament\Resources\BranchOfficeResource\Pages\ListBranchOffices;
 use App\Filament\Resources\DailyAttendanceSummaryResource\Pages\ListDailyAttendanceSummaries;
 use App\Filament\Resources\DepartmentResource\Pages\ListDepartments;
@@ -22,6 +23,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -129,6 +131,12 @@ class MasterDataResourcesTest extends TestCase
             'branch_office_id' => $branch->id,
             'role' => UserRole::ItAdmin,
         ]));
+        $manager = User::factory()->create([
+            'position_id' => $position->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::Manager,
+        ]);
 
         Livewire::test(ListUsers::class)
             ->callAction('create', data: [
@@ -139,11 +147,32 @@ class MasterDataResourcesTest extends TestCase
                 'position_id' => $position->id,
                 'work_schedule_id' => $schedule->id,
                 'branch_office_id' => $branch->id,
+                'manager_id' => $manager->id,
                 'join_date' => '2026-08-01',
                 'role' => UserRole::Employee->value,
                 'status' => true,
             ])
             ->assertHasNoFormErrors();
+
+        Livewire::test(ListUsers::class)
+            ->callAction('create', data: [
+                'nip' => 'EMP-002',
+                'name' => 'Employee Without Manager',
+                'email' => 'no.manager@example.com',
+                'password' => 'password',
+                'position_id' => $position->id,
+                'work_schedule_id' => $schedule->id,
+                'branch_office_id' => $branch->id,
+                'join_date' => '2026-08-01',
+                'role' => UserRole::Employee->value,
+                'status' => true,
+            ])
+            ->assertHasFormErrors(['manager_id' => 'required']);
+
+        $employee = User::query()->where('nip', 'EMP-001')->firstOrFail();
+        Livewire::test(ListUsers::class)
+            ->callAction(TestAction::make('edit')->table($employee), data: ['manager_id' => null])
+            ->assertHasFormErrors(['manager_id' => 'required']);
 
         $this->assertTrue(Holiday::query()->whereDate('date', '2026-08-17')->exists());
         $this->assertDatabaseHas(BranchOffice::class, ['code' => 'JKT']);
@@ -171,5 +200,102 @@ class MasterDataResourcesTest extends TestCase
 
         Livewire::test(ListBranchOffices::class)
             ->assertActionExists(TestAction::make('edit')->table(BranchOffice::first()));
+    }
+
+    public function test_work_schedule_rejects_checkout_before_checkin(): void
+    {
+        $this->expectException(BusinessRuleException::class);
+        $this->expectExceptionMessage('Jam pulang harus setelah jam masuk.');
+
+        WorkSchedule::create([
+            'name' => 'Terbalik',
+            'check_in_time' => '17:00',
+            'check_out_time' => '08:00',
+            'late_tolerance_minutes' => 15,
+            'alfa_cutoff_minutes' => 120,
+        ]);
+    }
+
+    public function test_active_employee_without_manager_is_rejected_on_create_and_update(): void
+    {
+        $this->seed();
+        $employee = User::query()->where('role', UserRole::Employee)->firstOrFail();
+
+        try {
+            User::create([
+                ...$employee->only([
+                    'position_id',
+                    'work_schedule_id',
+                    'branch_office_id',
+                    'join_date',
+                    'status',
+                    'role',
+                ]),
+                'nip' => 'EMP-NO-MANAGER',
+                'name' => 'Employee Without Manager',
+                'email' => 'employee.no.manager@example.com',
+                'password' => 'password',
+            ]);
+            $this->fail('Creating an active Employee without a manager should fail.');
+        } catch (BusinessRuleException $exception) {
+            $this->assertSame('Employee aktif wajib memiliki atasan langsung.', $exception->getMessage());
+        }
+
+        $this->expectException(BusinessRuleException::class);
+        $this->expectExceptionMessage('Employee aktif wajib memiliki atasan langsung.');
+
+        $employee->update(['manager_id' => null]);
+    }
+
+    public function test_employee_assignment_and_manager_changes_share_a_transactional_invariant(): void
+    {
+        $this->seed();
+        $template = User::query()->where('role', UserRole::Employee)->firstOrFail();
+        $organization = $template->only([
+            'position_id',
+            'work_schedule_id',
+            'branch_office_id',
+        ]);
+        $firstManager = User::factory()->create([
+            ...$organization,
+            'role' => UserRole::Manager,
+        ]);
+        $secondManager = User::factory()->create([
+            ...$organization,
+            'role' => UserRole::Manager,
+        ]);
+        $employee = User::factory()->create([
+            ...$organization,
+            'role' => UserRole::Employee,
+            'manager_id' => $firstManager->id,
+        ]);
+        $assignmentTransactionLevel = 0;
+
+        User::saving(function (User $user) use ($employee, &$assignmentTransactionLevel): void {
+            if ($user->is($employee)) {
+                $assignmentTransactionLevel = DB::transactionLevel();
+            }
+        });
+
+        try {
+            $firstManager->update(['status' => false]);
+            $this->fail('Deactivating a Manager with a subordinate should fail.');
+        } catch (BusinessRuleException $exception) {
+            $this->assertSame(
+                'Manager yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.',
+                $exception->getMessage(),
+            );
+        }
+
+        $employee->update(['manager_id' => $secondManager->id]);
+        $firstManager->update(['status' => false]);
+
+        $this->assertGreaterThan(0, $assignmentTransactionLevel);
+        $this->assertFalse($firstManager->fresh()->status);
+
+        $this->expectException(BusinessRuleException::class);
+        $this->expectExceptionMessage('Manager yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.');
+
+        $secondManager->update(['role' => UserRole::HrAdmin]);
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Filament\Resources\AttendanceRequestResource;
 use App\Filament\Resources\AttendanceResource;
 use App\Filament\Resources\BranchOfficeResource;
+use App\Filament\Resources\CareerPathResource;
 use App\Filament\Resources\DailyAttendanceSummaryResource;
 use App\Filament\Resources\DepartmentResource;
 use App\Filament\Resources\IndividualDevelopmentPlanResource;
@@ -33,6 +34,7 @@ class PanelArchitectureTest extends TestCase
         $this->assertEqualsCanonicalizing([
             AttendanceResource::class,
             AttendanceRequestResource::class,
+            CareerPathResource::class,
             LeaveRequestResource::class,
             PerformanceReviewResource::class,
             ReviewKpiDetailResource::class,
@@ -62,7 +64,7 @@ class PanelArchitectureTest extends TestCase
 
     public function test_employee_resource_queries_are_scoped_to_authenticated_user(): void
     {
-        $user = User::factory()->make()->forceFill(['id' => 42]);
+        $user = User::factory()->make()->forceFill(['id' => 42, 'position_id' => 7]);
         $this->actingAs($user);
         Filament::setCurrentPanel(Filament::getPanel('employee'));
 
@@ -78,6 +80,8 @@ class PanelArchitectureTest extends TestCase
         }
 
         $this->assertFalse(UserSkillResource::canCreate());
+        $this->assertSame([7], CareerPathResource::getEloquentQuery()->getBindings());
+        $this->assertFalse(CareerPathResource::canCreate());
     }
 
     public function test_admin_resources_follow_stakeholder_role_matrix(): void

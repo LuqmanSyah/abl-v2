@@ -16,19 +16,28 @@ class CareerReadiness extends StatsOverviewWidget
     {
         /** @var User $user */
         $user = auth()->user();
-        // ponytail: first configured path; add user-selectable target when multiple paths are supported.
-        $path = CareerPath::query()
+        $paths = CareerPath::query()
             ->where('current_position_id', $user->position_id)
             ->with('nextPosition')
-            ->first();
-        $score = $path
-            ? app(ReadinessScoreService::class)->calculate($user, $path->nextPosition)
-            : null;
+            ->orderBy('next_position_id')
+            ->get();
 
-        return [
-            Stat::make('Career Readiness', $score === null ? '-' : "{$score}%")
-                ->description($path ? "Target: {$path->nextPosition->title}" : 'Jalur karir belum tersedia')
-                ->color($score === null ? 'gray' : ($score >= 80 ? 'success' : 'warning')),
-        ];
+        if ($paths->isEmpty()) {
+            return [
+                Stat::make('Career Readiness', '-')
+                    ->description('Jalur karir belum tersedia')
+                    ->color('gray'),
+            ];
+        }
+
+        return $paths
+            ->map(function (CareerPath $path) use ($user): Stat {
+                $score = app(ReadinessScoreService::class)->calculate($user, $path->nextPosition);
+
+                return Stat::make("Career Readiness: {$path->nextPosition->title}", "{$score}%")
+                    ->description("Target: {$path->nextPosition->title}")
+                    ->color($score >= 80 ? 'success' : 'warning');
+            })
+            ->all();
     }
 }

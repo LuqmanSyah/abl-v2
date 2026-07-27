@@ -2,13 +2,16 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\UserRole;
 use App\Models\ReviewKpiDetail;
+use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class ReviewKpiDetailResource extends RoleAwareResource
 {
@@ -54,12 +57,12 @@ class ReviewKpiDetailResource extends RoleAwareResource
                 ->numeric()
                 ->minValue(0)
                 ->maxValue(100)
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->disabled(fn (): bool => ! static::isManager())
                 ->label('Nilai Manager'),
 
             Textarea::make('manager_notes')
                 ->maxLength(1000)
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
+                ->disabled(fn (): bool => ! static::isManager())
                 ->label('Catatan Manager'),
 
             TextInput::make('subtotal_score')
@@ -67,5 +70,14 @@ class ReviewKpiDetailResource extends RoleAwareResource
                 ->suffix(' poin')
                 ->label('Subtotal'),
         ];
+    }
+
+    private static function isManager(): bool
+    {
+        $user = Auth::user();
+
+        return Filament::getCurrentPanel()?->getId() === 'admin'
+            && $user instanceof User
+            && $user->role === UserRole::Manager;
     }
 }

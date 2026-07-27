@@ -20,6 +20,7 @@ use App\Services\ReadinessScoreService;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -54,9 +55,12 @@ class CareerAutomationTest extends TestCase
             'period' => '2026-H1',
             'start_date' => '2026-01-01',
             'end_date' => '2026-06-30',
-            'grade' => 'C',
-            'status' => ReviewStatus::Approved,
+            'status' => ReviewStatus::Draft,
         ]);
+        $review->reviewKpiDetails->each->update(['manager_score' => 80]);
+        $review->submit($employee->manager);
+        $review->approve(User::query()->where('role', UserRole::HrAdmin)->firstOrFail());
+        $review->update(['grade' => 'C']);
 
         $this->assertSame(80.0, app(ReadinessScoreService::class)->calculate($employee, $path->nextPosition));
 
@@ -67,10 +71,32 @@ class CareerAutomationTest extends TestCase
 
         $employee->update(['join_date' => now()->subMonths($path->min_experience_months + 1)]);
         $review->update(['grade' => 'C']);
+        PerformanceReview::create([
+            'user_id' => $employee->id,
+            'reviewer_id' => $employee->manager_id,
+            'period' => '2026-H2 draft',
+            'start_date' => '2026-07-01',
+            'end_date' => '2026-12-31',
+            'grade' => 'A',
+            'status' => ReviewStatus::Draft,
+        ]);
         $this->artisan('career:scan-candidates')->assertSuccessful();
         $this->assertDatabaseCount(Promotion::class, 0);
 
         $review->update(['grade' => 'B']);
+        $raceInserted = false;
+        Promotion::creating(function (Promotion $creating) use (&$raceInserted): void {
+            if ($raceInserted) {
+                return;
+            }
+
+            $raceInserted = true;
+            DB::table('promotions')->insert([
+                ...$creating->getAttributes(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
         $this->artisan('career:scan-candidates')->assertSuccessful();
         $this->artisan('career:scan-candidates')->assertSuccessful();
 
@@ -79,14 +105,19 @@ class CareerAutomationTest extends TestCase
         $this->assertSame($employee->manager_id, $promotion->proposed_by);
         $this->assertSame(80.0, (float) $promotion->readiness_score);
 
+        $otherTarget = Position::query()
+            ->whereKeyNot($path->current_position_id)
+            ->whereKeyNot($path->next_position_id)
+            ->firstOrFail();
         $approved = Promotion::create([
             'user_id' => $employee->id,
             'from_position_id' => $path->current_position_id,
-            'to_position_id' => $path->next_position_id,
+            'to_position_id' => $otherTarget->id,
             'proposed_by' => $employee->manager_id,
             'readiness_score' => 80,
-            'status' => PromotionStatus::ApprovedByHr,
+            'status' => PromotionStatus::Proposed,
         ]);
+        $approved->transitionTo(PromotionStatus::ApprovedByHr);
         $promotion->forceFill(['created_at' => now()->subDays(31)])->saveQuietly();
         $approved->forceFill(['created_at' => now()->subDays(31)])->saveQuietly();
 
@@ -178,11 +209,15 @@ class CareerAutomationTest extends TestCase
     {
         $events = collect(app(Schedule::class)->events());
         $expire = $events->first(fn ($event) => str_contains($event->command, 'career:expire-promotions'));
+        $apply = $events->first(fn ($event) => str_contains($event->command, 'career:apply-promotions'));
         $scan = $events->first(fn ($event) => str_contains($event->command, 'career:scan-candidates'));
 
         $this->assertNotNull($expire);
         $this->assertSame('15 0 * * *', $expire->expression);
         $this->assertSame('Asia/Jakarta', $expire->timezone);
+        $this->assertNotNull($apply);
+        $this->assertSame('20 0 * * *', $apply->expression);
+        $this->assertSame('Asia/Jakarta', $apply->timezone);
         $this->assertNotNull($scan);
         $this->assertSame('30 0 1 * *', $scan->expression);
         $this->assertSame('Asia/Jakarta', $scan->timezone);

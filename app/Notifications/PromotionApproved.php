@@ -12,7 +12,7 @@ class PromotionApproved extends WorkflowNotification
     {
         return [
             'title' => 'Promosi Disetujui',
-            'body' => "Promosi Anda ke posisi {$this->promotion->toPosition->title} telah disetujui.",
+            'body' => "Promosi {$this->promotion->user->name} ke posisi {$this->promotion->toPosition->title} telah disetujui.",
             'url' => url('/app'),
             'icon' => 'heroicon-o-trophy',
         ];

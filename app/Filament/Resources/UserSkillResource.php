@@ -10,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -45,6 +46,11 @@ class UserSkillResource extends RoleAwareResource
 
             Select::make('skill_id')
                 ->relationship('skill', 'name')
+                ->scopedUnique(
+                    ignoreRecord: true,
+                    modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                        ->where('user_id', $get('user_id')),
+                )
                 ->required()
                 ->searchable()
                 ->preload()

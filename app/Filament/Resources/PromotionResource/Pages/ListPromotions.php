@@ -20,6 +20,7 @@ class ListPromotions extends ListRecords
     {
         return [
             CreateAction::make()
+                ->databaseTransaction()
                 ->mutateDataUsing(function (array $data): array {
                     $user = User::query()
                         ->where('manager_id', Auth::id())

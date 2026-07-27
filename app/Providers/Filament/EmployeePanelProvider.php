@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Resources\AttendanceRequestResource;
 use App\Filament\Resources\AttendanceResource;
+use App\Filament\Resources\CareerPathResource;
 use App\Filament\Resources\IndividualDevelopmentPlanResource;
 use App\Filament\Resources\LeaveRequestResource;
 use App\Filament\Resources\PerformanceReviewResource;
@@ -40,6 +41,7 @@ class EmployeePanelProvider extends PanelProvider
             ->resources([
                 AttendanceResource::class,
                 AttendanceRequestResource::class,
+                CareerPathResource::class,
                 LeaveRequestResource::class,
                 PerformanceReviewResource::class,
                 ReviewKpiDetailResource::class,

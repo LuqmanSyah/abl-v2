@@ -24,6 +24,7 @@ class MeritDistribution extends ChartWidget
     protected function getData(): array
     {
         $counts = PerformanceReview::query()
+            ->published()
             ->whereNotNull('grade')
             ->selectRaw('grade, COUNT(*) AS aggregate')
             ->groupBy('grade')

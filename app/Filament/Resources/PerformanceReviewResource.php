@@ -57,9 +57,8 @@ class PerformanceReviewResource extends RoleAwareResource
             Select::make('reviewer_id')
                 ->relationship('reviewer', 'name')
                 ->default(fn () => Auth::id())
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'
-                    || static::isRole(UserRole::Manager))
-                ->dehydrated(fn (): bool => Filament::getCurrentPanel()?->getId() !== 'employee')
+                ->disabled()
+                ->dehydrated()
                 ->required()
                 ->searchable()
                 ->preload()
@@ -146,43 +145,35 @@ class PerformanceReviewResource extends RoleAwareResource
                     ->icon('heroicon-o-paper-airplane')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::Manager, UserRole::HrAdmin)
+                    ->visible(fn (PerformanceReview $record): bool => static::isCurrentManager($record)
                         && $record->status === ReviewStatus::Draft)
-                    ->action(fn (PerformanceReview $record) => $record->update([
-                        'status' => ReviewStatus::Submitted,
-                    ])),
+                    ->action(fn (PerformanceReview $record) => $record->submit(Auth::user())),
                 Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::HrAdmin, UserRole::Director)
+                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::HrAdmin)
                         && $record->status === ReviewStatus::Submitted)
-                    ->action(function (PerformanceReview $record): void {
-                        app(MeritScoreService::class)->calculate($record);
-                        $record->update(['status' => ReviewStatus::Approved]);
-                    }),
+                    ->action(fn (PerformanceReview $record) => $record->approve(Auth::user())),
                 Action::make('lock')
                     ->label('Kunci')
                     ->icon('heroicon-o-lock-closed')
                     ->requiresConfirmation()
-                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::HrAdmin, UserRole::Director)
+                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::Director)
                         && $record->status === ReviewStatus::Approved)
-                    ->action(fn (PerformanceReview $record) => $record->update([
-                        'status' => ReviewStatus::Locked,
-                    ])),
+                    ->action(fn (PerformanceReview $record) => $record->lock(Auth::user())),
                 Action::make('recalculate')
                     ->label('Hitung Ulang')
                     ->icon('heroicon-o-arrow-path')
                     ->requiresConfirmation()
-                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::HrAdmin, UserRole::Director)
+                    ->visible(fn (PerformanceReview $record): bool => static::isRole(UserRole::Director)
                         && $record->status === ReviewStatus::Locked)
                     ->action(fn (PerformanceReview $record) => app(MeritScoreService::class)
                         ->calculate($record, force: true)),
 
                 EditAction::make()
-                    ->visible(fn (PerformanceReview $record): bool => $record->status === ReviewStatus::Draft
-                        && ! static::isRole(UserRole::Director)),
+                    ->visible(fn (PerformanceReview $record): bool => static::canEdit($record)),
             ]);
     }
 
@@ -195,14 +186,14 @@ class PerformanceReviewResource extends RoleAwareResource
         }
 
         return static::isRole(UserRole::Manager)
-            ? $query->where('reviewer_id', Auth::id())
+            ? $query->whereHas('user', fn (Builder $query) => $query->where('manager_id', Auth::id()))
             : $query;
     }
 
     public static function canCreate(): bool
     {
         return Filament::getCurrentPanel()?->getId() !== 'employee'
-            && static::isRole(UserRole::Manager, UserRole::HrAdmin)
+            && static::isRole(UserRole::Manager)
             && parent::canCreate();
     }
 
@@ -218,8 +209,7 @@ class PerformanceReviewResource extends RoleAwareResource
             return $record->user_id === Auth::id();
         }
 
-        return static::isRole(UserRole::HrAdmin)
-            || (static::isRole(UserRole::Manager) && $record->reviewer_id === Auth::id());
+        return static::isCurrentManager($record);
     }
 
     public static function getPages(): array
@@ -236,5 +226,11 @@ class PerformanceReviewResource extends RoleAwareResource
         $user = Auth::user();
 
         return $user instanceof User && in_array($user->role, $roles, true);
+    }
+
+    private static function isCurrentManager(PerformanceReview $review): bool
+    {
+        return static::isRole(UserRole::Manager)
+            && $review->user()->where('manager_id', Auth::id())->exists();
     }
 }

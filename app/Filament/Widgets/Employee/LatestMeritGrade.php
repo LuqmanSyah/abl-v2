@@ -13,6 +13,7 @@ class LatestMeritGrade extends StatsOverviewWidget
     protected function getStats(): array
     {
         $review = PerformanceReview::query()
+            ->published()
             ->where('user_id', auth()->id())
             ->whereNotNull('grade')
             ->latest('end_date')

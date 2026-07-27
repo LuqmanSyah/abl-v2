@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\AttendanceRequestStatus;
+use App\Enums\AttendanceStatus;
+use App\Enums\AttendanceType;
 use App\Enums\DailySummaryStatus;
 use App\Enums\FlowType;
 use App\Enums\UserRole;
@@ -16,8 +18,10 @@ use App\Filament\Widgets\Employee\CareerReadiness;
 use App\Filament\Widgets\Employee\IdpProgress;
 use App\Filament\Widgets\Employee\LatestMeritGrade;
 use App\Filament\Widgets\Employee\TodayAttendanceStatus;
+use App\Models\Attendance;
 use App\Models\AttendanceRequest;
 use App\Models\BranchOffice;
+use App\Models\CareerPath;
 use App\Models\DailyAttendanceSummary;
 use App\Models\Department;
 use App\Models\Position;
@@ -42,12 +46,14 @@ class DashboardWidgetsTest extends TestCase
 
     private User $director;
 
+    private Position $position;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $department = Department::create(['name' => 'Technology', 'code' => 'TECH']);
-        $position = Position::create(['department_id' => $department->id, 'title' => 'Engineer', 'level' => 1]);
+        $this->position = Position::create(['department_id' => $department->id, 'title' => 'Engineer', 'level' => 1]);
         $schedule = WorkSchedule::create([
             'name' => 'Regular',
             'check_in_time' => '08:00',
@@ -63,7 +69,7 @@ class DashboardWidgetsTest extends TestCase
             'allowed_radius_meters' => 100,
         ]);
         $organization = [
-            'position_id' => $position->id,
+            'position_id' => $this->position->id,
             'work_schedule_id' => $schedule->id,
             'branch_office_id' => $branch->id,
         ];
@@ -97,7 +103,7 @@ class DashboardWidgetsTest extends TestCase
     {
         Filament::setCurrentPanel(Filament::getPanel('employee'));
         $this->actingAs($this->employee);
-        Livewire::test(TodayAttendanceStatus::class)->assertSee('Check-in Hari Ini');
+        Livewire::test(TodayAttendanceStatus::class)->assertSee('Kantor');
         Livewire::test(ActiveDutyTrips::class)->assertSee('Tugas Luar Aktif');
         Livewire::test(LatestMeritGrade::class)->assertSee('Merit Terakhir');
         Livewire::test(IdpProgress::class)->assertSee('Progress IDP');
@@ -150,12 +156,93 @@ class DashboardWidgetsTest extends TestCase
             ->assertDontSee('Client B');
     }
 
-    private function duty(User $user, string $destination): void
+    public function test_career_widget_shows_every_path_for_employee_position(): void
     {
-        AttendanceRequest::create([
+        $senior = Position::create([
+            'department_id' => $this->position->department_id,
+            'title' => 'Senior Engineer',
+            'level' => 2,
+        ]);
+        $lead = Position::create([
+            'department_id' => $this->position->department_id,
+            'title' => 'Tech Lead',
+            'level' => 3,
+        ]);
+        $other = Position::create([
+            'department_id' => $this->position->department_id,
+            'title' => 'Product Owner',
+            'level' => 2,
+        ]);
+        foreach ([$senior, $lead] as $target) {
+            CareerPath::create([
+                'current_position_id' => $this->position->id,
+                'next_position_id' => $target->id,
+                'min_experience_months' => 12,
+                'min_merit_grade' => 'B',
+            ]);
+        }
+        CareerPath::create([
+            'current_position_id' => $other->id,
+            'next_position_id' => $lead->id,
+            'min_experience_months' => 12,
+            'min_merit_grade' => 'B',
+        ]);
+
+        Filament::setCurrentPanel(Filament::getPanel('employee'));
+        $this->actingAs($this->employee);
+
+        Livewire::test(CareerReadiness::class)
+            ->assertSee('Senior Engineer')
+            ->assertSee('Tech Lead')
+            ->assertDontSee('Product Owner');
+    }
+
+    public function test_today_attendance_widget_keeps_sessions_separate(): void
+    {
+        $this->travelTo(now()->setDate(2026, 8, 1)->setTime(10, 0));
+        $duty = $this->duty($this->employee, 'Client A');
+        $base = [
+            'user_id' => $this->employee->id,
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'distance_to_target_meters' => 10,
+            'address_snapshot' => 'Jakarta',
+            'photo_path' => 'attendance/test.jpg',
+            'status' => AttendanceStatus::Normal,
+        ];
+
+        Attendance::create($base + [
+            'type' => AttendanceType::CheckIn,
+            'recorded_at' => '2026-08-01 08:00:00',
+        ]);
+        Attendance::create($base + [
+            'type' => AttendanceType::CheckOut,
+            'recorded_at' => '2026-08-01 09:00:00',
+        ]);
+        Attendance::create($base + [
+            'attendance_request_id' => $duty->id,
+            'type' => AttendanceType::CheckIn,
+            'recorded_at' => '2026-08-01 08:30:00',
+        ]);
+        $this->travelTo(now()->addHours(2));
+
+        Filament::setCurrentPanel(Filament::getPanel('employee'));
+        $this->actingAs($this->employee);
+
+        Livewire::test(TodayAttendanceStatus::class)
+            ->assertSee('Kantor')
+            ->assertSee('Masuk 08:00 · Pulang 09:00')
+            ->assertSee('Tugas Luar: Client A')
+            ->assertSee('Masuk 08:30 · Pulang Belum')
+            ->assertSee('Belum check-out');
+    }
+
+    private function duty(User $user, string $destination): AttendanceRequest
+    {
+        return AttendanceRequest::create([
             'user_id' => $user->id,
             'created_by' => $this->manager->id,
-            'flow_type' => FlowType::BottomUp,
+            'flow_type' => FlowType::TopDown,
             'destination_name' => $destination,
             'destination_address' => 'Jakarta',
             'target_latitude' => -6.1754,

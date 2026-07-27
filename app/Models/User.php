@@ -12,12 +12,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasPushSubscriptions, Notifiable;
+
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            $this->lockManagerInvariantRows();
+
+            return parent::save($options);
+        });
+    }
 
     protected static function booted(): void
     {
@@ -26,6 +36,10 @@ class User extends Authenticatable implements FilamentUser
                 && (($user->isDirty('role') && $user->role !== UserRole::Manager)
                     || ($user->isDirty('status') && ! $user->status))) {
                 throw new BusinessRuleException('Manager yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.');
+            }
+
+            if ($user->status && $user->role === UserRole::Employee && ! $user->manager_id) {
+                throw new BusinessRuleException('Employee aktif wajib memiliki atasan langsung.');
             }
 
             if (! $user->manager_id) {
@@ -156,5 +170,24 @@ class User extends Authenticatable implements FilamentUser
     public function promotions(): HasMany
     {
         return $this->hasMany(Promotion::class);
+    }
+
+    private function lockManagerInvariantRows(): void
+    {
+        $ids = array_values(array_unique(array_filter([
+            $this->exists ? (int) $this->getKey() : null,
+            $this->manager_id ? (int) $this->manager_id : null,
+        ])));
+        sort($ids, SORT_NUMERIC);
+
+        if ($ids === []) {
+            return;
+        }
+
+        self::query()
+            ->whereKey($ids)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get(['id']);
     }
 }

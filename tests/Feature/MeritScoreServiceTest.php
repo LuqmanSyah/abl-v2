@@ -73,11 +73,7 @@ class MeritScoreServiceTest extends TestCase
             'reason' => 'Cuti retroaktif',
             'status' => LeaveStatus::Pending,
         ]);
-        $leave->update([
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $review->reviewer_id,
-            'approved_at' => now(),
-        ]);
+        $leave->approve(User::query()->where('role', UserRole::HrAdmin)->firstOrFail());
 
         $review->refresh();
 
@@ -89,12 +85,21 @@ class MeritScoreServiceTest extends TestCase
     public function test_locked_review_blocks_automatic_but_allows_forced_recalculation(): void
     {
         $review = $this->makeReview('2030-01-09', ReviewStatus::Locked);
-        $review->update([
+        $staleScores = [
             'attendance_score' => 12,
             'manager_kpi_score' => 34,
             'final_merit_score' => 56,
             'grade' => 'D',
-        ]);
+        ];
+
+        try {
+            $review->update($staleScores);
+            $this->fail('Rapor terkunci seharusnya immutable.');
+        } catch (BusinessRuleException $exception) {
+            $this->assertSame('Rapor terkunci tidak dapat diubah.', $exception->getMessage());
+        }
+
+        $review->refresh()->forceFill($staleScores)->saveQuietly();
 
         Holiday::create(['name' => 'Libur Baru', 'date' => '2030-01-09']);
 
@@ -131,11 +136,14 @@ class MeritScoreServiceTest extends TestCase
         }
     }
 
-    private function makeReview(string $date, ReviewStatus $status = ReviewStatus::Draft): PerformanceReview
+    private function makeReview(string $date, ReviewStatus $status = ReviewStatus::Approved): PerformanceReview
     {
         $this->seed();
 
         $employee = User::query()->where('role', UserRole::Employee)->firstOrFail();
+        $manager = $employee->manager;
+        $hr = User::query()->where('role', UserRole::HrAdmin)->firstOrFail();
+        $director = User::query()->where('role', UserRole::Director)->firstOrFail();
         $employee->update(['join_date' => '2020-01-01']);
         $review = PerformanceReview::create([
             'user_id' => $employee->id,
@@ -143,9 +151,21 @@ class MeritScoreServiceTest extends TestCase
             'period' => $date,
             'start_date' => $date,
             'end_date' => $date,
-            'status' => $status,
+            'status' => ReviewStatus::Draft,
         ]);
         $review->reviewKpiDetails->each->update(['manager_score' => 80]);
+
+        if ($status !== ReviewStatus::Draft) {
+            $review->submit($manager);
+        }
+
+        if (in_array($status, [ReviewStatus::Approved, ReviewStatus::Locked], true)) {
+            $review->approve($hr);
+        }
+
+        if ($status === ReviewStatus::Locked) {
+            $review->lock($director);
+        }
 
         return $review;
     }

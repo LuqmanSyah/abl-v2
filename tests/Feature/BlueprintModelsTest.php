@@ -28,7 +28,6 @@ use App\Models\PerformanceReview;
 use App\Models\Position;
 use App\Models\PositionSkill;
 use App\Models\Promotion;
-use App\Models\ReviewKpiDetail;
 use App\Models\Skill;
 use App\Models\User;
 use App\Models\UserSkill;
@@ -72,6 +71,12 @@ class BlueprintModelsTest extends TestCase
             'branch_office_id' => $branch->id,
             'role' => UserRole::Manager,
         ]);
+        $hr = User::factory()->create([
+            'position_id' => $nextPosition->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::HrAdmin,
+        ]);
         $employee = User::factory()->create([
             'position_id' => $position->id,
             'work_schedule_id' => $schedule->id,
@@ -86,10 +91,9 @@ class BlueprintModelsTest extends TestCase
             'start_date' => '2026-08-03',
             'end_date' => '2026-08-04',
             'reason' => 'Family',
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $manager->id,
-            'approved_at' => now(),
+            'status' => LeaveStatus::Pending,
         ]);
+        $leave->approve($hr);
         $request = AttendanceRequest::create([
             'user_id' => $employee->id,
             'created_by' => $manager->id,
@@ -152,16 +156,17 @@ class BlueprintModelsTest extends TestCase
             'manager_kpi_score' => 90,
             'final_merit_score' => 95,
             'grade' => 'A',
-            'status' => ReviewStatus::Approved,
+            'status' => ReviewStatus::Draft,
         ]);
-        $detail = ReviewKpiDetail::create([
-            'performance_review_id' => $review->id,
-            'kpi_id' => $kpi->id,
+        $detail = $review->reviewKpiDetails()->where('kpi_id', $kpi->id)->firstOrFail();
+        $detail->update([
             'self_score' => 90,
             'manager_score' => 90,
             'weight' => 100,
             'subtotal_score' => 90,
         ]);
+        $review->submit($manager);
+        $review->approve($hr);
         $careerPath = CareerPath::create([
             'current_position_id' => $position->id,
             'next_position_id' => $nextPosition->id,
@@ -211,7 +216,7 @@ class BlueprintModelsTest extends TestCase
         $this->assertTrue($employee->individualDevelopmentPlans->contains($plan));
         $this->assertTrue($employee->promotions->contains($promotion));
         $this->assertTrue($leave->user->is($employee));
-        $this->assertTrue($leave->approver->is($manager));
+        $this->assertTrue($leave->approver->is($hr));
         $this->assertTrue($request->user->is($employee));
         $this->assertTrue($request->creator->is($manager));
         $this->assertTrue($request->approver->is($manager));

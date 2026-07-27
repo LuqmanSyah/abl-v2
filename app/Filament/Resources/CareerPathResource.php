@@ -7,11 +7,15 @@ use App\Models\CareerPath;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class CareerPathResource extends RoleAwareResource
@@ -86,6 +90,30 @@ class CareerPathResource extends RoleAwareResource
                 EditAction::make(),
                 DeleteAction::make(),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $query->where('current_position_id', Auth::user()?->position_id)
+            : $query;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canCreate();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canEdit($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
     }
 
     public static function getPages(): array

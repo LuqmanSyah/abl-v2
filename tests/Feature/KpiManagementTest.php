@@ -13,6 +13,7 @@ use App\Models\PerformanceReview;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ class KpiManagementTest extends TestCase
         $this->seed();
 
         $employee = User::query()->where('role', UserRole::Employee)->firstOrFail();
+        $manager = $employee->manager;
         $review = PerformanceReview::create([
             'user_id' => $employee->id,
             'reviewer_id' => $employee->manager_id,
@@ -39,11 +41,16 @@ class KpiManagementTest extends TestCase
 
         $detail = $review->reviewKpiDetails->first();
         $snapshotWeight = (float) $detail->weight;
-        $detail->kpi->update(['weight' => 99]);
+        try {
+            $detail->kpi->update(['weight' => 99]);
+            $this->fail('Perubahan yang membuat total master KPI bukan 100 seharusnya ditolak.');
+        } catch (BusinessRuleException $exception) {
+            $this->assertSame('Total bobot master KPI harus tetap 100.', $exception->getMessage());
+        }
         $this->assertEquals($snapshotWeight, (float) $detail->fresh()->weight);
 
         try {
-            $review->update(['status' => ReviewStatus::Submitted]);
+            $review->submit($manager);
             $this->fail('Review tanpa nilai manager seharusnya ditolak.');
         } catch (BusinessRuleException $exception) {
             $this->assertSame('Semua nilai KPI manager wajib diisi sebelum rapor disubmit.', $exception->getMessage());
@@ -59,14 +66,14 @@ class KpiManagementTest extends TestCase
         $detail->fresh()->update(['weight' => $snapshotWeight + 1]);
 
         try {
-            $review->refresh()->update(['status' => ReviewStatus::Submitted]);
+            $review->refresh()->submit($manager);
             $this->fail('Review dengan total bobot bukan 100 seharusnya ditolak.');
         } catch (BusinessRuleException $exception) {
             $this->assertSame('Total bobot KPI harus 100 sebelum rapor disubmit.', $exception->getMessage());
         }
 
         $detail->fresh()->update(['weight' => $snapshotWeight]);
-        $review->refresh()->update(['status' => ReviewStatus::Submitted]);
+        $review->refresh()->submit($manager);
 
         $this->assertSame(ReviewStatus::Submitted, $review->fresh()->status);
     }
@@ -76,7 +83,9 @@ class KpiManagementTest extends TestCase
         $this->seed();
 
         $admin = User::query()->where('role', UserRole::HrAdmin)->firstOrFail();
+        $director = User::query()->where('role', UserRole::Director)->firstOrFail();
         $employee = User::query()->where('role', UserRole::Employee)->firstOrFail();
+        $manager = $employee->manager;
         $this->actingAs($admin);
 
         Livewire::test(ListKpis::class)
@@ -87,6 +96,7 @@ class KpiManagementTest extends TestCase
             ])
             ->assertHasNoFormErrors();
 
+        $this->actingAs($manager);
         Livewire::test(CreatePerformanceReview::class)
             ->fillForm([
                 'user_id' => $employee->id,
@@ -116,13 +126,48 @@ class KpiManagementTest extends TestCase
             ->callAction(TestAction::make('submit')->table($review));
         $this->assertSame(ReviewStatus::Submitted, $review->fresh()->status);
 
+        $this->actingAs($admin);
         Livewire::test(ListPerformanceReviews::class)
             ->callAction(TestAction::make('approve')->table($review));
         $this->assertSame(ReviewStatus::Approved, $review->fresh()->status);
         $this->assertNotNull($review->fresh()->final_merit_score);
 
+        $this->actingAs($director);
         Livewire::test(ListPerformanceReviews::class)
             ->callAction(TestAction::make('lock')->table($review));
         $this->assertSame(ReviewStatus::Locked, $review->fresh()->status);
+    }
+
+    public function test_kpi_mutations_are_transactional_and_rebalance_action_is_reachable(): void
+    {
+        $this->seed();
+
+        $savingTransaction = 0;
+        $deletingTransaction = 0;
+        Kpi::saving(function () use (&$savingTransaction): void {
+            $savingTransaction = DB::transactionLevel();
+        });
+        Kpi::deleting(function () use (&$deletingTransaction): void {
+            $deletingTransaction = DB::transactionLevel();
+        });
+
+        $first = Kpi::query()->orderBy('id')->firstOrFail();
+        $first->update(['name' => $first->name.' Updated']);
+        $zero = Kpi::create(['name' => 'Zero', 'category' => 'Test', 'weight' => 0]);
+        $zero->delete();
+
+        $this->assertGreaterThan(0, $savingTransaction);
+        $this->assertGreaterThan(0, $deletingTransaction);
+
+        $admin = User::query()->where('role', UserRole::HrAdmin)->firstOrFail();
+        $weights = Kpi::query()->orderBy('id')->pluck('weight', 'id')->all();
+
+        $this->actingAs($admin);
+        Livewire::test(ListKpis::class)
+            ->assertActionExists('rebalance')
+            ->callAction('rebalance', data: ['weights' => $weights])
+            ->assertHasNoActionErrors();
+
+        $this->assertEqualsWithDelta(100, (float) Kpi::query()->sum('weight'), 0.01);
     }
 }

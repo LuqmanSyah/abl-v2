@@ -70,8 +70,9 @@ class KpiResource extends RoleAwareResource
             ])
             ->defaultSort('category')
             ->actions([
-                EditAction::make(),
+                EditAction::make()->databaseTransaction(),
                 DeleteAction::make()
+                    ->databaseTransaction()
                     ->visible(fn (Kpi $record): bool => $record->reviewKpiDetails()->doesntExist()),
             ]);
     }

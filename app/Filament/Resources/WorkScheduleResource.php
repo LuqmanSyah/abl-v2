@@ -42,6 +42,7 @@ class WorkScheduleResource extends RoleAwareResource
 
             TimePicker::make('check_out_time')
                 ->required()
+                ->after('check_in_time')
                 ->seconds(false)
                 ->label('Jam Pulang'),
 

@@ -3,11 +3,13 @@
 namespace App\Console\Commands;
 
 use App\Enums\PromotionStatus;
+use App\Exceptions\BusinessRuleException;
 use App\Models\CareerPath;
 use App\Models\Promotion;
 use App\Models\User;
 use App\Services\ReadinessScoreService;
 use Illuminate\Console\Command;
+use Illuminate\Database\QueryException;
 
 class ScanCandidatePool extends Command
 {
@@ -28,6 +30,7 @@ class ScanCandidatePool extends Command
                 ->eachById(function (User $user) use ($path, $readinessScore, &$created): void {
                     $readiness = $readinessScore->calculate($user, $path->nextPosition);
                     $grade = $user->performanceReviews()
+                        ->published()
                         ->whereNotNull('grade')
                         ->latest('end_date')
                         ->value('grade');
@@ -36,26 +39,32 @@ class ScanCandidatePool extends Command
                         || $user->join_date->copy()->addMonths($path->min_experience_months)->isFuture()
                         || ! $this->gradeMeets((string) $grade, $path->min_merit_grade)
                         || Promotion::query()
+                            ->activeLifecycle()
                             ->where('user_id', $user->id)
                             ->where('to_position_id', $path->next_position_id)
-                            ->whereIn('status', [
-                                PromotionStatus::Proposed,
-                                PromotionStatus::ApprovedByHr,
-                                PromotionStatus::ApprovedByDirector,
-                            ])
                             ->exists()) {
                         return;
                     }
 
-                    Promotion::create([
-                        'user_id' => $user->id,
-                        'from_position_id' => $path->current_position_id,
-                        'to_position_id' => $path->next_position_id,
-                        'proposed_by' => $user->manager_id,
-                        'readiness_score' => $readiness,
-                        'status' => PromotionStatus::Proposed,
-                    ]);
-                    $created++;
+                    try {
+                        Promotion::create([
+                            'user_id' => $user->id,
+                            'from_position_id' => $path->current_position_id,
+                            'to_position_id' => $path->next_position_id,
+                            'proposed_by' => $user->manager_id,
+                            'readiness_score' => $readiness,
+                            'status' => PromotionStatus::Proposed,
+                        ]);
+                        $created++;
+                    } catch (BusinessRuleException|QueryException $exception) {
+                        if (! Promotion::query()
+                            ->activeLifecycle()
+                            ->where('user_id', $user->id)
+                            ->where('to_position_id', $path->next_position_id)
+                            ->exists()) {
+                            throw $exception;
+                        }
+                    }
                 });
         });
 

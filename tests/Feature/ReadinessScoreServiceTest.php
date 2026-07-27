@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\BranchOffice;
 use App\Models\Department;
 use App\Models\Position;
@@ -51,10 +52,17 @@ class ReadinessScoreServiceTest extends TestCase
             'longitude' => 106.8456,
             'allowed_radius_meters' => 100,
         ]);
+        $manager = User::factory()->create([
+            'position_id' => $currentPosition->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::Manager,
+        ]);
         $user = User::factory()->create([
             'position_id' => $currentPosition->id,
             'work_schedule_id' => $schedule->id,
             'branch_office_id' => $branch->id,
+            'manager_id' => $manager->id,
         ]);
 
         PositionSkill::create([

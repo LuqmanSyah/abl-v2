@@ -17,6 +17,11 @@ class MeritScoreService
             throw new BusinessRuleException('Rapor terkunci hanya dapat dihitung ulang secara paksa.');
         }
 
+        if (! in_array($review->status, [ReviewStatus::Submitted, ReviewStatus::Approved], true)
+            && ! ($review->status === ReviewStatus::Locked && $force)) {
+            throw new BusinessRuleException('Merit hanya dapat dihitung untuk rapor yang sudah disubmit.');
+        }
+
         $managerKpiScore = round((float) $review->reviewKpiDetails()
             ->get(['manager_score', 'weight'])
             ->sum(fn (ReviewKpiDetail $detail): float => (float) $detail->manager_score * (float) $detail->weight / 100), 2);

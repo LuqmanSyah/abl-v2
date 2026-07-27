@@ -17,7 +17,10 @@ class ExpireProposedPromotions extends Command
         $expired = Promotion::query()
             ->where('status', PromotionStatus::Proposed)
             ->where('created_at', '<', now()->subDays(30))
-            ->update(['status' => PromotionStatus::Expired]);
+            ->update([
+                'status' => PromotionStatus::Expired,
+                'active_lifecycle' => null,
+            ]);
 
         $this->info("{$expired} promotion proposal(s) expired.");
 

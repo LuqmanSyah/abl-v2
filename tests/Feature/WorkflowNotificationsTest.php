@@ -20,12 +20,17 @@ use App\Models\Promotion;
 use App\Models\User;
 use App\Notifications\AttendanceRequestApproved;
 use App\Notifications\AttendanceRequestAssigned;
+use App\Notifications\AttendanceRequestCancelled;
+use App\Notifications\AttendanceRequestRejected;
+use App\Notifications\CheckOutExceptionApproved;
 use App\Notifications\CheckOutExceptionPending;
+use App\Notifications\CheckOutExceptionRejected;
 use App\Notifications\LeaveRequestApproved;
 use App\Notifications\LeaveRequestRejected;
 use App\Notifications\MeritScorePublished;
 use App\Notifications\PromotionApproved;
 use App\Notifications\PromotionProposed;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -45,20 +50,18 @@ class WorkflowNotificationsTest extends TestCase
 
         $assigned = $this->attendanceRequest($employee, $manager, FlowType::TopDown, '2027-01-01');
         $approved = $this->attendanceRequest($employee, $employee, FlowType::BottomUp, '2027-01-02');
-        $approved->update([
-            'status' => AttendanceRequestStatus::Approved,
-            'approved_by' => $manager->id,
-        ]);
+        $approved->approve($manager);
+        $rejected = $this->attendanceRequest($employee, $employee, FlowType::BottomUp, '2027-01-06');
+        $rejected->reject($manager);
+        $cancelled = $this->attendanceRequest($employee, $employee, FlowType::BottomUp, '2027-01-07');
+        $cancelled->cancel($employee);
 
         $leaveApproved = $this->leaveRequest($employee, '2027-01-03');
-        $leaveApproved->update([
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $hr->id,
-            'approved_at' => now(),
-        ]);
+        $leaveApproved->approve($hr);
         $leaveRejected = $this->leaveRequest($employee, '2027-01-04');
-        $leaveRejected->update(['status' => LeaveStatus::Rejected]);
+        $leaveRejected->reject($hr);
 
+        $this->travelTo(CarbonImmutable::parse('2027-01-05 18:00:00', 'Asia/Jakarta'));
         $attendance = Attendance::create([
             'user_id' => $employee->id,
             'type' => AttendanceType::CheckOut,
@@ -72,6 +75,24 @@ class WorkflowNotificationsTest extends TestCase
             'status' => AttendanceStatus::PendingVerification,
             'recorded_at' => '2027-01-05 17:00:00',
         ]);
+        $attendance->approveException($manager);
+
+        $this->travelTo(CarbonImmutable::parse('2027-01-08 18:00:00', 'Asia/Jakarta'));
+        $rejectedAttendance = Attendance::create([
+            'user_id' => $employee->id,
+            'type' => AttendanceType::CheckOut,
+            'latitude' => -6.2,
+            'longitude' => 106.8,
+            'distance_to_target_meters' => 500,
+            'address_snapshot' => 'Lokasi klien',
+            'photo_path' => 'attendance/out-rejected.jpg',
+            'is_radius_exception' => true,
+            'exception_reason' => 'Selesai di lokasi klien.',
+            'status' => AttendanceStatus::PendingVerification,
+            'recorded_at' => '2027-01-08 17:00:00',
+        ]);
+        $rejectedAttendance->rejectException($manager);
+        $this->travelBack();
 
         $review = PerformanceReview::create([
             'user_id' => $employee->id,
@@ -81,7 +102,9 @@ class WorkflowNotificationsTest extends TestCase
             'end_date' => '2027-06-30',
             'status' => ReviewStatus::Draft,
         ]);
-        $review->update(['status' => ReviewStatus::Approved]);
+        $review->reviewKpiDetails()->update(['manager_score' => 90]);
+        $review->submit($manager);
+        $review->approve($hr);
 
         $targetPosition = Position::query()->whereKeyNot($employee->position_id)->firstOrFail();
         $promotion = Promotion::create([
@@ -92,14 +115,19 @@ class WorkflowNotificationsTest extends TestCase
             'readiness_score' => 90,
             'status' => PromotionStatus::Proposed,
         ]);
-        $promotion->update(['status' => PromotionStatus::ApprovedByDirector]);
+        $promotion->transitionTo(PromotionStatus::ApprovedByHr);
+        $promotion->transitionTo(PromotionStatus::ApprovedByDirector, ['effective_date' => now()->toDateString()]);
 
         Notification::assertSentTo($employee, AttendanceRequestAssigned::class);
         Notification::assertSentTo($employee, AttendanceRequestApproved::class);
+        Notification::assertSentTo($employee, AttendanceRequestRejected::class);
+        Notification::assertSentTo($employee, AttendanceRequestCancelled::class);
         Notification::assertSentTo($employee, LeaveRequestApproved::class);
         Notification::assertSentTo($employee, LeaveRequestRejected::class);
         Notification::assertSentTo($manager, CheckOutExceptionPending::class);
-        Notification::assertSentTo($hr, CheckOutExceptionPending::class);
+        Notification::assertNotSentTo($hr, CheckOutExceptionPending::class);
+        Notification::assertSentTo($employee, CheckOutExceptionApproved::class);
+        Notification::assertSentTo($employee, CheckOutExceptionRejected::class);
         Notification::assertSentTo($employee, MeritScorePublished::class);
         Notification::assertSentTo($hr, PromotionProposed::class);
         Notification::assertSentTo($employee, PromotionApproved::class);
@@ -108,7 +136,7 @@ class WorkflowNotificationsTest extends TestCase
         $this->assertSame(['database', 'webpush'], $notification->via($employee));
         $this->assertSame('Tugas Luar Baru', $notification->toDatabase($employee)['title']);
         $this->assertTrue(method_exists($employee, 'updatePushSubscription'));
-        $this->assertSame(AttendanceStatus::PendingVerification, $attendance->status);
+        $this->assertSame(AttendanceStatus::Normal, $attendance->status);
     }
 
     private function attendanceRequest(User $employee, User $creator, FlowType $flow, string $date): AttendanceRequest

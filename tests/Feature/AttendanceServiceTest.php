@@ -11,6 +11,7 @@ use App\Enums\LeaveType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Filament\Resources\AttendanceResource\Pages\ListAttendances;
+use App\Models\Attendance;
 use App\Models\AttendanceRequest;
 use App\Models\BranchOffice;
 use App\Models\DailyAttendanceSummary;
@@ -21,6 +22,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\AttendanceService;
 use App\Services\GoogleMapsService;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -142,16 +144,21 @@ class AttendanceServiceTest extends TestCase
     public function test_approved_leave_blocks_same_day_attendance_request(): void
     {
         $user = $this->employee();
-        LeaveRequest::create([
+        $hr = User::factory()->create([
+            'position_id' => $user->position_id,
+            'work_schedule_id' => $user->work_schedule_id,
+            'branch_office_id' => $user->branch_office_id,
+            'role' => UserRole::HrAdmin,
+        ]);
+        $leave = LeaveRequest::create([
             'user_id' => $user->id,
             'type' => LeaveType::PaidLeave,
             'start_date' => '2026-08-01',
             'end_date' => '2026-08-01',
             'reason' => 'Cuti',
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
+            'status' => LeaveStatus::Pending,
         ]);
+        $leave->approve($hr);
 
         $this->expectExceptionMessage('Tugas luar tumpang tindih dengan cuti yang sudah disetujui.');
 
@@ -186,12 +193,14 @@ class AttendanceServiceTest extends TestCase
             'reason' => 'Cuti',
             'status' => LeaveStatus::Pending,
         ]);
-
-        $leave->update([
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $user->id,
-            'approved_at' => now(),
+        $hr = User::factory()->create([
+            'position_id' => $user->position_id,
+            'work_schedule_id' => $user->work_schedule_id,
+            'branch_office_id' => $user->branch_office_id,
+            'role' => UserRole::HrAdmin,
         ]);
+
+        $leave->approve($hr);
 
         $this->assertSame(
             ['2026-08-01', '2026-08-02', '2026-08-03'],
@@ -257,6 +266,15 @@ class AttendanceServiceTest extends TestCase
     {
         $user = $this->employee();
         $service = app(AttendanceService::class);
+        $manager = $user->manager;
+        $service->record(
+            $user,
+            AttendanceType::CheckIn,
+            -6.2088,
+            106.8456,
+            'attendance/in.jpg',
+            recordedAt: CarbonImmutable::parse('2026-08-01 08:00:00', 'Asia/Jakarta'),
+        );
 
         try {
             $service->record(
@@ -269,7 +287,7 @@ class AttendanceServiceTest extends TestCase
             );
             $this->fail('Outside-radius check-out without a reason should be rejected.');
         } catch (BusinessRuleException) {
-            $this->assertDatabaseCount('attendances', 0);
+            $this->assertDatabaseCount('attendances', 1);
         }
 
         $attendance = $service->record(
@@ -285,13 +303,7 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame(AttendanceStatus::PendingVerification, $attendance->status);
         $this->assertTrue($attendance->is_radius_exception);
 
-        $manager = User::factory()->create([
-            'position_id' => $user->position_id,
-            'work_schedule_id' => $user->work_schedule_id,
-            'branch_office_id' => $user->branch_office_id,
-            'role' => UserRole::Manager,
-        ]);
-        $user->update(['manager_id' => $manager->id]);
+        $this->travelTo(CarbonImmutable::parse('2026-08-01 18:00:00', 'Asia/Jakarta'));
         $this->actingAs($manager);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
 
@@ -305,6 +317,15 @@ class AttendanceServiceTest extends TestCase
     {
         $user = $this->employee();
         $request = $this->attendanceRequest($user, AttendanceRequestStatus::Approved, '2026-08-01');
+        app(AttendanceService::class)->record(
+            $user,
+            AttendanceType::CheckIn,
+            -6.1754,
+            106.8272,
+            'attendance/duty-in.jpg',
+            $request,
+            recordedAt: CarbonImmutable::parse('2026-08-01 08:00:00', 'Asia/Jakarta'),
+        );
 
         $attendance = app(AttendanceService::class)->record(
             $user,
@@ -320,16 +341,95 @@ class AttendanceServiceTest extends TestCase
         $this->assertSame('Kantor Pusat', $attendance->address_snapshot);
     }
 
+    public function test_check_out_requires_an_earlier_open_check_in_in_the_same_session(): void
+    {
+        $user = $this->employee();
+        $service = app(AttendanceService::class);
+        $checkOutAt = CarbonImmutable::parse('2026-08-01 17:00:00', 'Asia/Jakarta');
+
+        try {
+            $service->record(
+                $user,
+                AttendanceType::CheckOut,
+                -6.2088,
+                106.8456,
+                'attendance/no-in.jpg',
+                recordedAt: $checkOutAt,
+            );
+            $this->fail('Check-out without check-in should fail.');
+        } catch (BusinessRuleException) {
+            $this->assertDatabaseCount('attendances', 0);
+        }
+
+        $futureCheckIn = Attendance::create([
+            'user_id' => $user->id,
+            'type' => AttendanceType::CheckIn,
+            'latitude' => -6.2088,
+            'longitude' => 106.8456,
+            'distance_to_target_meters' => 0,
+            'address_snapshot' => 'Kantor Pusat',
+            'photo_path' => 'attendance/future-in.jpg',
+            'status' => AttendanceStatus::Normal,
+            'recorded_at' => $checkOutAt->addHour(),
+        ]);
+
+        try {
+            $service->record(
+                $user,
+                AttendanceType::CheckOut,
+                -6.2088,
+                106.8456,
+                'attendance/before-in.jpg',
+                recordedAt: $checkOutAt,
+            );
+            $this->fail('Check-out before check-in should fail.');
+        } catch (BusinessRuleException) {
+            $this->assertDatabaseCount('attendances', 1);
+        }
+        $futureCheckIn->delete();
+
+        $service->record(
+            $user,
+            AttendanceType::CheckIn,
+            -6.2088,
+            106.8456,
+            'attendance/in.jpg',
+            recordedAt: $checkOutAt->subHour(),
+        );
+        $service->record(
+            $user,
+            AttendanceType::CheckOut,
+            -6.2088,
+            106.8456,
+            'attendance/out.jpg',
+            recordedAt: $checkOutAt,
+        );
+
+        $this->expectExceptionMessage('Check-out untuk sesi ini sudah tercatat hari ini.');
+        $service->record(
+            $user,
+            AttendanceType::CheckOut,
+            -6.2088,
+            106.8456,
+            'attendance/out-2.jpg',
+            recordedAt: $checkOutAt->addMinute(),
+        );
+    }
+
     public function test_attendance_form_renders_gps_capture_and_photo_fields(): void
     {
         $user = $this->employee();
-        $user->update(['role' => UserRole::Manager]);
+        $user->update([
+            'role' => UserRole::Manager,
+            'manager_id' => null,
+        ]);
 
         $this->actingAs($user)
             ->get(route('filament.employee.resources.attendances.create'))
             ->assertOk()
             ->assertSee('Ambil Lokasi GPS')
-            ->assertSee('Foto');
+            ->assertSee('Live Selfie')
+            ->assertSee('capture="user"', false);
 
         $this->get(route('filament.admin.resources.attendances.create'))
             ->assertForbidden();
@@ -358,10 +458,18 @@ class AttendanceServiceTest extends TestCase
             'allowed_radius_meters' => 100,
         ]);
 
+        $manager = User::factory()->create([
+            'position_id' => $position->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::Manager,
+        ]);
+
         return User::factory()->create([
             'position_id' => $position->id,
             'work_schedule_id' => $schedule->id,
             'branch_office_id' => $branch->id,
+            'manager_id' => $manager->id,
         ]);
     }
 
@@ -372,7 +480,17 @@ class AttendanceServiceTest extends TestCase
         FlowType $flowType = FlowType::BottomUp,
         ?User $creator = null,
     ): AttendanceRequest {
-        return AttendanceRequest::create([
+        if ($status === AttendanceRequestStatus::Approved && ! $user->manager_id) {
+            $manager = User::factory()->create([
+                'position_id' => $user->position_id,
+                'work_schedule_id' => $user->work_schedule_id,
+                'branch_office_id' => $user->branch_office_id,
+                'role' => UserRole::Manager,
+            ]);
+            $user->update(['manager_id' => $manager->id]);
+        }
+
+        $request = AttendanceRequest::create([
             'user_id' => $user->id,
             'created_by' => $creator?->id ?? $user->id,
             'flow_type' => $flowType,
@@ -385,7 +503,13 @@ class AttendanceServiceTest extends TestCase
             'duty_end_datetime' => "{$date} 17:00:00",
             'reason' => 'Meeting',
             'status' => $status,
-            'approved_by' => $status === AttendanceRequestStatus::Approved ? $user->id : null,
+            'approved_by' => $status === AttendanceRequestStatus::Approved ? $user->manager_id : null,
         ]);
+
+        if ($status === AttendanceRequestStatus::Approved && $flowType === FlowType::BottomUp) {
+            $request->approve($user->manager);
+        }
+
+        return $request;
     }
 }

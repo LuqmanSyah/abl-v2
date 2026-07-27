@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AttendanceEvidenceController;
 use App\Http\Controllers\AuthenticatedSessionController;
 use App\Http\Controllers\WebPushController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,8 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store'])
     ->name('login.store');
 
 Route::middleware(['auth', 'active'])->group(function () {
+    Route::get('/attendance/{attendance}/evidence', AttendanceEvidenceController::class)
+        ->name('attendance.evidence');
     Route::post('/webpush/subscribe', [WebPushController::class, 'subscribe'])->name('webpush.subscribe');
     Route::post('/webpush/unsubscribe', [WebPushController::class, 'unsubscribe'])->name('webpush.unsubscribe');
 });

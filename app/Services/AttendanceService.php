@@ -45,6 +45,8 @@ class AttendanceService
 
         if ($type === AttendanceType::CheckIn) {
             $this->validateCheckInWindow($user, $request, $recordedAt);
+        } else {
+            $this->validateCheckOutSequence($user, $request, $recordedAt);
         }
 
         [$targetLatitude, $targetLongitude, $radius, $address] = $request
@@ -157,6 +159,29 @@ class AttendanceService
 
         if ($recordedAt->lt($start->subMinutes(90))) {
             throw new BusinessRuleException('Check-in baru dibuka 90 menit sebelum jam masuk.');
+        }
+    }
+
+    private function validateCheckOutSequence(
+        User $user,
+        ?AttendanceRequest $request,
+        CarbonImmutable $recordedAt,
+    ): void {
+        $sessionKey = $request ? 'request:'.$request->id : 'office';
+        $session = Attendance::query()
+            ->where('user_id', $user->id)
+            ->whereDate('attendance_date', $recordedAt)
+            ->where('session_key', $sessionKey);
+
+        if (! (clone $session)
+            ->where('type', AttendanceType::CheckIn)
+            ->where('recorded_at', '<', $recordedAt)
+            ->exists()) {
+            throw new BusinessRuleException('Check-out wajib memiliki check-in lebih awal pada sesi yang sama.');
+        }
+
+        if ((clone $session)->where('type', AttendanceType::CheckOut)->exists()) {
+            throw new BusinessRuleException('Check-out untuk sesi ini sudah tercatat hari ini.');
         }
     }
 

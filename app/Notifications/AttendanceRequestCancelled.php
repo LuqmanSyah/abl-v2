@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Notifications;
+
+use App\Models\AttendanceRequest;
+
+class AttendanceRequestCancelled extends WorkflowNotification
+{
+    public function __construct(public AttendanceRequest $request) {}
+
+    protected function payload(): array
+    {
+        return [
+            'title' => 'Izin Tugas Luar Dibatalkan',
+            'body' => "Izin tugas luar ke {$this->request->destination_name} dibatalkan.",
+            'url' => url('/app/attendance-requests'),
+            'icon' => 'heroicon-o-no-symbol',
+        ];
+    }
+}

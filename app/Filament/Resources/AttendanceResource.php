@@ -66,11 +66,17 @@ class AttendanceResource extends RoleAwareResource
 
             FileUpload::make('photo_path')
                 ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                ->maxSize(5120)
+                ->extraInputAttributes([
+                    'accept' => 'image/*',
+                    'capture' => 'user',
+                ])
                 ->required()
                 ->disk('local')
                 ->directory('attendance')
                 ->visibility('private')
-                ->label('Foto'),
+                ->label('Live Selfie'),
 
             Textarea::make('exception_reason')
                 ->visible(fn (Get $get): bool => $get('type') === AttendanceType::CheckOut->value)
@@ -107,6 +113,19 @@ class AttendanceResource extends RoleAwareResource
                         AttendanceStatus::Rejected => 'gray',
                     })
                     ->label('Status'),
+                TextColumn::make('evidence')
+                    ->state(fn (Attendance $record): string => $record->canViewEvidence(Auth::user())
+                        ? 'Lihat'
+                        : '-')
+                    ->url(fn (Attendance $record): ?string => $record->canViewEvidence(Auth::user())
+                        ? route('attendance.evidence', $record)
+                        : null)
+                    ->openUrlInNewTab()
+                    ->label('Selfie'),
+                TextColumn::make('exception_reason')
+                    ->wrap()
+                    ->placeholder('-')
+                    ->label('Alasan Exception'),
                 IconColumn::make('is_fallback')
                     ->boolean()
                     ->label('Fallback'),
@@ -127,21 +146,15 @@ class AttendanceResource extends RoleAwareResource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (Attendance $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
-                        && $record->status === AttendanceStatus::PendingVerification)
-                    ->action(fn (Attendance $record) => $record->update([
-                        'status' => AttendanceStatus::Normal,
-                    ])),
+                    ->visible(fn (Attendance $record): bool => $record->canBeVerifiedBy(Auth::user()))
+                    ->action(fn (Attendance $record) => $record->approveException(Auth::user())),
                 Action::make('reject_exception')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (Attendance $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
-                        && $record->status === AttendanceStatus::PendingVerification)
-                    ->action(fn (Attendance $record) => $record->update([
-                        'status' => AttendanceStatus::Rejected,
-                    ])),
+                    ->visible(fn (Attendance $record): bool => $record->canBeVerifiedBy(Auth::user()))
+                    ->action(fn (Attendance $record) => $record->rejectException(Auth::user())),
             ]);
     }
 

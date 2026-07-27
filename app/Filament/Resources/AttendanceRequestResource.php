@@ -10,7 +10,6 @@ use App\Models\AttendanceRequest;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
@@ -64,20 +63,18 @@ class AttendanceRequestResource extends RoleAwareResource
 
             Select::make('created_by')
                 ->relationship('creator', 'name')
-                ->required()
-                ->searchable()
-                ->preload()
                 ->default(fn () => Auth::id())
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
-                ->dehydrated()
+                ->disabled()
+                ->dehydrated(false)
                 ->label('Dibuat Oleh'),
 
             Select::make('flow_type')
                 ->options(FlowType::class)
-                ->default(FlowType::BottomUp->value)
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
-                ->dehydrated()
-                ->required()
+                ->default(fn (): string => Filament::getCurrentPanel()?->getId() === 'employee'
+                    ? FlowType::BottomUp->value
+                    : FlowType::TopDown->value)
+                ->disabled()
+                ->dehydrated(false)
                 ->label('Tipe Alur'),
 
             TextInput::make('destination_name')
@@ -140,7 +137,7 @@ class AttendanceRequestResource extends RoleAwareResource
                 ->default(AttendanceRequestStatus::Pending->value)
                 ->required()
                 ->disabled()
-                ->dehydrated()
+                ->dehydrated(false)
                 ->label('Status'),
         ]);
     }
@@ -212,36 +209,28 @@ class AttendanceRequestResource extends RoleAwareResource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
-                        && $record->status === AttendanceRequestStatus::Pending)
-                    ->action(function (AttendanceRequest $record): void {
-                        $record->update([
-                            'status' => AttendanceRequestStatus::Approved,
-                            'approved_by' => Auth::id(),
-                        ]);
-                    }),
+                    ->visible(fn (AttendanceRequest $record): bool => $record->canBeDecidedBy(Auth::user()))
+                    ->action(fn (AttendanceRequest $record) => $record->approve(Auth::user())),
 
                 Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
-                        && $record->status === AttendanceRequestStatus::Pending)
-                    ->action(function (AttendanceRequest $record): void {
-                        $record->update([
-                            'status' => AttendanceRequestStatus::Rejected,
-                        ]);
-                    }),
+                    ->visible(fn (AttendanceRequest $record): bool => $record->canBeDecidedBy(Auth::user()))
+                    ->action(fn (AttendanceRequest $record) => $record->reject(Auth::user())),
+
+                Action::make('cancel')
+                    ->label('Batalkan')
+                    ->icon('heroicon-o-no-symbol')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->visible(fn (AttendanceRequest $record): bool => $record->canBeCancelledBy(Auth::user()))
+                    ->action(fn (AttendanceRequest $record) => $record->cancel(Auth::user())),
 
                 ViewAction::make(),
                 EditAction::make()
-                    ->visible(fn (AttendanceRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
-                        || $record->status === AttendanceRequestStatus::Pending),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make()
-                    ->hidden(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'),
+                    ->visible(fn (AttendanceRequest $record): bool => static::canEdit($record)),
             ]);
     }
 
@@ -262,21 +251,44 @@ class AttendanceRequestResource extends RoleAwareResource
 
     public static function canEdit(Model $record): bool
     {
-        return parent::canEdit($record)
-            && (Filament::getCurrentPanel()?->getId() !== 'employee'
-                || ($record instanceof AttendanceRequest
-                    && $record->user_id === Auth::id()
-                    && $record->status === AttendanceRequestStatus::Pending));
+        if (! parent::canEdit($record)
+            || ! $record instanceof AttendanceRequest
+            || $record->status !== AttendanceRequestStatus::Pending) {
+            return false;
+        }
+
+        if (Filament::getCurrentPanel()?->getId() === 'employee') {
+            return $record->user_id === Auth::id();
+        }
+
+        $actor = Auth::user();
+
+        return $actor instanceof User
+            && $actor->role === UserRole::Manager
+            && $record->user->manager_id === $actor->id;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
+        return static::canEdit($record) && parent::canDelete($record);
     }
 
     public static function canDeleteAny(): bool
     {
-        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
+        return false;
+    }
+
+    public static function canCreate(): bool
+    {
+        $actor = Auth::user();
+
+        if (! parent::canCreate() || ! $actor instanceof User) {
+            return false;
+        }
+
+        return Filament::getCurrentPanel()?->getId() === 'employee'
+            ? $actor->role === UserRole::Employee
+            : $actor->role === UserRole::Manager;
     }
 
     public static function getPages(): array

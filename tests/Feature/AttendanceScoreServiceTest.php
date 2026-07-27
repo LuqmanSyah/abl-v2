@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\DailySummaryStatus;
 use App\Enums\LeaveStatus;
 use App\Enums\LeaveType;
+use App\Enums\UserRole;
 use App\Models\BranchOffice;
 use App\Models\DailyAttendanceSummary;
 use App\Models\Department;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\AttendanceScoreService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AttendanceScoreServiceTest extends TestCase
@@ -46,10 +48,17 @@ class AttendanceScoreServiceTest extends TestCase
             'allowed_radius_meters' => 100,
         ]);
 
+        $manager = User::factory()->create([
+            'position_id' => $position->id,
+            'work_schedule_id' => $schedule->id,
+            'branch_office_id' => $branch->id,
+            'role' => UserRole::Manager,
+        ]);
         $this->user = User::factory()->create([
             'position_id' => $position->id,
             'work_schedule_id' => $schedule->id,
             'branch_office_id' => $branch->id,
+            'manager_id' => $manager->id,
             'join_date' => '2026-01-01',
         ]);
         $this->service = new AttendanceScoreService;
@@ -113,20 +122,43 @@ class AttendanceScoreServiceTest extends TestCase
     public function test_holidays_and_partial_approved_leave_are_excluded(): void
     {
         Holiday::create(['name' => 'Libur Nasional', 'date' => '2026-08-03']);
-        LeaveRequest::create([
+        $hr = User::factory()->create([
+            'position_id' => $this->user->position_id,
+            'work_schedule_id' => $this->user->work_schedule_id,
+            'branch_office_id' => $this->user->branch_office_id,
+            'role' => UserRole::HrAdmin,
+        ]);
+        $leave = LeaveRequest::create([
             'user_id' => $this->user->id,
             'type' => LeaveType::PaidLeave,
             'start_date' => '2026-08-02',
             'end_date' => '2026-08-05',
             'reason' => 'Keluarga',
-            'status' => LeaveStatus::Approved,
-            'approved_by' => $this->user->id,
-            'approved_at' => now(),
+            'status' => LeaveStatus::Pending,
         ]);
+        $leave->approve($hr);
         $this->summary('2026-08-06', DailySummaryStatus::Present);
         $this->summary('2026-08-07', DailySummaryStatus::Present);
 
         $this->assertSame(100, $this->service->calculate($this->user->id, '2026-08-03', '2026-08-07'));
+    }
+
+    public function test_approved_leave_without_approval_metadata_is_not_excluded(): void
+    {
+        DB::table('leave_requests')->insert([
+            'user_id' => $this->user->id,
+            'type' => LeaveType::PaidLeave->value,
+            'start_date' => '2026-08-03',
+            'end_date' => '2026-08-05',
+            'reason' => 'Forged approval',
+            'status' => LeaveStatus::Approved->value,
+            'approved_by' => null,
+            'approved_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertSame(70, $this->service->calculate($this->user->id, '2026-08-03', '2026-08-05'));
     }
 
     private function summary(string $date, DailySummaryStatus $status): void

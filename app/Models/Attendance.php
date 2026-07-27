@@ -7,13 +7,17 @@ use App\Enums\AttendanceType;
 use App\Enums\UserRole;
 use App\Events\AttendanceDataChanged;
 use App\Exceptions\BusinessRuleException;
+use App\Notifications\CheckOutExceptionApproved;
 use App\Notifications\CheckOutExceptionPending;
+use App\Notifications\CheckOutExceptionRejected;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB;
 
 class Attendance extends Model
 {
+    private bool $statusTransitionAuthorized = false;
+
     protected $fillable = [
         'user_id',
         'attendance_request_id',
@@ -46,6 +50,14 @@ class Attendance extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $attendance): void {
+            if ($attendance->exists
+                && $attendance->isDirty('status')
+                && ! $attendance->statusTransitionAuthorized) {
+                throw new BusinessRuleException('Status presensi hanya dapat diubah melalui aksi workflow.');
+            }
+        });
+
         static::creating(function (self $attendance): void {
             $attendance->recorded_at ??= now();
             $attendance->attendance_date = $attendance->recorded_at->toDateString();
@@ -64,7 +76,12 @@ class Attendance extends Model
             }
         });
 
-        static::saved(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
+        static::saved(function (self $attendance): void {
+            if ($attendance->type === AttendanceType::CheckOut
+                && $attendance->status !== AttendanceStatus::PendingVerification) {
+                static::dispatchMeritRecalculation($attendance);
+            }
+        });
         static::deleted(fn (self $attendance) => static::dispatchMeritRecalculation($attendance));
 
         static::created(function (self $attendance): void {
@@ -72,16 +89,21 @@ class Attendance extends Model
                 return;
             }
 
-            $recipients = User::query()
-                ->where('role', UserRole::HrAdmin)
-                ->where('status', true)
-                ->get();
-
             if ($manager = $attendance->user->manager) {
-                $recipients->push($manager);
+                $manager->notify(new CheckOutExceptionPending($attendance));
+            }
+        });
+
+        static::updated(function (self $attendance): void {
+            if (! $attendance->is_radius_exception || ! $attendance->wasChanged('status')) {
+                return;
             }
 
-            Notification::send($recipients, new CheckOutExceptionPending($attendance));
+            match ($attendance->status) {
+                AttendanceStatus::Normal => $attendance->user->notify(new CheckOutExceptionApproved($attendance)),
+                AttendanceStatus::Rejected => $attendance->user->notify(new CheckOutExceptionRejected($attendance)),
+                default => null,
+            };
         });
     }
 
@@ -90,6 +112,82 @@ class Attendance extends Model
         $date = $attendance->attendance_date->toDateString();
 
         AttendanceDataChanged::dispatch($attendance->user_id, $date, $date, true);
+    }
+
+    public function canBeVerifiedBy(?User $actor): bool
+    {
+        return $actor?->role === UserRole::Manager
+            && $actor->status
+            && $this->status === AttendanceStatus::PendingVerification
+            && $this->type === AttendanceType::CheckOut
+            && $this->is_radius_exception
+            && $this->attendance_date->toDateString() === now('Asia/Jakarta')->toDateString()
+            && $this->user()->where('manager_id', $actor->id)->exists();
+    }
+
+    public function canViewEvidence(?User $actor): bool
+    {
+        return $actor?->status
+            && ($actor->id === $this->user_id
+                || $actor->role === UserRole::HrAdmin
+                || ($actor->role === UserRole::Manager
+                    && $this->user()->where('manager_id', $actor->id)->exists()));
+    }
+
+    public function approveException(User $actor): void
+    {
+        $this->verifyException($actor, AttendanceStatus::Normal);
+    }
+
+    public function rejectException(User $actor): void
+    {
+        $this->verifyException($actor, AttendanceStatus::Rejected);
+    }
+
+    public function timeoutException(): void
+    {
+        DB::transaction(function (): void {
+            $attendance = self::query()->lockForUpdate()->findOrFail($this->getKey());
+
+            if ($attendance->status !== AttendanceStatus::PendingVerification) {
+                return;
+            }
+
+            if ($attendance->type !== AttendanceType::CheckOut
+                || ! $attendance->is_radius_exception) {
+                throw new BusinessRuleException('Hanya exception check-out pending yang dapat ditutup saat cutoff.');
+            }
+
+            $attendance->transitionTo(AttendanceStatus::Rejected);
+        });
+
+        $this->refresh();
+    }
+
+    private function verifyException(User $actor, AttendanceStatus $status): void
+    {
+        DB::transaction(function () use ($actor, $status): void {
+            $attendance = self::query()->lockForUpdate()->findOrFail($this->getKey());
+
+            if (! $attendance->canBeVerifiedBy($actor)) {
+                throw new BusinessRuleException('Exception hanya dapat diputuskan atasan langsung sebelum cutoff.');
+            }
+
+            $attendance->transitionTo($status);
+        });
+
+        $this->refresh();
+    }
+
+    private function transitionTo(AttendanceStatus $status): void
+    {
+        $this->statusTransitionAuthorized = true;
+
+        try {
+            $this->update(['status' => $status]);
+        } finally {
+            $this->statusTransitionAuthorized = false;
+        }
     }
 
     public function user(): BelongsTo

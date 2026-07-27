@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\LeaveRequestResource\Pages;
 
 use App\Filament\Resources\LeaveRequestResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListLeaveRequests extends ListRecords
@@ -12,7 +13,7 @@ class ListLeaveRequests extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

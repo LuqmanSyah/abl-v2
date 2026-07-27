@@ -29,19 +29,37 @@ class AggregateDailyAttendance extends Command
         return self::SUCCESS;
     }
 
-    public function aggregate(CarbonInterface|string $date): void
+    public function aggregate(CarbonInterface|string $date, bool $finalize = true): void
     {
         $date = CarbonImmutable::parse($date, 'Asia/Jakarta')->startOfDay();
         $isHoliday = Holiday::query()->whereDate('date', $date)->exists();
+
+        if ($finalize) {
+            Attendance::query()
+                ->whereDate('attendance_date', $date)
+                ->where('status', AttendanceStatus::PendingVerification)
+                ->where('type', AttendanceType::CheckOut)
+                ->where('is_radius_exception', true)
+                ->eachById(fn (Attendance $attendance) => $attendance->timeoutException());
+        }
+
+        if ($date->isWeekend() && ! $isHoliday) {
+            DailyAttendanceSummary::query()
+                ->whereDate('date', $date)
+                ->where('status', '!=', DailySummaryStatus::Leave)
+                ->delete();
+
+            return;
+        }
 
         // ponytail: per-user queries; batch by date if nightly runtime becomes measurable.
         User::query()
             ->where('status', true)
             ->with('workSchedule')
-            ->eachById(fn (User $user) => $this->aggregateUser($user, $date, $isHoliday));
+            ->eachById(fn (User $user) => $this->aggregateUser($user, $date, $isHoliday, $finalize));
     }
 
-    private function aggregateUser(User $user, CarbonImmutable $date, bool $isHoliday): void
+    private function aggregateUser(User $user, CarbonImmutable $date, bool $isHoliday, bool $finalize): void
     {
         $summary = DailyAttendanceSummary::query()
             ->where('user_id', $user->id)
@@ -81,6 +99,10 @@ class AggregateDailyAttendance extends Command
             ], true));
 
         if (! $checkIn) {
+            if (! $finalize) {
+                return;
+            }
+
             $this->saveSummary($user, $date, DailySummaryStatus::Alfa);
 
             return;
@@ -89,6 +111,10 @@ class AggregateDailyAttendance extends Command
         $checkOut = $attendances->first(fn (Attendance $attendance): bool => $attendance->attendance_request_id === $checkIn->attendance_request_id
             && $attendance->type === AttendanceType::CheckOut
             && $attendance->recorded_at->gte($checkIn->recorded_at));
+
+        if (! $finalize && (! $checkOut || $checkOut->status === AttendanceStatus::PendingVerification)) {
+            return;
+        }
 
         $status = match (true) {
             $checkIn->status === AttendanceStatus::Alfa => DailySummaryStatus::Alfa,

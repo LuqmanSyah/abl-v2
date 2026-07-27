@@ -28,6 +28,33 @@ return new class extends Migration
                     ]);
             });
 
+        DB::table('attendances')
+            ->select(['user_id', 'attendance_date', 'session_key', 'type'])
+            ->selectRaw('MIN(id) AS keep_id')
+            ->groupBy('user_id', 'attendance_date', 'session_key', 'type')
+            ->havingRaw('COUNT(*) > 1')
+            ->orderBy('keep_id')
+            ->get()
+            ->each(function (object $duplicate): void {
+                $duplicateIds = DB::table('attendances')
+                    ->where('user_id', $duplicate->user_id)
+                    ->where('attendance_date', $duplicate->attendance_date)
+                    ->where('session_key', $duplicate->session_key)
+                    ->where('type', $duplicate->type)
+                    ->where('id', '!=', $duplicate->keep_id)
+                    ->pluck('id');
+
+                DB::table('daily_attendance_summaries')
+                    ->whereIn('check_in_id', $duplicateIds)
+                    ->update(['check_in_id' => $duplicate->keep_id]);
+                DB::table('daily_attendance_summaries')
+                    ->whereIn('check_out_id', $duplicateIds)
+                    ->update(['check_out_id' => $duplicate->keep_id]);
+                DB::table('attendances')
+                    ->whereIn('id', $duplicateIds)
+                    ->delete();
+            });
+
         Schema::table('attendances', function (Blueprint $table) {
             $table->unique(
                 ['user_id', 'attendance_date', 'session_key', 'type'],

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\DailySummaryStatus;
 use App\Enums\LeaveStatus;
+use App\Enums\UserRole;
 use App\Models\DailyAttendanceSummary;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
@@ -45,6 +46,9 @@ class AttendanceScoreService
         LeaveRequest::query()
             ->where('user_id', $userId)
             ->where('status', LeaveStatus::Approved)
+            ->whereNotNull('approved_by')
+            ->whereNotNull('approved_at')
+            ->whereHas('approver', fn ($query) => $query->where('role', UserRole::HrAdmin))
             ->whereDate('start_date', '<=', $end)
             ->whereDate('end_date', '>=', $effectiveStart)
             ->get(['start_date', 'end_date'])

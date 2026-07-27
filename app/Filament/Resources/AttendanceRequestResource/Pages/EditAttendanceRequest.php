@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\AttendanceRequestResource\Pages;
 
+use App\Enums\AttendanceRequestStatus;
 use App\Filament\Resources\AttendanceRequestResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -13,7 +14,8 @@ class EditAttendanceRequest extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            Actions\DeleteAction::make()
+                ->visible(fn (): bool => $this->record->status === AttendanceRequestStatus::Pending),
         ];
     }
 }

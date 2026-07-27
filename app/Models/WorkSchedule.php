@@ -2,11 +2,23 @@
 
 namespace App\Models;
 
+use App\Exceptions\BusinessRuleException;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class WorkSchedule extends Model
 {
+    protected static function booted(): void
+    {
+        static::saving(function (self $schedule): void {
+            if (CarbonImmutable::parse($schedule->check_out_time)
+                ->lessThanOrEqualTo(CarbonImmutable::parse($schedule->check_in_time))) {
+                throw new BusinessRuleException('Jam pulang harus setelah jam masuk.');
+            }
+        });
+    }
+
     protected $fillable = [
         'name',
         'check_in_time',

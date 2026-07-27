@@ -8,7 +8,6 @@ use App\Filament\Resources\LeaveRequestResource\Pages;
 use App\Models\LeaveRequest;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
@@ -71,8 +70,8 @@ class LeaveRequestResource extends RoleAwareResource
             Select::make('status')
                 ->options(LeaveStatus::class)
                 ->default(LeaveStatus::Pending->value)
-                ->disabled(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee')
-                ->dehydrated()
+                ->disabled()
+                ->dehydrated(false)
                 ->required()
                 ->label('Status'),
         ]);
@@ -136,37 +135,22 @@ class LeaveRequestResource extends RoleAwareResource
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
                         && $record->status === LeaveStatus::Pending)
-                    ->action(function (LeaveRequest $record): void {
-                        $record->update([
-                            'status' => LeaveStatus::Approved,
-                            'approved_by' => Auth::id(),
-                            'approved_at' => now(),
-                        ]);
-                    }),
+                    ->action(fn (LeaveRequest $record) => $record->approve(Auth::user())),
 
                 Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
+                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() === 'admin'
                         && $record->status === LeaveStatus::Pending)
-                    ->action(function (LeaveRequest $record): void {
-                        $record->update([
-                            'status' => LeaveStatus::Rejected,
-                        ]);
-                    }),
+                    ->action(fn (LeaveRequest $record) => $record->reject(Auth::user())),
 
                 ViewAction::make(),
                 EditAction::make()
-                    ->visible(fn (LeaveRequest $record): bool => Filament::getCurrentPanel()?->getId() !== 'employee'
-                        || $record->status === LeaveStatus::Pending),
-            ])
-            ->bulkActions([
-                DeleteBulkAction::make()
-                    ->hidden(fn (): bool => Filament::getCurrentPanel()?->getId() === 'employee'),
+                    ->visible(fn (LeaveRequest $record): bool => static::canEdit($record)),
             ]);
     }
 
@@ -182,20 +166,25 @@ class LeaveRequestResource extends RoleAwareResource
     public static function canEdit(Model $record): bool
     {
         return parent::canEdit($record)
-            && (Filament::getCurrentPanel()?->getId() !== 'employee'
-                || ($record instanceof LeaveRequest
-                    && $record->user_id === Auth::id()
-                    && $record->status === LeaveStatus::Pending));
+            && Filament::getCurrentPanel()?->getId() === 'employee'
+            && $record instanceof LeaveRequest
+            && $record->user_id === Auth::id()
+            && $record->status === LeaveStatus::Pending;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDelete($record);
+        return static::canEdit($record) && parent::canDelete($record);
     }
 
     public static function canDeleteAny(): bool
     {
-        return Filament::getCurrentPanel()?->getId() !== 'employee' && parent::canDeleteAny();
+        return false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() === 'employee' && parent::canCreate();
     }
 
     public static function getPages(): array

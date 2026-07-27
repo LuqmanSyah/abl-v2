@@ -1,21 +1,24 @@
 <script>
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
       if (!('PushManager' in window)) return;
       const key = '{{ config('webpush.vapid.public_key') }}';
-      if (!key) return;
-      reg.pushManager.subscribe({
+      if (!key) throw new Error('VAPID public key is not configured.');
+      const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(key),
-      }).then(sub => {
-        fetch('{{ route('webpush.subscribe') }}', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-          body: JSON.stringify(sub.toJSON()),
-        }).catch(() => {});
-      }).catch(() => {});
-    }).catch(() => {});
+      });
+      const response = await fetch('{{ route('webpush.subscribe') }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: JSON.stringify(sub.toJSON()),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      console.error('Web push registration failed.', error);
+    }
   });
 }
 

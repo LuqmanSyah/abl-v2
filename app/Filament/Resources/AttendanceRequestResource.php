@@ -18,6 +18,7 @@ use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -92,12 +93,27 @@ class AttendanceRequestResource extends RoleAwareResource
             TextInput::make('target_latitude')
                 ->required()
                 ->numeric()
+                ->minValue(-90)
+                ->maxValue(90)
+                ->step(0.0000001)
+                ->live(debounce: 500)
                 ->label('Latitude'),
 
             TextInput::make('target_longitude')
                 ->required()
                 ->numeric()
+                ->minValue(-180)
+                ->maxValue(180)
+                ->step(0.0000001)
+                ->live(debounce: 500)
                 ->label('Longitude'),
+
+            View::make('filament.forms.components.map-picker')
+                ->viewData([
+                    'latitudeStatePath' => 'data.target_latitude',
+                    'longitudeStatePath' => 'data.target_longitude',
+                ])
+                ->columnSpanFull(),
 
             TextInput::make('allowed_radius_meters')
                 ->required()

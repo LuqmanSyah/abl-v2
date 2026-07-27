@@ -9,12 +9,10 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\HtmlString;
 use UnitEnum;
 
 class BranchOfficeResource extends RoleAwareResource
@@ -68,13 +66,12 @@ class BranchOfficeResource extends RoleAwareResource
                 ->suffix('meter')
                 ->label('Radius Absensi'),
 
-            TextEntry::make('map_preview')
-                ->state(fn (Get $get): HtmlString => static::mapPreview(
-                    $get('latitude'),
-                    $get('longitude'),
-                ))
-                ->columnSpanFull()
-                ->label('Peta Lokasi'),
+            View::make('filament.forms.components.map-picker')
+                ->viewData([
+                    'latitudeStatePath' => 'data.latitude',
+                    'longitudeStatePath' => 'data.longitude',
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -119,28 +116,5 @@ class BranchOfficeResource extends RoleAwareResource
         return [
             'index' => Pages\ListBranchOffices::route('/'),
         ];
-    }
-
-    private static function mapPreview(mixed $latitude, mixed $longitude): HtmlString
-    {
-        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
-            return new HtmlString('Isi latitude dan longitude untuk menampilkan peta.');
-        }
-
-        $key = config('services.google_maps.key');
-
-        if (blank($key)) {
-            return new HtmlString('GOOGLE_MAPS_API_KEY belum dikonfigurasi.');
-        }
-
-        $url = 'https://www.google.com/maps/embed/v1/place?'.http_build_query([
-            'key' => $key,
-            'q' => "{$latitude},{$longitude}",
-            'zoom' => 16,
-        ]);
-
-        return new HtmlString(
-            '<iframe title="Peta lokasi kantor" src="'.e($url).'" style="width:100%;height:320px;border:0;border-radius:0.75rem" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>',
-        );
     }
 }

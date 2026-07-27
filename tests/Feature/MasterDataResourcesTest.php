@@ -76,7 +76,12 @@ class MasterDataResourcesTest extends TestCase
                 'longitude' => 106.8272,
                 'allowed_radius_meters' => 100,
             ])
-            ->assertMountedActionModalSeeHtml('Peta lokasi kantor')
+            ->assertMountedActionModalSee('Cari Lokasi')
+            ->assertMountedActionModalSeeHtml('map-place-autocomplete')
+            ->assertMountedActionModalSeeHtml('PlaceAutocompleteElement')
+            ->assertMountedActionModalSee('Klik peta atau geser marker untuk memilih lokasi.')
+            ->assertMountedActionModalSeeHtml('async init()')
+            ->assertMountedActionModalSeeHtml('__ablGoogleMapsReady')
             ->callMountedAction()
             ->assertHasNoFormErrors();
 

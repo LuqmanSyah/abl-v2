@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
+use App\Filament\Resources\DutyTrips\Pages\CreateDutyTrip;
 use App\Models\DutyTrip;
 use App\Models\User;
 use DomainException;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DutyTripManagementTest extends TestCase
@@ -36,6 +39,37 @@ class DutyTripManagementTest extends TestCase
 
         $this->assertTrue($trip->exists);
         $this->assertSame(DutyTripStatus::Approved, $trip->status);
+    }
+
+    public function test_schedule_form_uses_dates_only(): void
+    {
+        [$employee, $manager] = $this->users();
+
+        $this->actingAs($manager);
+        Filament::setCurrentPanel(Filament::getPanel('manager'));
+
+        Livewire::test(CreateDutyTrip::class)
+            ->assertFormFieldDoesNotExist('start_time')
+            ->assertFormFieldDoesNotExist('end_time')
+            ->fillForm([
+                'employee_id' => $employee->id,
+                'destination' => 'Dinas luar kota',
+                'purpose' => 'Koordinasi proyek',
+                'starts_at' => '2030-08-01',
+                'ends_at' => '2030-08-03',
+                'location_name' => 'Kantor cabang',
+                'address' => 'Jakarta',
+                'latitude' => -6.1754,
+                'longitude' => 106.8272,
+                'radius_meters' => 100,
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $trip = DutyTrip::where('destination', 'Dinas luar kota')->firstOrFail();
+
+        $this->assertSame('2030-08-01 00:00:00', $trip->starts_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2030-08-03 23:59:59', $trip->ends_at->format('Y-m-d H:i:s'));
     }
 
     public function test_manager_can_cancel_future_trip(): void

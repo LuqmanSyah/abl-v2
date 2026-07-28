@@ -6,7 +6,8 @@ use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\MapPicker;
 use App\Models\DutyLocation;
-use Filament\Forms\Components\DateTimePicker;
+use Carbon\Carbon;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -46,14 +47,14 @@ class DutyTripForm
                             ->placeholder('Jelaskan hasil yang diharapkan dari dinas ini')
                             ->required()
                             ->columnSpanFull(),
-                        DateTimePicker::make('starts_at')
-                            ->label('Mulai')
-                            ->native(false)
+                        DatePicker::make('starts_at')
+                            ->label('Tanggal mulai')
+                            ->dehydrateStateUsing(fn (string $state): Carbon => Carbon::parse($state)->startOfDay())
                             ->required(),
-                        DateTimePicker::make('ends_at')
-                            ->label('Selesai')
-                            ->native(false)
-                            ->after('starts_at')
+                        DatePicker::make('ends_at')
+                            ->label('Tanggal selesai')
+                            ->afterOrEqual('starts_at')
+                            ->dehydrateStateUsing(fn (string $state): Carbon => Carbon::parse($state)->endOfDay())
                             ->required(),
                         FileUpload::make('supporting_document_path')
                             ->label('Dokumen pendukung')

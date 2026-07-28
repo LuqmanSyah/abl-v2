@@ -26,6 +26,7 @@ class ExampleTest extends TestCase
             ->assertSee('Gunakan email dan kata sandi kantor.')
             ->assertSee('data-password-toggle', false)
             ->assertSee('@media (max-width: 520px)', false)
+            ->assertDontSee('Akun demo lokal')
             ->assertDontSee('Aktivitas dan pengembangan')
             ->assertDontSee('Tim dan persetujuan')
             ->assertDontSee('Organisasi dan laporan');

@@ -177,23 +177,6 @@
         .submit:active { transform: translateY(0); }
         .submit:disabled { cursor: wait; opacity: .72; transform: none; }
 
-        details {
-            margin-top: 22px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 17px;
-            color: var(--muted);
-            font-size: 12px;
-        }
-
-        summary {
-            cursor: pointer;
-            color: #475569;
-            font-weight: 700;
-        }
-
-        details p { margin: 9px 0 0; line-height: 1.7; }
-        code { border-radius: 5px; background: #f1f5f9; padding: 2px 5px; color: var(--ink); }
-
         @media (max-width: 520px) {
             body { padding: 0; background: white; }
             main {
@@ -251,12 +234,6 @@
             <button class="submit" type="submit" data-submit>Masuk</button>
         </form>
 
-        @env('local')
-            <details>
-                <summary>Akun demo lokal</summary>
-                <p><code>pegawai@example.com</code>, <code>atasan@example.com</code>, atau <code>hr@example.com</code><br>Kata sandi: <code>password</code></p>
-            </details>
-        @endenv
     </main>
 
     <script>

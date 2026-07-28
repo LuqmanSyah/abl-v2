@@ -391,7 +391,7 @@ Urutan tes harus sesuai alur bisnis. Test tidak bisa loncat sebelum prekondisi s
 | 2 | Unique constraints | Duplicate data | Error integrity constraint |
 | 3 | Foreign key cascade | Hapus parent | Child terhapus/null |
 | 4 | Rollback | `php artisan migrate:rollback` | Semua tabel ter-drop clean |
-| 5 | Seeder — data valid | `php artisan db:seed` | Semua tabel >=5 baris |
+| 5 | Seeder — data valid | `php artisan db:seed` | Hanya master unit, jabatan, akun bootstrap, dan rantai persetujuan terisi |
 | 6 | Seeder idempotent | Seed 2x | Tidak duplicate, updateOrInsert |
 
 ---

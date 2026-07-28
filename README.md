@@ -16,7 +16,7 @@ composer setup
 composer run dev
 ```
 
-`composer setup` memasang dependency, membuat `.env` bila belum ada, menyalakan MySQL, menjalankan migration dan seeder, lalu membangun aset frontend.
+`composer setup` memasang dependency, membuat `.env` bila belum ada, menyalakan MySQL, menjalankan migration serta seeder master data dan akun bootstrap, lalu membangun aset frontend.
 
 Buka `http://127.0.0.1:8000/login`.
 
@@ -26,7 +26,9 @@ Semua akun memakai kata sandi `password`.
 
 - HR: `hr@example.com`
 - Atasan: `atasan@example.com`
-- Pegawai: `pegawai@example.com`
+- Pegawai: `pegawai@example.com` sampai `pegawai5@example.com`
+
+Seeder tidak membuat data transaksi.
 
 ## Database
 
@@ -52,6 +54,6 @@ vendor/bin/pint --test
 npm run build
 ```
 
-Test memakai SQLite in-memory agar cepat dan terisolasi. Kompatibilitas MySQL diverifikasi melalui migration dan seeder saat `composer setup`.
+Test memakai SQLite in-memory agar cepat dan terisolasi. Kompatibilitas MySQL diverifikasi melalui migration serta seeder master data dan akun bootstrap saat `composer setup`.
 
 Panduan backup, restore, scheduler, dan deployment tersedia di [`docs/operations.md`](docs/operations.md).

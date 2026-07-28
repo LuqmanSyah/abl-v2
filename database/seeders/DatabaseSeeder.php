@@ -15,9 +15,6 @@ class DatabaseSeeder extends Seeder
             OrganizationSeeder::class,
             UserSeeder::class,
             ApprovalChainSeeder::class,
-            DutyAttendanceSeeder::class,
-            PerformanceSeeder::class,
-            CareerDevelopmentSeeder::class,
         ]);
     }
 }

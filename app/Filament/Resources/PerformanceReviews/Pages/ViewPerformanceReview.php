@@ -8,9 +8,4 @@ use Filament\Resources\Pages\ViewRecord;
 class ViewPerformanceReview extends ViewRecord
 {
     protected static string $resource = PerformanceReviewResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
 }

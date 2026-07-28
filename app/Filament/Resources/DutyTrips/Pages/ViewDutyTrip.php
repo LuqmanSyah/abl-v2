@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\DutyTrips\Pages;
 
-use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\DutyTrips\DutyTripResource;
@@ -35,20 +34,6 @@ class ViewDutyTrip extends ViewRecord
                     && $this->record->employee_id === auth()->id()
                     && $this->record->status === DutyTripStatus::Approved
                     && ! $this->record->attendances()->whereDate('captured_at', today())->exists()),
-            Action::make('verify_attendance')
-                ->label('Verifikasi Absensi')
-                ->icon('heroicon-o-check-badge')
-                ->color('success')
-                ->requiresConfirmation()
-                ->modalHeading('Verifikasi Absensi Dinas')
-                ->modalDescription('Status absensi akan diubah menjadi Valid dan dipakai dalam perhitungan kedisiplinan.')
-                ->modalSubmitActionLabel('Verifikasi Absensi')
-                ->modalWidth('md')
-                ->visible(fn (): bool => auth()->user()?->role === UserRole::Hr
-                    && ($latest = $this->record->attendances()->latest()->first())
-                    && $latest->status === AttendanceStatus::NeedsReview)
-                ->action(fn () => $this->record->attendances()->latest()->first()->verifyByHr(auth()->user()))
-                ->successNotificationTitle('Absensi dinas berhasil diverifikasi'),
         ];
     }
 }

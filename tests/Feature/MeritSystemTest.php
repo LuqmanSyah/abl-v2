@@ -48,7 +48,7 @@ class MeritSystemTest extends TestCase
         EmployeeKpi::create(['review_period_id' => $period->id, 'kpi_indicator_id' => $first->id, 'employee_id' => $employee->id, 'manager_id' => $manager->id, 'target' => 100, 'achievement' => 100]);
         EmployeeKpi::create(['review_period_id' => $period->id, 'kpi_indicator_id' => $second->id, 'employee_id' => $employee->id, 'manager_id' => $manager->id, 'target' => 100, 'achievement' => 50]);
         $this->attendance($employee, $manager, AttendanceStatus::Valid);
-        $this->attendance($employee, $manager, AttendanceStatus::OutsideRadius);
+        $this->attendance($employee, $manager, AttendanceStatus::NeedsReview);
         PerformanceReview::create(['review_period_id' => $period->id, 'reviewer_id' => $manager->id, 'reviewee_id' => $employee->id, 'type' => ReviewType::ManagerToEmployee, 'score' => 4, 'submitted_at' => now()]);
         PerformanceReview::create(['review_period_id' => $period->id, 'reviewer_id' => $peer->id, 'reviewee_id' => $employee->id, 'type' => ReviewType::Peer, 'score' => 3, 'submitted_at' => now()]);
 
@@ -386,14 +386,14 @@ class MeritSystemTest extends TestCase
     {
         $trip = DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Dinas',
-            'purpose' => 'Tugas', 'starts_at' => today()->addHours(8), 'ends_at' => today()->addHours(17),
+            'purpose' => 'Tugas', 'starts_at' => now()->subHours(2), 'ends_at' => now()->subHour(),
             'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
-            'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Completed,
+            'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Approved,
         ]);
 
         return Attendance::create([
             'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
-            'captured_at' => today()->addHours(9), 'latitude' => -6.2, 'longitude' => 106.8,
+            'attendance_date' => today(), 'captured_at' => now()->subMinutes(90), 'latitude' => -6.2, 'longitude' => 106.8,
             'distance_meters' => 0, 'photo_path' => 'attendance/test.jpg', 'status' => $status,
         ]);
     }

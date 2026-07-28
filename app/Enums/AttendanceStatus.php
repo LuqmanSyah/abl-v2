@@ -5,7 +5,6 @@ namespace App\Enums;
 enum AttendanceStatus: string
 {
     case Valid = 'valid';
-    case OutsideRadius = 'outside_radius';
     case Late = 'late';
     case NeedsReview = 'needs_review';
 
@@ -13,7 +12,6 @@ enum AttendanceStatus: string
     {
         return match ($this) {
             self::Valid => 'Valid',
-            self::OutsideRadius => 'Di Luar Radius',
             self::Late => 'Terlambat',
             self::NeedsReview => 'Memerlukan Pemeriksaan',
         };
@@ -24,7 +22,6 @@ enum AttendanceStatus: string
         return match ($this) {
             self::Valid => 'success',
             self::Late, self::NeedsReview => 'warning',
-            self::OutsideRadius => 'danger',
         };
     }
 

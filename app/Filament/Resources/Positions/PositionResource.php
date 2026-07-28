@@ -66,13 +66,6 @@ class PositionResource extends Resource
         return PositionsTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [

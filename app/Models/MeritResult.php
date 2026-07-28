@@ -7,7 +7,6 @@ use App\Enums\ReviewType;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Notifications\MeritPublished;
-use App\Notifications\MeritReadyForVerification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -88,12 +87,8 @@ class MeritResult extends Model
             ->where('employee_id', $this->employee_id)
             ->where('starts_at', '<=', $period->ends_at->copy()->endOfDay())
             ->where('ends_at', '>=', $period->starts_at->copy()->startOfDay())
-            ->where(function (Builder $query): void {
-                $query->where('status', DutyTripStatus::Completed)
-                    ->orWhere(fn (Builder $query) => $query
-                        ->where('status', DutyTripStatus::Approved)
-                        ->where('ends_at', '<=', now()));
-            })
+            ->where('status', DutyTripStatus::Approved)
+            ->where('ends_at', '<=', now())
             ->get();
 
         return [

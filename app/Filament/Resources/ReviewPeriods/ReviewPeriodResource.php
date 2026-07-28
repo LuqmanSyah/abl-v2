@@ -61,13 +61,6 @@ class ReviewPeriodResource extends Resource
         return ReviewPeriodsTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [

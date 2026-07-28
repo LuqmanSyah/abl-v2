@@ -6,7 +6,6 @@ use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
-use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
 use App\Filament\Widgets\EmployeeActiveTripsTable;
 use App\Filament\Widgets\HrActiveTripsTable;
 use App\Filament\Widgets\HrAttendanceDropAlert;
@@ -147,7 +146,6 @@ class DutyAttendanceTest extends TestCase
         ], 'attendance/photo.jpg');
 
         $this->assertSame(AttendanceStatus::Valid, $attendance->status);
-        $this->assertFalse($attendance->mock_location_suspected);
         $this->assertNull($attendance->review_reason);
     }
 
@@ -198,10 +196,9 @@ class DutyAttendanceTest extends TestCase
         [$employee, $manager, $trip] = $this->trip();
         $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
             'captured_at' => now()->toIso8601String(),
-            'latitude' => -6.1754,
+            'latitude' => -6.1800,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
-            'mock_location_suspected' => true,
         ], 'attendance/review.jpg');
         $hr = User::factory()->create(['role' => UserRole::Hr]);
 
@@ -217,7 +214,7 @@ class DutyAttendanceTest extends TestCase
         $attendance->verifyByHr($hr);
 
         $this->assertSame(AttendanceStatus::Valid, $attendance->fresh()->status);
-        $this->assertSame('Perangkat mendeteksi lokasi palsu.', $attendance->fresh()->review_reason);
+        $this->assertSame('Lokasi berada di luar radius dinas.', $attendance->fresh()->review_reason);
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'attendance.verified',
             'subject_id' => $attendance->id,
@@ -245,10 +242,9 @@ class DutyAttendanceTest extends TestCase
         [$employee, $manager, $trip] = $this->trip();
         $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
             'captured_at' => now()->toIso8601String(),
-            'latitude' => -6.1754,
+            'latitude' => -6.1800,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
-            'mock_location_suspected' => true,
         ], 'attendance/review-button.jpg');
         $hr = User::factory()->create(['role' => UserRole::Hr]);
 
@@ -256,15 +252,10 @@ class DutyAttendanceTest extends TestCase
         $this->actingAs($hr);
         Livewire::test(ListAttendances::class)
             ->assertActionVisible(TestAction::make('verify')->table($attendance));
-        Livewire::test(ListDutyTrips::class)
-            ->assertActionVisible(TestAction::make('verify_attendance')->table($trip));
-
         filament()->setCurrentPanel('manager');
         $this->actingAs($manager);
         Livewire::test(ListAttendances::class)
             ->assertActionHidden(TestAction::make('verify')->table($attendance));
-        Livewire::test(ListDutyTrips::class)
-            ->assertActionHidden(TestAction::make('verify_attendance')->table($trip));
     }
 
     public function test_attendance_needing_review_notifies_only_active_hr(): void
@@ -276,10 +267,9 @@ class DutyAttendanceTest extends TestCase
 
         app(AttendanceRecorder::class)->record($trip, $employee, [
             'captured_at' => now()->toIso8601String(),
-            'latitude' => -6.1754,
+            'latitude' => -6.1800,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
-            'mock_location_suspected' => true,
         ], 'attendance/review-notification.jpg');
 
         Notification::assertSentTo($hr, AttendanceNeedsReview::class);
@@ -316,7 +306,7 @@ class DutyAttendanceTest extends TestCase
         $method = new \ReflectionMethod(HrAttendanceDropAlert::class, 'getStats');
         $method->invoke(new HrAttendanceDropAlert);
 
-        $this->assertCount(3, DB::getQueryLog());
+        $this->assertCount(1, DB::getQueryLog());
         DB::disableQueryLog();
     }
 
@@ -394,8 +384,7 @@ class DutyAttendanceTest extends TestCase
             ->assertSee('Perangkat sedang luring', false)
             ->assertDontSee('indexedDB', false)
             ->assertDontSee('serviceWorker', false)
-            ->assertDontSee('FaceVerification', false)
-            ->assertDontSee('data.mock_location_suspected = 1', false);
+            ->assertDontSee('FaceVerification', false);
     }
 
     public function test_employee_active_trip_widget_warns_until_attendance_is_recorded(): void

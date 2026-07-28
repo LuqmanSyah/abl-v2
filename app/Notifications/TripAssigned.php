@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Models\Concerns\HasDynamicChannels;
 use App\Models\DutyTrip;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -11,14 +10,14 @@ use Illuminate\Notifications\Notification;
 
 class TripAssigned extends Notification
 {
-    use HasDynamicChannels, Queueable;
+    use Queueable;
 
     public function __construct(public DutyTrip $trip) {}
 
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return $this->resolveChannels($notifiable, ['database', 'mail']);
+        return ['database', 'mail'];
     }
 
     public function toDatabase(User $notifiable): array

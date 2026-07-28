@@ -70,15 +70,10 @@ class DutyTripInfolist
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
-                Section::make('Lampiran dan riwayat')
-                    ->icon('heroicon-o-paper-clip')
+                Section::make('Riwayat')
+                    ->icon('heroicon-o-clock')
                     ->columns(2)
                     ->schema([
-                        TextEntry::make('supporting_document_path')
-                            ->label('Dokumen pendukung')
-                            ->placeholder('-')
-                            ->copyable()
-                            ->columnSpanFull(),
                         TextEntry::make('approved_at')
                             ->label('Ditugaskan pada')
                             ->dateTime()

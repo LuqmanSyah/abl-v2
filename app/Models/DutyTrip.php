@@ -19,7 +19,7 @@ class DutyTrip extends Model
     protected $fillable = [
         'employee_id', 'manager_id', 'duty_location_id', 'destination', 'purpose',
         'starts_at', 'ends_at', 'location_name', 'address', 'latitude', 'longitude',
-        'radius_meters', 'supporting_document_path', 'status', 'rejection_reason', 'approved_at',
+        'radius_meters', 'status', 'approved_at',
     ];
 
     protected function casts(): array

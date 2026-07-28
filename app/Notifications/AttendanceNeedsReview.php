@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Models\Attendance;
-use App\Models\Concerns\HasDynamicChannels;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,7 +11,7 @@ use Illuminate\Notifications\Notification;
 
 class AttendanceNeedsReview extends Notification implements ShouldQueue
 {
-    use HasDynamicChannels, Queueable;
+    use Queueable;
 
     public function __construct(public Attendance $attendance)
     {
@@ -22,12 +21,7 @@ class AttendanceNeedsReview extends Notification implements ShouldQueue
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        $base = ['database'];
-        if ($notifiable->role->value === 'hr') {
-            $base[] = 'mail';
-        }
-
-        return $this->resolveChannels($notifiable, $base);
+        return ['database', 'mail'];
     }
 
     public function toDatabase(User $notifiable): array

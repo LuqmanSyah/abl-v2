@@ -29,12 +29,12 @@ class EmployeeStats extends StatsOverviewWidget
         $today = today();
 
         return [
-            Stat::make('Dinas aktif', DutyTrip::where('employee_id', $userId)->where('status', DutyTripStatus::Approved)->count())
+            Stat::make('Dinas aktif', DutyTrip::where('employee_id', $userId)->where('status', DutyTripStatus::Approved)->where('ends_at', '>=', now())->count())
                 ->description('Lihat tugas yang sedang berjalan')
                 ->color('primary')
                 ->icon(Heroicon::OutlinedBriefcase)
                 ->url(DutyTripResource::getUrl()),
-            Stat::make('Dinas selesai', DutyTrip::where('employee_id', $userId)->where('status', DutyTripStatus::Completed)->count())
+            Stat::make('Dinas selesai', DutyTrip::where('employee_id', $userId)->where('status', DutyTripStatus::Approved)->where('ends_at', '<', now())->count())
                 ->description('Buka riwayat dinas')
                 ->color('success')
                 ->icon(Heroicon::OutlinedCheckBadge)

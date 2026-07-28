@@ -54,21 +54,17 @@ class AttendanceRecorder
             );
             $clockMismatch = abs($capturedAt->getTimestamp() - $receivedAt->getTimestamp())
                 > config('hr.attendance_clock_tolerance_minutes') * 60;
-            $mockLocation = (bool) ($data['mock_location_suspected'] ?? false);
-            $suspected = $mockLocation || $clockMismatch;
-
             $status = match (true) {
                 $distance > $trip->radius_meters => AttendanceStatus::NeedsReview,
                 $capturedAt->isAfter($trip->ends_at) => AttendanceStatus::Late,
                 default => AttendanceStatus::Valid,
             };
 
-            if ($suspected) {
+            if ($clockMismatch) {
                 $status = AttendanceStatus::NeedsReview;
             }
 
             $reasons = array_filter([
-                $mockLocation ? 'Perangkat mendeteksi lokasi palsu.' : null,
                 $clockMismatch ? 'Waktu perangkat melewati batas toleransi.' : null,
                 $distance > $trip->radius_meters ? 'Lokasi berada di luar radius dinas.' : null,
                 $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,
@@ -86,7 +82,6 @@ class AttendanceRecorder
                 'photo_path' => $photoPath,
                 'status' => $status,
                 'review_reason' => $reasons ? implode(' ', $reasons) : null,
-                'mock_location_suspected' => $suspected,
             ]);
 
             ActivityLog::record('attendance.created', $attendance, $employee);

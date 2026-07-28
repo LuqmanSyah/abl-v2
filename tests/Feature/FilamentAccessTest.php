@@ -393,6 +393,7 @@ class FilamentAccessTest extends TestCase
         $attendance = Attendance::create([
             'duty_trip_id' => $trip->id,
             'employee_id' => $employee->id,
+            'attendance_date' => today(),
             'captured_at' => now(),
             'latitude' => -6.2,
             'longitude' => 106.8,

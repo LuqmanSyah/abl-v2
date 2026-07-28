@@ -23,7 +23,7 @@ class AttendanceController extends Controller
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
         return view('attendance.capture', [
-            'trip' => $dutyTrip->load('employee', 'attendances'),
+            'trip' => $dutyTrip->load('employee'),
         ]);
     }
 
@@ -36,7 +36,6 @@ class AttendanceController extends Controller
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['nullable', 'integer', 'min:0'],
-            'mock_location_suspected' => ['nullable', 'boolean'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
 

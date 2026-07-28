@@ -13,6 +13,7 @@ use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
 use App\Notifications\MeritReadyForVerification;
+use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -40,23 +41,20 @@ class MeritCalculator
             $dutyTrips = DutyTrip::where('employee_id', $employee->id)
                 ->where('starts_at', '<=', $periodEnd)
                 ->where('ends_at', '>=', $periodStart)
-                ->where(function ($query): void {
-                    $query->where('status', DutyTripStatus::Completed)
-                        ->orWhere(fn ($query) => $query
-                            ->where('status', DutyTripStatus::Approved)
-                            ->where('ends_at', '<=', now()));
-                })                ->with(['attendances' => fn ($q) => $q
+                ->where('status', DutyTripStatus::Approved)
+                ->where('ends_at', '<=', now())
+                ->with(['attendances' => fn ($q) => $q
                     ->where('status', AttendanceStatus::Valid)
                     ->whereBetween('captured_at', [$periodStart, $periodEnd]),
                 ])->get();
             $allDates = collect();
             $validDates = collect();
             foreach ($dutyTrips as $trip) {
-                $range = collect(\Carbon\CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
+                $range = collect(CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
                     ->map(fn ($d) => $d->toDateString());
                 $allDates = $allDates->merge($range)->unique();
                 $validDates = $validDates->merge(
-                    $trip->attendances->pluck('attendance_date')->map(fn ($d) => $d instanceof \Carbon\CarbonImmutable ? $d->toDateString() : $d)
+                    $trip->attendances->pluck('attendance_date')->map(fn ($d) => $d instanceof CarbonImmutable ? $d->toDateString() : $d)
                 )->unique();
             }
             $totalDays = $allDates->count();

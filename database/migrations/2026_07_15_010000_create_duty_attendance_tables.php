@@ -35,9 +35,7 @@ return new class extends Migration
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
             $table->unsignedInteger('radius_meters');
-            $table->string('supporting_document_path')->nullable();
-            $table->string('status')->default(DutyTripStatus::Pending->value)->index();
-            $table->text('rejection_reason')->nullable();
+            $table->string('status')->default(DutyTripStatus::Approved->value)->index();
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();
             $table->index(['employee_id', 'starts_at']);
@@ -48,6 +46,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('duty_trip_id')->constrained()->cascadeOnDelete();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
+            $table->date('attendance_date');
             $table->dateTime('captured_at');
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
@@ -55,9 +54,9 @@ return new class extends Migration
             $table->unsignedInteger('distance_meters');
             $table->string('photo_path');
             $table->string('status')->default(AttendanceStatus::Valid->value)->index();
-            $table->boolean('mock_location_suspected')->default(false);
+            $table->text('review_reason')->nullable();
             $table->timestamps();
-            $table->unique(['duty_trip_id', 'employee_id']);
+            $table->unique(['duty_trip_id', 'employee_id', 'attendance_date']);
         });
     }
 

@@ -52,9 +52,6 @@ class UsersTable
                     ->label('Aktif')
                     ->boolean(),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
                 EditAction::make(),
             ]);

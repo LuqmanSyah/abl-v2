@@ -6,7 +6,6 @@ use App\Enums\AttendanceStatus;
 use App\Enums\UserRole;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -51,9 +50,6 @@ class AttendancesTable
                     ->formatStateUsing(fn ($state): string => $state instanceof AttendanceStatus ? $state->label() : (string) $state)
                     ->color(fn ($state): string => $state instanceof AttendanceStatus ? $state->color() : 'gray')
                     ->searchable(),
-                IconColumn::make('mock_location_suspected')
-                    ->label('GPS mencurigakan')
-                    ->boolean(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

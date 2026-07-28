@@ -61,11 +61,6 @@ class ApprovalChainResource extends Resource
         return ApprovalChainsTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-
     public static function getPages(): array
     {
         return [

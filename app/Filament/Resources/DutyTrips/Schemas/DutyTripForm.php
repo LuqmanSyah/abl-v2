@@ -8,7 +8,6 @@ use App\Filament\Forms\Components\MapPicker;
 use App\Models\DutyLocation;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -56,14 +55,6 @@ class DutyTripForm
                             ->afterOrEqual('starts_at')
                             ->dehydrateStateUsing(fn (string $state): Carbon => Carbon::parse($state)->endOfDay())
                             ->required(),
-                        FileUpload::make('supporting_document_path')
-                            ->label('Dokumen pendukung')
-                            ->disk('local')
-                            ->directory('duty-trip-documents')
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png'])
-                            ->maxSize(5120)
-                            ->helperText('PDF, JPG, atau PNG. Maksimal 5 MB.')
-                            ->columnSpanFull(),
                         Hidden::make('manager_id'),
                         Hidden::make('status')->default(DutyTripStatus::Approved->value),
                     ]),

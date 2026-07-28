@@ -77,9 +77,6 @@ class MeritResultsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
                 ViewAction::make(),
                 Action::make('recommend_training')

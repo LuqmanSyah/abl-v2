@@ -54,9 +54,6 @@ class ReviewPeriodsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
                 Action::make('calculate')
                     ->label('Hitung Merit')

@@ -61,12 +61,13 @@ class OperationsReportTest extends TestCase
             'latitude' => -6.2,
             'longitude' => 106.8,
             'radius_meters' => 100,
-            'status' => DutyTripStatus::Completed,
+            'status' => DutyTripStatus::Approved,
         ]);
         Storage::disk('local')->put('attendance/private.jpg', 'photo');
         $attendance = Attendance::create([
             'duty_trip_id' => $trip->id,
             'employee_id' => $employee->id,
+            'attendance_date' => now()->subYears(2)->toDateString(),
             'captured_at' => now()->subYears(2),
             'latitude' => -6.2,
             'longitude' => 106.8,

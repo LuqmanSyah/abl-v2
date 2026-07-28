@@ -175,6 +175,7 @@ class DutyTripManagementTest extends TestCase
             'longitude' => 106.8272,
             'distance_meters' => 10,
             'captured_at' => now(),
+            'attendance_date' => today(),
             'photo_path' => 'test.jpg',
         ]);
 

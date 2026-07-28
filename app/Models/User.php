@@ -21,13 +21,6 @@ class User extends Authenticatable implements FilamentUser
 
     protected static function booted(): void
     {
-        static::creating(function (self $user): void {
-            $user->notification_preferences ??= [
-                'inapp' => true,
-                'email' => true,
-            ];
-        });
-
         static::saving(function (self $user): void {
             if ($user->position_id && Position::whereKey($user->position_id)->where('unit_id', $user->unit_id)->doesntExist()) {
                 throw new BusinessRuleException('Jabatan harus berasal dari unit kerja yang dipilih.');
@@ -64,7 +57,6 @@ class User extends Authenticatable implements FilamentUser
         'position_id',
         'manager_id',
         'delegate_id',
-        'notification_preferences',
         'employee_number',
         'phone',
         'avatar_url',
@@ -93,7 +85,6 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'role' => UserRole::class,
             'is_active' => 'boolean',
-            'notification_preferences' => 'array',
         ];
     }
 

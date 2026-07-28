@@ -91,13 +91,6 @@ class DutyTripResource extends Resource
         return DutyTripsTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [

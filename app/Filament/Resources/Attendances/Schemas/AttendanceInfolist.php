@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Attendances\Schemas;
 
 use App\Enums\AttendanceStatus;
-use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -56,10 +55,6 @@ class AttendanceInfolist
                         TextEntry::make('distance_meters')
                             ->label('Jarak dari lokasi (meter)')
                             ->numeric(),
-                        IconEntry::make('mock_location_suspected')
-                            ->label('Lokasi perlu diperiksa')
-                            ->boolean()
-                            ->columnSpanFull(),
                         ImageEntry::make('photo_path')
                             ->label('Foto absensi')
                             ->getStateUsing(fn ($record): string => route('attendance.photo', $record))

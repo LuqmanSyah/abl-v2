@@ -61,13 +61,6 @@ class DutyLocationResource extends Resource
         return DutyLocationsTable::configure($table);
     }
 
-    public static function getRelations(): array
-    {
-        return [
-            //
-        ];
-    }
-
     public static function getPages(): array
     {
         return [

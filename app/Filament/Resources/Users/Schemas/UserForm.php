@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -82,16 +81,6 @@ class UserForm
                     ->label('Aktif')
                     ->default(true)
                     ->required(),
-                Section::make('Preferensi Notifikasi')
-                    ->columns(2)
-                    ->schema([
-                        Toggle::make('notification_preferences.inapp')
-                            ->label('In-app (database)')
-                            ->default(true),
-                        Toggle::make('notification_preferences.email')
-                            ->label('Email')
-                            ->default(true),
-                    ]),
             ]);
     }
 }

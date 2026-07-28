@@ -33,9 +33,6 @@ class KpiIndicatorsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                //
-            ])
             ->recordActions([
                 EditAction::make()
                     ->visible(fn ($record): bool => KpiIndicatorResource::canEdit($record)),

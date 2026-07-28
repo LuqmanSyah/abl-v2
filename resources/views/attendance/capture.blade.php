@@ -286,7 +286,6 @@ form?.addEventListener('submit', async event => {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy_meters: Math.round(position.coords.accuracy),
-            mock_location_suspected: 0,
         };
         data.photo = await watermarkedPhoto(capturedBlob, data);
         if (data.photo.size > 5 * 1024 * 1024) {

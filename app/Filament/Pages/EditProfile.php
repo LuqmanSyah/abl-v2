@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Enums\UserRole;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -28,10 +27,6 @@ class EditProfile extends BaseEditProfile
         $data['unit']['name'] ??= $user->unit?->name;
         $data['position']['name'] ??= $user->position?->name;
         $data['role'] ??= $user->role;
-        $data['notification_preferences'] ??= [
-            'inapp' => true,
-            'email' => true,
-        ];
 
         return $data;
     }
@@ -74,16 +69,6 @@ class EditProfile extends BaseEditProfile
                             ->label('Jabatan')
                             ->disabled()
                             ->dehydrated(false),
-                    ]),
-                Section::make('Preferensi Notifikasi')
-                    ->columns(2)
-                    ->schema([
-                        Toggle::make('notification_preferences.inapp')
-                            ->label('In-app (database)')
-                            ->default(true),
-                        Toggle::make('notification_preferences.email')
-                            ->label('Email')
-                            ->default(true),
                     ]),
                 $this->getPasswordSectionComponent(),
             ]);

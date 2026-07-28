@@ -8,9 +8,4 @@ use Filament\Resources\Pages\EditRecord;
 class EditReviewPeriod extends EditRecord
 {
     protected static string $resource = ReviewPeriodResource::class;
-
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
 }

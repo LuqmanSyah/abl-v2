@@ -55,11 +55,10 @@ class AttendanceRecorder
             $clockMismatch = abs($capturedAt->getTimestamp() - $receivedAt->getTimestamp())
                 > config('hr.attendance_clock_tolerance_minutes') * 60;
             $mockLocation = (bool) ($data['mock_location_suspected'] ?? false);
-            $poorAccuracy = isset($data['accuracy_meters']) && (int) $data['accuracy_meters'] > 100;
-            $suspected = $mockLocation || $poorAccuracy || $clockMismatch;
+            $suspected = $mockLocation || $clockMismatch;
 
             $status = match (true) {
-                $distance > $trip->radius_meters => AttendanceStatus::OutsideRadius,
+                $distance > $trip->radius_meters => AttendanceStatus::NeedsReview,
                 $capturedAt->isAfter($trip->ends_at) => AttendanceStatus::Late,
                 default => AttendanceStatus::Valid,
             };
@@ -70,7 +69,6 @@ class AttendanceRecorder
 
             $reasons = array_filter([
                 $mockLocation ? 'Perangkat mendeteksi lokasi palsu.' : null,
-                $poorAccuracy ? 'Akurasi GPS lebih dari 100 meter.' : null,
                 $clockMismatch ? 'Waktu perangkat melewati batas toleransi.' : null,
                 $distance > $trip->radius_meters ? 'Lokasi berada di luar radius dinas.' : null,
                 $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,

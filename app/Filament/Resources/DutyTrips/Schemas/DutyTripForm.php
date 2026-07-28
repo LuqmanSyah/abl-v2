@@ -26,6 +26,7 @@ class DutyTripForm
                 Section::make('Penugasan')
                     ->description('Tentukan pegawai, tujuan, dan waktu pelaksanaan dinas.')
                     ->icon('heroicon-o-briefcase')
+                    ->columnSpanFull()
                     ->columns(2)
                     ->components([
                         Select::make('employee_id')
@@ -68,6 +69,7 @@ class DutyTripForm
                 Section::make('Lokasi absensi')
                     ->description('Pilih lokasi tersimpan atau tentukan titik baru. Data lokasi tersimpan akan mengisi form otomatis.')
                     ->icon('heroicon-o-map-pin')
+                    ->columnSpanFull()
                     ->columns(2)
                     ->components([
                         Select::make('duty_location_id')

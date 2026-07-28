@@ -136,21 +136,22 @@ class DutyAttendanceTest extends TestCase
         $this->assertDatabaseCount('attendances', 1);
     }
 
-    public function test_outside_radius_and_poor_accuracy_are_flagged(): void
+    public function test_poor_accuracy_inside_radius_is_valid(): void
     {
         [$employee, $manager, $trip] = $this->trip();
         $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
             'captured_at' => now()->toIso8601String(),
-            'latitude' => -6.1800,
+            'latitude' => -6.1754,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
         ], 'attendance/photo.jpg');
 
-        $this->assertSame(AttendanceStatus::NeedsReview, $attendance->status);
-        $this->assertTrue($attendance->mock_location_suspected);
+        $this->assertSame(AttendanceStatus::Valid, $attendance->status);
+        $this->assertFalse($attendance->mock_location_suspected);
+        $this->assertNull($attendance->review_reason);
     }
 
-    public function test_outside_radius_and_late_attendance_are_classified(): void
+    public function test_outside_radius_requires_review_and_late_attendance_is_classified(): void
     {
         [$employee, $manager, $trip] = $this->trip();
         $outside = app(AttendanceRecorder::class)->record($trip, $employee, [
@@ -169,7 +170,8 @@ class DutyAttendanceTest extends TestCase
             'accuracy_meters' => 10,
         ], 'attendance/late.jpg');
 
-        $this->assertSame(AttendanceStatus::OutsideRadius, $outside->status);
+        $this->assertSame(AttendanceStatus::NeedsReview, $outside->status);
+        $this->assertSame('Lokasi berada di luar radius dinas.', $outside->review_reason);
         $this->assertSame(AttendanceStatus::Late, $late->status);
     }
 
@@ -199,6 +201,7 @@ class DutyAttendanceTest extends TestCase
             'latitude' => -6.1754,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
+            'mock_location_suspected' => true,
         ], 'attendance/review.jpg');
         $hr = User::factory()->create(['role' => UserRole::Hr]);
 
@@ -214,7 +217,7 @@ class DutyAttendanceTest extends TestCase
         $attendance->verifyByHr($hr);
 
         $this->assertSame(AttendanceStatus::Valid, $attendance->fresh()->status);
-        $this->assertSame('Akurasi GPS lebih dari 100 meter.', $attendance->fresh()->review_reason);
+        $this->assertSame('Perangkat mendeteksi lokasi palsu.', $attendance->fresh()->review_reason);
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'attendance.verified',
             'subject_id' => $attendance->id,
@@ -245,6 +248,7 @@ class DutyAttendanceTest extends TestCase
             'latitude' => -6.1754,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
+            'mock_location_suspected' => true,
         ], 'attendance/review-button.jpg');
         $hr = User::factory()->create(['role' => UserRole::Hr]);
 
@@ -275,6 +279,7 @@ class DutyAttendanceTest extends TestCase
             'latitude' => -6.1754,
             'longitude' => 106.8272,
             'accuracy_meters' => 150,
+            'mock_location_suspected' => true,
         ], 'attendance/review-notification.jpg');
 
         Notification::assertSentTo($hr, AttendanceNeedsReview::class);
@@ -298,7 +303,7 @@ class DutyAttendanceTest extends TestCase
 
         Livewire::test(HrActiveTripsTable::class)
             ->assertSuccessful()
-            ->assertSee('Di Luar Radius');
+            ->assertSee('Memerlukan Pemeriksaan');
     }
 
     public function test_hr_attendance_drop_alert_uses_constant_query_count(): void

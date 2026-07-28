@@ -391,7 +391,6 @@ class FilamentAccessTest extends TestCase
             'approved_at' => now(),
         ]);
         $attendance = Attendance::create([
-            'client_uuid' => '50f26f3e-b3b3-49f6-9bcb-c31ec9862201',
             'duty_trip_id' => $trip->id,
             'employee_id' => $employee->id,
             'captured_at' => now(),

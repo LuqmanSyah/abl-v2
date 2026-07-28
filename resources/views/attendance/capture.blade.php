@@ -6,8 +6,6 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#2563eb">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="/manifest.json">
     <title>Absensi · {{ $trip->destination }}</title>
     <style>
         :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; }
@@ -97,7 +95,7 @@
                 <ol class="steps" aria-label="Langkah absensi">
                     <li>Izinkan browser mengakses kamera dan lokasi akurat.</li>
                     <li>Ambil foto wajah di lokasi tugas.</li>
-                    <li>Data dikirim otomatis atau disimpan saat luring.</li>
+                    <li>Pastikan perangkat online, lalu kirim absensi.</li>
                 </ol>
 
                 <div id="camera-ui">
@@ -113,32 +111,23 @@
                 </div>
 
                 <form id="attendance-form" hidden>
-                    <input id="photo" type="file" accept="image/*" hidden>
                     <button id="submit" class="btn btn-primary" type="submit">Ambil lokasi dan simpan absensi</button>
                 </form>
             @endif
 
             <p id="status" role="status" aria-live="polite"></p>
-            <p class="privacy">Lokasi dan foto hanya dipakai untuk verifikasi dinas. Antrean luring tetap terikat pada dinas ini dan dikirim saat koneksi tersedia.</p>
+            <p class="privacy">Lokasi dan foto hanya dipakai untuk verifikasi dinas. Absensi memerlukan koneksi internet dan tidak disimpan pada browser.</p>
         </div>
     </article>
 </main>
-<script src="/js/face-api.js"></script>
-<script src="/js/face-verification.js"></script>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
-
 const form = document.querySelector('#attendance-form');
 const statusBox = document.querySelector('#status');
 const networkBox = document.querySelector('#network');
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const endpoint = @json(route('attendance.store', $trip));
-const tripId = @json($trip->id);
 const employee = @json($trip->employee->name);
 const place = @json($trip->location_name);
-const previousDescriptor = @json($previousDescriptor ?? null);
 
 const preview = document.querySelector('#preview');
 const capturedImg = document.querySelector('#captured-img');
@@ -149,9 +138,6 @@ const btnRetake = document.querySelector('#btn-retake');
 
 let cameraStream = null;
 let capturedBlob = null;
-let cachedFaceDescriptor = null;
-
-FaceVerification.init().catch(() => {});
 
 function setStatus(message, kind = 'info') {
     statusBox.textContent = message;
@@ -222,23 +208,12 @@ function capturePhoto() {
         btnRetake.hidden = false;
         form.hidden = false;
         stopCamera();
-        extractFaceEarly(blob);
     }, 'image/jpeg', 0.85);
-}
-
-async function extractFaceEarly(blob) {
-    try {
-        const descriptor = await FaceVerification.extractFromBlob(blob);
-        cachedFaceDescriptor = descriptor;
-    } catch {
-        cachedFaceDescriptor = null;
-    }
 }
 
 function retakePhoto() {
     capturedImg.hidden = true;
     capturedBlob = null;
-    cachedFaceDescriptor = null;
     btnRetake.hidden = true;
     form.hidden = true;
     startCamera();
@@ -278,126 +253,27 @@ async function watermarkedPhoto(blob, data) {
     }
 }
 
-function openQueue() {
-    return new Promise((resolve, reject) => {
-        if (!window.indexedDB) {
-            reject(new Error('Penyimpanan luring tidak didukung browser ini.'));
-            return;
-        }
-
-        const request = indexedDB.open('sdm-attendance', 2);
-        request.onupgradeneeded = event => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains('queue')) {
-                db.createObjectStore('queue', { keyPath: 'client_uuid' });
-                return;
-            }
-
-            if (event.oldVersion < 2) {
-                const cursorRequest = request.transaction.objectStore('queue').openCursor();
-                cursorRequest.onsuccess = () => {
-                    const cursor = cursorRequest.result;
-                    if (!cursor) return;
-                    if (!cursor.value.endpoint || !cursor.value.duty_trip_id) cursor.delete();
-                    cursor.continue();
-                };
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
-
-async function queue(data) {
-    const db = await openQueue();
-    const transaction = db.transaction('queue', 'readwrite');
-    transaction.objectStore('queue').put(data);
-    return new Promise((resolve, reject) => {
-        transaction.oncomplete = resolve;
-        transaction.onerror = () => reject(transaction.error);
-    });
-}
-
-async function removeQueued(db, clientUuid) {
-    const transaction = db.transaction('queue', 'readwrite');
-    transaction.objectStore('queue').delete(clientUuid);
-    return new Promise((resolve, reject) => {
-        transaction.oncomplete = resolve;
-        transaction.onerror = () => reject(transaction.error);
-    });
-}
-
-function syncError(message, retryable = true) {
-    const error = new Error(message);
-    error.retryable = retryable;
-    return error;
-}
-
 async function send(data) {
-    if (!data.endpoint || !data.duty_trip_id) {
-        throw syncError('Antrean lama tidak memiliki tujuan dinas. Ambil ulang absensi dari halaman dinas asal.', false);
-    }
-
     const body = new FormData();
-    Object.entries(data).forEach(([key, value]) => !['photo', 'endpoint', 'duty_trip_id'].includes(key) && body.append(key, value));
+    Object.entries(data).forEach(([key, value]) => key !== 'photo' && body.append(key, value));
     body.append('photo', data.photo, 'attendance.jpg');
-    const response = await fetch(data.endpoint, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
         body,
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-        const retryable = [408, 425, 429].includes(response.status) || response.status >= 500;
-        throw syncError(payload.message || 'Sinkronisasi gagal. Coba lagi saat koneksi stabil.', retryable);
+        throw new Error(payload.message || 'Absensi gagal disimpan. Coba lagi.');
     }
 
     return payload;
 }
 
-async function syncQueue() {
-    const db = await openQueue();
-    const records = await new Promise((resolve, reject) => {
-        const request = db.transaction('queue').objectStore('queue').getAll();
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-    let currentSynced = false;
-    let pending = 0;
-
-    for (const record of records) {
-        try {
-            const payload = await send(record);
-            await removeQueued(db, record.client_uuid);
-            if (record.duty_trip_id === tripId) {
-                currentSynced = true;
-                form?.setAttribute('hidden', 'hidden');
-                setStatus(payload.message || 'Absensi berhasil disinkronkan.', 'success');
-            }
-        } catch (error) {
-            if (error.retryable === false) {
-                await removeQueued(db, record.client_uuid);
-                if (record.duty_trip_id === tripId) {
-                    setStatus(`Absensi tidak dapat disinkronkan. ${error.message} Ambil ulang absensi.`, 'error');
-                }
-                continue;
-            }
-
-            pending++;
-            if (record.duty_trip_id === tripId) setStatus(`Tersimpan luring. ${error.message}`, 'warning');
-        }
-    }
-
-    if (pending && !currentSynced && !statusBox.textContent) {
-        setStatus(`${pending} absensi masih menunggu sinkronisasi.`, 'warning');
-    }
-
-    return currentSynced;
-}
-
 form?.addEventListener('submit', async event => {
     event.preventDefault();
     if (!capturedBlob) return setStatus('Ambil foto terlebih dahulu.', 'error');
+    if (!navigator.onLine) return setStatus('Perangkat sedang luring. Sambungkan internet lalu coba lagi.', 'error');
 
     const button = document.querySelector('#submit');
     button.disabled = true;
@@ -406,9 +282,6 @@ form?.addEventListener('submit', async event => {
         const position = await locationNow();
         button.textContent = 'Menyiapkan foto…';
         const data = {
-            endpoint,
-            duty_trip_id: tripId,
-            client_uuid: crypto.randomUUID(),
             captured_at: new Date().toISOString(),
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -420,60 +293,10 @@ form?.addEventListener('submit', async event => {
             throw new Error('Foto setelah diproses melebihi 5 MB. Gunakan kamera dengan resolusi lebih rendah.');
         }
 
-        button.textContent = 'Memverifikasi wajah…';
-        try {
-            let descriptor = cachedFaceDescriptor;
-            let match = true;
-            let reason = '';
-            if (!descriptor) {
-                const faceResult = await FaceVerification.verify(capturedBlob, previousDescriptor);
-                descriptor = faceResult.descriptor;
-                match = faceResult.match;
-                reason = faceResult.reason;
-            } else {
-                if (previousDescriptor) {
-                    const distance = faceapi.euclideanDistance(descriptor, previousDescriptor);
-                    match = distance < 0.6;
-                    reason = match
-                        ? 'Wajah cocok dengan absensi sebelumnya.'
-                        : `Wajah tidak cocok (jarak: ${distance.toFixed(2)}). Status diubah ke NeedsReview.`;
-                } else {
-                    reason = 'Encoding wajah disimpan sebagai referensi.';
-                }
-            }
-            if (descriptor) {
-                data.face_descriptor = JSON.stringify(descriptor);
-            }
-            setStatus(reason, match ? 'info' : 'warning');
-        } catch {
-            setStatus('Verifikasi wajah tidak tersedia. Data wajah tidak disertakan.', 'warning');
-        }
-
-        try {
-            await queue(data);
-            if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                navigator.serviceWorker.ready.then(reg => reg.sync.register('sync-attendance')).catch(() => {});
-            }
-        } catch {
-            if (!navigator.onLine) {
-                throw new Error('Penyimpanan luring tidak tersedia. Sambungkan internet lalu coba lagi.');
-            }
-
-            button.textContent = 'Menyinkronkan…';
-            const payload = await send(data);
-            form.setAttribute('hidden', 'hidden');
-            setStatus(payload.message || 'Absensi berhasil disinkronkan.', 'success');
-            return;
-        }
-
-        if (!navigator.onLine) {
-            const suffix = data.face_descriptor ? '' : ' Catatan: verifikasi wajah akan dijalankan saat tersambung.';
-            setStatus('Absensi tersimpan di perangkat dan akan dikirim saat kembali terhubung.' + suffix, 'warning');
-            return;
-        }
-
-        button.textContent = 'Menyinkronkan…';
-        await syncQueue();
+        button.textContent = 'Menyimpan…';
+        const payload = await send(data);
+        form.setAttribute('hidden', 'hidden');
+        setStatus(payload.message || 'Absensi berhasil disimpan.', 'success');
     } catch (error) {
         setStatus(error.message || 'Absensi gagal diproses. Coba lagi.', 'error');
     } finally {
@@ -482,10 +305,9 @@ form?.addEventListener('submit', async event => {
     }
 });
 
-window.addEventListener('online', () => { updateNetwork(); syncQueue().catch(() => {}); });
+window.addEventListener('online', updateNetwork);
 window.addEventListener('offline', updateNetwork);
 updateNetwork();
-if (navigator.onLine) syncQueue().catch(() => {});
 </script>
 </body>
 </html>

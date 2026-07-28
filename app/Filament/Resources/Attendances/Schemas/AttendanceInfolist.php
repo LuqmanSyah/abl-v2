@@ -67,18 +67,10 @@ class AttendanceInfolist
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
-                Section::make('Sinkronisasi dan riwayat')
-                    ->icon('heroicon-o-arrow-path')
+                Section::make('Riwayat')
+                    ->icon('heroicon-o-clock')
                     ->columns(2)
                     ->schema([
-                        TextEntry::make('client_uuid')
-                            ->label('ID sinkronisasi')
-                            ->copyable()
-                            ->columnSpanFull(),
-                        TextEntry::make('synced_at')
-                            ->label('Tersinkron pada')
-                            ->dateTime()
-                            ->placeholder('-'),
                         TextEntry::make('created_at')
                             ->label('Dibuat pada')
                             ->dateTime()

@@ -46,7 +46,6 @@ return new class extends Migration
 
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-            $table->uuid('client_uuid')->unique();
             $table->foreignId('duty_trip_id')->constrained()->cascadeOnDelete();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
             $table->dateTime('captured_at');
@@ -57,7 +56,6 @@ return new class extends Migration
             $table->string('photo_path');
             $table->string('status')->default(AttendanceStatus::Valid->value)->index();
             $table->boolean('mock_location_suspected')->default(false);
-            $table->timestamp('synced_at')->nullable();
             $table->timestamps();
             $table->unique(['duty_trip_id', 'employee_id']);
         });

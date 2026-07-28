@@ -19,7 +19,6 @@ use App\Filament\Widgets\ManagerTeamMeritTable;
 use App\Filament\Widgets\ManagerTeamTripTable;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 
 class ManagerPanelProvider extends RolePanelProvider
@@ -54,7 +53,6 @@ class ManagerPanelProvider extends RolePanelProvider
                 ManagerIncompleteKpiTable::class,
                 AccountWidget::class,
             ])
-            ->colors(['primary' => Color::Green])
-            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('pwa.register')->render());
+            ->colors(['primary' => Color::Green]);
     }
 }

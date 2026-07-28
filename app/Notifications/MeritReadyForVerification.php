@@ -6,7 +6,6 @@ use App\Models\MeritResult;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushMessage;
 
 class MeritReadyForVerification extends Notification
 {
@@ -17,16 +16,7 @@ class MeritReadyForVerification extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'webpush'];
-    }
-
-    public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
-    {
-        return (new WebPushMessage)
-            ->title('Hasil Merit Siap Diverifikasi')
-            ->body("Hasil merit {$this->merit->employee->name} periode {$this->merit->reviewPeriod->name} siap diverifikasi.")
-            ->icon('/icons/icon-192.png')
-            ->data(['url' => url("/atasan/merit-results/{$this->merit->id}")]);
+        return ['database'];
     }
 
     public function toDatabase(User $notifiable): array

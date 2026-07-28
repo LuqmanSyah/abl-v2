@@ -19,7 +19,6 @@ use App\Filament\Widgets\EmployeeStats;
 use App\Filament\Widgets\EmployeeTrainingMentoringTable;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 
 class EmployeePanelProvider extends RolePanelProvider
@@ -54,7 +53,6 @@ class EmployeePanelProvider extends RolePanelProvider
                 EmployeeTrainingMentoringTable::class,
                 AccountWidget::class,
             ])
-            ->colors(['primary' => Color::Blue])
-            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('pwa.register')->render());
+            ->colors(['primary' => Color::Blue]);
     }
 }

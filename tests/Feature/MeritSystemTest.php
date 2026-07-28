@@ -47,8 +47,8 @@ class MeritSystemTest extends TestCase
         $second = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kecepatan', 'weight' => 40]);
         EmployeeKpi::create(['review_period_id' => $period->id, 'kpi_indicator_id' => $first->id, 'employee_id' => $employee->id, 'manager_id' => $manager->id, 'target' => 100, 'achievement' => 100]);
         EmployeeKpi::create(['review_period_id' => $period->id, 'kpi_indicator_id' => $second->id, 'employee_id' => $employee->id, 'manager_id' => $manager->id, 'target' => 100, 'achievement' => 50]);
-        $this->attendance($employee, $manager, AttendanceStatus::Valid, '30f26f3e-b3b3-49f6-9bcb-c31ec9862201');
-        $this->attendance($employee, $manager, AttendanceStatus::OutsideRadius, '30f26f3e-b3b3-49f6-9bcb-c31ec9862202');
+        $this->attendance($employee, $manager, AttendanceStatus::Valid);
+        $this->attendance($employee, $manager, AttendanceStatus::OutsideRadius);
         PerformanceReview::create(['review_period_id' => $period->id, 'reviewer_id' => $manager->id, 'reviewee_id' => $employee->id, 'type' => ReviewType::ManagerToEmployee, 'score' => 4, 'submitted_at' => now()]);
         PerformanceReview::create(['review_period_id' => $period->id, 'reviewer_id' => $peer->id, 'reviewee_id' => $employee->id, 'type' => ReviewType::Peer, 'score' => 3, 'submitted_at' => now()]);
 
@@ -121,7 +121,7 @@ class MeritSystemTest extends TestCase
             'kpi_weight' => 0, 'discipline_weight' => 100, 'manager_weight' => 0,
             'review_360_weight' => 0, 'base_bonus' => 0,
         ]);
-        $this->attendance($employee, $manager, AttendanceStatus::Valid, '30f26f3e-b3b3-49f6-9bcb-c31ec9862203');
+        $this->attendance($employee, $manager, AttendanceStatus::Valid);
         DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Tanpa absensi',
             'purpose' => 'Tugas',
@@ -382,7 +382,7 @@ class MeritSystemTest extends TestCase
         ]);
     }
 
-    private function attendance(User $employee, User $manager, AttendanceStatus $status, string $uuid): Attendance
+    private function attendance(User $employee, User $manager, AttendanceStatus $status): Attendance
     {
         $trip = DutyTrip::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Dinas',
@@ -392,7 +392,7 @@ class MeritSystemTest extends TestCase
         ]);
 
         return Attendance::create([
-            'client_uuid' => $uuid, 'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
+            'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
             'captured_at' => today()->addHours(9), 'latitude' => -6.2, 'longitude' => 106.8,
             'distance_meters' => 0, 'photo_path' => 'attendance/test.jpg', 'status' => $status,
         ]);

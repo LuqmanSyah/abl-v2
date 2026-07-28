@@ -7,7 +7,6 @@ enum AttendanceStatus: string
     case Valid = 'valid';
     case OutsideRadius = 'outside_radius';
     case Late = 'late';
-    case PendingSync = 'pending_sync';
     case NeedsReview = 'needs_review';
 
     public function label(): string
@@ -16,7 +15,6 @@ enum AttendanceStatus: string
             self::Valid => 'Valid',
             self::OutsideRadius => 'Di Luar Radius',
             self::Late => 'Terlambat',
-            self::PendingSync => 'Menunggu Sinkronisasi',
             self::NeedsReview => 'Memerlukan Pemeriksaan',
         };
     }
@@ -25,7 +23,6 @@ enum AttendanceStatus: string
     {
         return match ($this) {
             self::Valid => 'success',
-            self::PendingSync => 'gray',
             self::Late, self::NeedsReview => 'warning',
             self::OutsideRadius => 'danger',
         };

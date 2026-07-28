@@ -13,7 +13,7 @@ use Filament\Support\Enums\Width;
 
 class EditProfile extends BaseEditProfile
 {
-    protected Width | string | null $maxContentWidth = Width::Full;
+    protected Width|string|null $maxContentWidth = Width::Full;
 
     public static function getLabel(): string
     {
@@ -30,7 +30,6 @@ class EditProfile extends BaseEditProfile
         $data['role'] ??= $user->role;
         $data['notification_preferences'] ??= [
             'inapp' => true,
-            'webpush' => true,
             'email' => true,
         ];
 
@@ -81,9 +80,6 @@ class EditProfile extends BaseEditProfile
                     ->schema([
                         Toggle::make('notification_preferences.inapp')
                             ->label('In-app (database)')
-                            ->default(true),
-                        Toggle::make('notification_preferences.webpush')
-                            ->label('Web Push')
                             ->default(true),
                         Toggle::make('notification_preferences.email')
                             ->label('Email')

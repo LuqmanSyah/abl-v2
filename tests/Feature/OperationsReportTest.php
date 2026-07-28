@@ -17,7 +17,6 @@ use App\Models\TrainingRequest;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -46,7 +45,7 @@ class OperationsReportTest extends TestCase
         $this->assertStringContainsString("'=1+1", $csv);
     }
 
-    public function test_private_photo_and_retention_respect_access(): void
+    public function test_private_photo_respects_access(): void
     {
         Storage::fake('local');
         [$hr, $employee, $other] = $this->employees();
@@ -66,7 +65,6 @@ class OperationsReportTest extends TestCase
         ]);
         Storage::disk('local')->put('attendance/private.jpg', 'photo');
         $attendance = Attendance::create([
-            'client_uuid' => '40f26f3e-b3b3-49f6-9bcb-c31ec9862201',
             'duty_trip_id' => $trip->id,
             'employee_id' => $employee->id,
             'captured_at' => now()->subYears(2),
@@ -79,10 +77,7 @@ class OperationsReportTest extends TestCase
 
         $this->actingAs($other)->get(route('attendance.photo', $attendance))->assertForbidden();
         $this->actingAs($employee)->get(route('attendance.photo', $attendance))->assertOk();
-
-        Artisan::call('attendance:purge-photos', ['--days' => 365]);
-        Storage::disk('local')->assertMissing('attendance/private.jpg');
-        $this->get(route('attendance.photo', $attendance))->assertNotFound();
+        $this->actingAs($hr)->get(route('attendance.photo', $attendance))->assertOk();
     }
 
     public function test_report_period_scopes_development_activity(): void

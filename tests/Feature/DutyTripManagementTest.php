@@ -136,7 +136,6 @@ class DutyTripManagementTest extends TestCase
         $trip->attendances()->create([
             'employee_id' => $employee->id,
             'duty_trip_id' => $trip->id,
-            'client_uuid' => (string) \Illuminate\Support\Str::uuid(),
             'status' => 'valid',
             'latitude' => -6.1754,
             'longitude' => 106.8272,
@@ -157,6 +156,7 @@ class DutyTripManagementTest extends TestCase
             'role' => UserRole::Employee,
             'manager_id' => $manager->id,
         ]);
+
         return [$employee, $manager];
     }
 }

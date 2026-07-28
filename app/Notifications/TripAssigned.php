@@ -8,7 +8,6 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushMessage;
 
 class TripAssigned extends Notification
 {
@@ -19,16 +18,7 @@ class TripAssigned extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return $this->resolveChannels($notifiable, ['database', 'mail', 'webpush']);
-    }
-
-    public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
-    {
-        return (new WebPushMessage)
-            ->title('Perintah Dinas Baru')
-            ->body("Anda ditugaskan {$this->trip->destination} oleh {$this->trip->manager->name}.")
-            ->icon('/icons/icon-192.png')
-            ->data(['url' => url("/pegawai/dinas/{$this->trip->id}")]);
+        return $this->resolveChannels($notifiable, ['database', 'mail']);
     }
 
     public function toDatabase(User $notifiable): array
@@ -46,7 +36,7 @@ class TripAssigned extends Notification
         return (new MailMessage)
             ->subject("Perintah Dinas: {$this->trip->destination}")
             ->greeting("Halo {$notifiable->name},")
-            ->line("Anda mendapat tugas dinas baru:")
+            ->line('Anda mendapat tugas dinas baru:')
             ->line("Tujuan: {$this->trip->destination}")
             ->line("Lokasi: {$this->trip->location_name}")
             ->line("Jadwal: {$this->trip->starts_at->translatedFormat('d M Y, H:i')} – {$this->trip->ends_at->translatedFormat('d M Y, H:i')}")

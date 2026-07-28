@@ -15,7 +15,6 @@ use App\Models\EmployeeCompetency;
 use App\Models\EmployeeKpi;
 use App\Models\KpiIndicator;
 use App\Models\Mentoring;
-use App\Models\MeritResult;
 use App\Models\PerformanceReview;
 use App\Models\Position;
 use App\Models\PositionCompetency;
@@ -78,7 +77,6 @@ class FlowTest extends TestCase
         // ===== 3. Employee ABSENSI (GPS dalam radius) =====
         Storage::fake('local');
         $first = app(AttendanceRecorder::class)->record($trip, $employee, [
-            'client_uuid' => '20f26f3e-b3b3-49f6-9bcb-c31ec9862200',
             'captured_at' => now()->toIso8601String(),
             'latitude' => -6.1754,
             'longitude' => 106.8272,

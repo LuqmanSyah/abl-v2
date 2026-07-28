@@ -30,7 +30,6 @@ use App\Filament\Widgets\HrStats;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\Support\Colors\Color;
-use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 
 class HrPanelProvider extends RolePanelProvider
@@ -84,7 +83,6 @@ class HrPanelProvider extends RolePanelProvider
                     ->sort(10)
                     ->url(fn (): string => route('hr.reports.index')),
             ])
-            ->colors(['primary' => Color::Amber])
-            ->renderHook(PanelsRenderHook::HEAD_END, fn (): string => view('pwa.register')->render());
+            ->colors(['primary' => Color::Amber]);
     }
 }

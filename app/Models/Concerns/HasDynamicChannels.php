@@ -13,9 +13,8 @@ trait HasDynamicChannels
         $filtered = array_values(array_filter($baseChannels, function (string $channel) use ($prefs): bool {
             return match ($channel) {
                 'database' => $prefs['inapp'] ?? true,
-                'webpush'  => $prefs['webpush'] ?? true,
-                'mail'     => $prefs['email'] ?? true,
-                default    => true,
+                'mail' => $prefs['email'] ?? true,
+                default => true,
             };
         }));
 

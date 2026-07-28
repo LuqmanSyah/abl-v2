@@ -54,11 +54,6 @@ class AttendancesTable
                 IconColumn::make('mock_location_suspected')
                     ->label('GPS mencurigakan')
                     ->boolean(),
-                TextColumn::make('synced_at')
-                    ->label('Tersinkron pada')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

@@ -22,24 +22,8 @@ class AttendanceController extends Controller
     {
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
-        $prev = Attendance::where('duty_trip_id', $dutyTrip->id)
-            ->where('employee_id', $request->user()->id)
-            ->where(function ($q) {
-                $q->whereNotNull('face_descriptor_path')->orWhereNotNull('face_descriptor');
-            })
-            ->latest('captured_at')
-            ->first();
-
-        $previousDescriptor = null;
-        if ($prev) {
-            $previousDescriptor = $prev->face_descriptor_path
-                ? Storage::disk('local')->get($prev->face_descriptor_path)
-                : $prev->face_descriptor;
-        }
-
         return view('attendance.capture', [
             'trip' => $dutyTrip->load('employee', 'attendances'),
-            'previousDescriptor' => $previousDescriptor,
         ]);
     }
 
@@ -48,21 +32,13 @@ class AttendanceController extends Controller
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
         $data = $request->validate([
-            'client_uuid' => ['required', 'uuid'],
             'captured_at' => ['required', 'date'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'accuracy_meters' => ['nullable', 'integer', 'min:0'],
             'mock_location_suspected' => ['nullable', 'boolean'],
-            'face_descriptor' => ['nullable', 'string', 'json', 'max:8192'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
-
-        if ($existing = Attendance::where('client_uuid', $data['client_uuid'])->first()) {
-            abort_unless($existing->employee_id === $request->user()->id && $existing->duty_trip_id === $dutyTrip->id, 409);
-
-            return response()->json(['message' => 'Absensi sudah tersinkronisasi.', 'attendance' => $existing]);
-        }
 
         $photoPath = $request->file('photo')->store('attendance', 'local');
 

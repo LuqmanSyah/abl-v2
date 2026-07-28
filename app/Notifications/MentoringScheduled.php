@@ -6,7 +6,6 @@ use App\Models\Mentoring;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
-use NotificationChannels\WebPush\WebPushMessage;
 
 class MentoringScheduled extends Notification
 {
@@ -17,16 +16,7 @@ class MentoringScheduled extends Notification
     /** @return list<string> */
     public function via(User $notifiable): array
     {
-        return ['database', 'webpush'];
-    }
-
-    public function toWebPush(mixed $notifiable, mixed $notification): WebPushMessage
-    {
-        return (new WebPushMessage)
-            ->title('Mentoring Dijadwalkan')
-            ->body("Mentoring {$this->mentoring->topic} dengan {$this->mentoring->manager->name} dijadwalkan pada {$this->mentoring->scheduled_at->translatedFormat('d M Y, H:i')}.")
-            ->icon('/icons/icon-192.png')
-            ->data(['url' => url("/pegawai/mentorings/{$this->mentoring->id}")]);
+        return ['database'];
     }
 
     public function toDatabase(User $notifiable): array

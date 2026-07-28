@@ -56,15 +56,16 @@ class DutyAttendanceSeeder extends Seeder
         foreach (range(0, 1) as $index) {
             $date = sprintf('2026-08-0%d', $index + 1);
             DB::table('attendances')->updateOrInsert([
-                'client_uuid' => sprintf('00000000-0000-4000-8000-%012d', $index + 1),
+                'duty_trip_id' => $tripIds[$index],
+                'employee_id' => $employeeIds[$index],
+                'attendance_date' => $date,
             ], [
-                'duty_trip_id' => $tripIds[$index], 'employee_id' => $employeeIds[$index],
-                'attendance_date' => $date, 'captured_at' => "{$date} 08:05:00",
+                'captured_at' => "{$date} 08:05:00",
                 'latitude' => $locations[$index]->latitude, 'longitude' => $locations[$index]->longitude,
                 'accuracy_meters' => 5, 'distance_meters' => 10,
                 'photo_path' => 'attendance/demo-'.($index + 1).'.jpg',
                 'status' => AttendanceStatus::Valid->value, 'mock_location_suspected' => false,
-                'synced_at' => $now, 'created_at' => $now, 'updated_at' => $now,
+                'created_at' => $now, 'updated_at' => $now,
             ]);
         }
     }

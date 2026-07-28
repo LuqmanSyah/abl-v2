@@ -13,9 +13,9 @@ use Filament\Widgets\TableWidget;
 
 class EmployeeActiveTripsTable extends TableWidget
 {
-    protected static ?string $heading = 'Dinas Aktif Hari Ini';
+    protected static ?string $heading = 'Peringatan Absensi Dinas Hari Ini';
 
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 0;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -27,6 +27,9 @@ class EmployeeActiveTripsTable extends TableWidget
                     ->where('status', DutyTripStatus::Approved)
                     ->whereDate('starts_at', '<=', today())
                     ->whereDate('ends_at', '>=', today())
+                    ->withExists([
+                        'attendances as attended_today' => fn ($query) => $query->whereDate('attendance_date', today()),
+                    ])
             )
             ->columns([
                 TextColumn::make('destination')
@@ -40,11 +43,10 @@ class EmployeeActiveTripsTable extends TableWidget
                 TextColumn::make('ends_at')
                     ->label('Selesai')
                     ->dateTime('d M Y'),
-                TextColumn::make('attendances_count')
+                TextColumn::make('attendance_status')
                     ->label('Absensi')
-                    ->counts('attendances')
-                    ->formatStateUsing(fn (DutyTrip $record): string => $record->attendances()->whereDate('captured_at', today())->exists() ? 'Sudah absen' : 'Belum absen')
-                    ->color(fn (DutyTrip $record): string => $record->attendances()->whereDate('captured_at', today())->exists() ? 'success' : 'warning')
+                    ->getStateUsing(fn (DutyTrip $record): string => $record->attended_today ? 'Sudah absen hari ini' : 'Belum absen hari ini')
+                    ->color(fn (DutyTrip $record): string => $record->attended_today ? 'success' : 'danger')
                     ->badge(),
             ])
             ->recordActions([
@@ -57,7 +59,7 @@ class EmployeeActiveTripsTable extends TableWidget
                         ->label('Absen Sekarang')
                         ->icon('heroicon-o-map-pin')
                         ->color('success')
-                        ->visible(fn (DutyTrip $record): bool => ! $record->attendances()->whereDate('captured_at', today())->exists())
+                        ->visible(fn (DutyTrip $record): bool => ! $record->attended_today)
                         ->url(fn (DutyTrip $record): string => route('attendance.capture', $record)),
                 ]),
             ])

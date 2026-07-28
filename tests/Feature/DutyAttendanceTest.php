@@ -398,7 +398,7 @@ class DutyAttendanceTest extends TestCase
             ->assertDontSee('data.mock_location_suspected = 1', false);
     }
 
-    public function test_employee_active_trip_widget_generates_attendance_url(): void
+    public function test_employee_active_trip_widget_warns_until_attendance_is_recorded(): void
     {
         [$employee, $manager, $trip] = $this->trip();
 
@@ -407,7 +407,20 @@ class DutyAttendanceTest extends TestCase
 
         Livewire::test(EmployeeActiveTripsTable::class)
             ->assertSuccessful()
+            ->assertSee('Belum absen hari ini')
             ->assertSee(route('attendance.capture', $trip), false);
+
+        app(AttendanceRecorder::class)->record($trip, $employee, [
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 10,
+        ], 'attendance/widget.jpg');
+
+        Livewire::test(EmployeeActiveTripsTable::class)
+            ->assertSuccessful()
+            ->assertSee('Sudah absen hari ini')
+            ->assertDontSee(route('attendance.capture', $trip), false);
     }
 
     /** @return array{User, User, DutyTrip} */

@@ -2,6 +2,14 @@
 
 Layanan absensi berbasis lokasi (GPS) + verifikasi wajah untuk pegawai yg sedang dinas luar.
 
+## Dokumen
+
+| File | Isi |
+|---|---|
+| [baseline-service.md](baseline-service.md) | Baseline perubahan service absensi |
+| [testing-multi-hari.md](testing-multi-hari.md) | Panduan test absensi multi-hari |
+| [verifikasi-wajah.md](verifikasi-wajah.md) | Desain lama verifikasi wajah |
+
 ## Alur
 
 ```

@@ -7,3 +7,4 @@
 | [revisi.md](revisi.md) | Catatan revisi — Alur Rekomendasi Pelatihan |
 | [testing_list.md](testing_list.md) | Daftar pengujian sebelum deployment |
 | [next_update.md](next_update.md) | Roadmap & prioritas pengembangan selanjutnya |
+| [audit-overengineering.md](audit-overengineering.md) | Hasil audit penyederhanaan project |

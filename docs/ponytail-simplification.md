@@ -6,7 +6,7 @@ Versi paling kecil yang masih mempertahankan identitas ABL:
 
 1. satu panel aplikasi untuk semua peran;
 2. organisasi dasar: pengguna, unit, jabatan, dan atasan langsung;
-3. perjalanan dinas dengan satu absensi berfoto dan geofence;
+3. perjalanan dinas dengan absensi harian berfoto dan geofence;
 4. KPI sederhana dengan perhitungan merit tetap;
 5. satu modul pengembangan untuk target karier, pelatihan, dan mentoring;
 6. satu laporan HR yang dapat diekspor ke CSV;
@@ -27,7 +27,7 @@ Audit dilakukan terhadap kondisi repository saat ini. Baseline aplikasi:
 ## Asumsi Penyederhanaan
 
 - ABL dipakai untuk pengembangan/demonstrasi, bukan pengganti seluruh HRIS organisasi.
-- Satu perjalanan dinas cukup memiliki satu bukti kehadiran. Jika bukti harian wajib, `required_dates` harus dipertahankan.
+- Perjalanan dinas membutuhkan satu bukti kehadiran per tanggal kalender selama jadwal.
 - Penilaian 360 derajat, approval bertingkat, delegasi, dan laporan terjadwal belum menjadi kebutuhan inti.
 - Semua pengguna memakai timezone aplikasi yang sama.
 - Fitur keamanan, pembatasan akses, validasi, dan pencegahan duplikasi tidak boleh dipangkas.
@@ -144,12 +144,14 @@ Perjalanan dinas mendukung master lokasi, snapshot lokasi, timezone per tugas, t
 
 Atasan mengisi:
 
-- Pegawai;
+- satu atau lebih Pegawai;
 - nama dan alamat lokasi;
 - latitude, longitude, dan radius;
-- waktu mulai dan selesai.
+- tanggal mulai dan selesai.
 
-Satu tugas langsung aktif setelah dibuat. HR hanya memonitor. Pegawai melihat tugasnya dan menekan **Lakukan Absensi**.
+Map picker tetap dipakai untuk mengisi alamat dan koordinat, dengan input manual sebagai fallback. Ini tidak membutuhkan master lokasi.
+
+Sistem menyimpan satu tugas aktif per Pegawai. Pilihan banyak Pegawai hanya mempercepat satu kali input. HR hanya memonitor. Pegawai melihat tugasnya dan menekan **Lakukan Absensi**.
 
 Model minimal:
 
@@ -201,15 +203,16 @@ Server menentukan:
 - `valid` bila di dalam radius dan akurasi layak;
 - `needs_review` bila di luar radius atau akurasi buruk.
 
-Satu tugas hanya dapat memiliki satu absensi. Constraint unik database menjadi pengaman utama.
+Satu tugas hanya dapat memiliki satu absensi per hari. Tanggal ditentukan server dan constraint unik database menjadi pengaman utama.
 
 Model minimal:
 
 ```text
 attendances
 - id
-- duty_trip_id (unique)
+- duty_trip_id
 - employee_id
+- attendance_date
 - received_at
 - latitude
 - longitude
@@ -233,13 +236,12 @@ attendances
 
 - `captured_at` dari perangkat;
 - pemeriksaan perbedaan jam perangkat;
-- `attendance_date`;
 - status `late`;
 - pilihan tanggal;
 - toleransi keterlambatan 24 jam;
 - notifikasi khusus absensi.
 
-Jika organisasi membutuhkan satu bukti per hari, gunakan kembali `required_dates` dan unique constraint `(duty_trip_id, attendance_date)`. Jangan menambah scheduler atau tabel lain.
+Tanggal wajib diturunkan langsung dari rentang mulai–selesai. `required_dates` baru diperlukan bila hari tertentu, seperti akhir pekan, harus dikecualikan.
 
 ### 6. KPI
 
@@ -295,7 +297,7 @@ Rumus tetap:
 
 ```text
 kpi_score        = rata-rata min(achievement / target, 120%) × 100
-attendance_score = absensi valid / tugas selesai × 100
+attendance_score = absensi harian valid / hari dinas wajib × 100
 merit_score      = 80% kpi_score + 20% attendance_score
 ```
 
@@ -484,14 +486,14 @@ Tabel framework seperti sessions, cache, jobs, dan notifications hanya dipertaha
 
 1. login ke `/app`;
 2. melihat tugas aktif;
-3. mengirim satu absensi berfoto;
+3. mengirim satu absensi berfoto setiap hari selama dinas;
 4. melihat KPI dan merit;
 5. melihat rencana pengembangan;
 6. mengajukan pelatihan atau mentoring.
 
 ### Atasan
 
-1. membuat tugas untuk bawahan;
+1. membuat tugas untuk satu atau lebih bawahan;
 2. mengisi KPI bawahan;
 3. menyetujui pengajuan pengembangan;
 4. melihat ringkasan tim.
@@ -512,7 +514,7 @@ Tabel framework seperti sessions, cache, jobs, dan notifications hanya dipertaha
 4. `delete:` penilaian 360 dan verifikasi merit bertingkat. Ganti rumus tetap dan satu aksi HR.
 5. `delete:` master indikator KPI. Simpan nama/target/capaian langsung pada KPI Pegawai.
 6. `native:` PDF dan XLSX diganti CSV bawaan. Lepas dua dependency runtime.
-7. `shrink:` perjalanan dinas multi-hari dan timezone per tugas menjadi satu tugas–satu absensi dalam timezone aplikasi.
+7. `shrink:` perjalanan dinas multi-hari memakai tanggal server dan satu absensi per hari, tanpa timezone atau daftar tanggal khusus.
 8. `delete:` table widget dashboard. Daftar resource terfilter sudah menyediakan data yang sama.
 9. `delete:` delapan notification class dan polling. Gunakan badge jumlah tertunda dan flash notification.
 10. `native:` backup database dipindahkan ke fasilitas hosting/cron database.

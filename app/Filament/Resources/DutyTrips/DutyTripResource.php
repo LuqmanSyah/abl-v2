@@ -4,15 +4,18 @@ namespace App\Filament\Resources\DutyTrips;
 
 use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
+use App\Filament\Forms\Components\MapPicker;
 use App\Filament\Resources\DutyTrips\Pages\CreateDutyTrip;
 use App\Filament\Resources\DutyTrips\Pages\EditDutyTrip;
 use App\Filament\Resources\DutyTrips\Pages\ListDutyTrips;
 use App\Filament\Resources\DutyTrips\Pages\ViewDutyTrip;
 use App\Models\DutyTrip;
+use App\Models\User;
 use BackedEnum;
+use Carbon\Carbon;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -72,6 +75,19 @@ class DutyTripResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
+            Select::make('employee_ids')
+                ->label('Pegawai')
+                ->options(fn () => User::query()
+                    ->where('role', UserRole::Employee)
+                    ->where('manager_id', auth()->id())
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->pluck('name', 'id'))
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->required()
+                ->visibleOn('create'),
             Select::make('employee_id')
                 ->label('Pegawai')
                 ->relationship('employee', 'name', fn (Builder $query) => $query
@@ -80,14 +96,26 @@ class DutyTripResource extends Resource
                     ->where('is_active', true))
                 ->searchable()
                 ->preload()
-                ->required(),
+                ->required()
+                ->visibleOn('edit'),
             TextInput::make('location_name')->label('Lokasi')->required(),
             Textarea::make('address')->label('Alamat')->required()->columnSpanFull(),
+            MapPicker::make('map_picker')
+                ->label('Pilih titik pada peta')
+                ->dehydrated(false)
+                ->columnSpanFull(),
             TextInput::make('latitude')->numeric()->required(),
             TextInput::make('longitude')->numeric()->required(),
             TextInput::make('radius_meters')->label('Radius (meter)')->numeric()->minValue(1)->default(100)->required(),
-            DateTimePicker::make('starts_at')->label('Mulai')->seconds(false)->required(),
-            DateTimePicker::make('ends_at')->label('Selesai')->seconds(false)->after('starts_at')->required(),
+            DatePicker::make('starts_at')
+                ->label('Mulai')
+                ->dehydrateStateUsing(fn (string $state): Carbon => Carbon::parse($state)->startOfDay())
+                ->required(),
+            DatePicker::make('ends_at')
+                ->label('Selesai')
+                ->afterOrEqual('starts_at')
+                ->dehydrateStateUsing(fn (string $state): Carbon => Carbon::parse($state)->endOfDay())
+                ->required(),
         ]);
     }
 
@@ -98,8 +126,8 @@ class DutyTripResource extends Resource
             TextEntry::make('manager.name')->label('Atasan'),
             TextEntry::make('location_name')->label('Lokasi'),
             TextEntry::make('address')->label('Alamat'),
-            TextEntry::make('starts_at')->label('Mulai')->dateTime(),
-            TextEntry::make('ends_at')->label('Selesai')->dateTime(),
+            TextEntry::make('starts_at')->label('Mulai')->date(),
+            TextEntry::make('ends_at')->label('Selesai')->date(),
             TextEntry::make('radius_meters')->label('Radius')->suffix(' meter'),
             TextEntry::make('status')
                 ->badge()
@@ -114,8 +142,8 @@ class DutyTripResource extends Resource
             ->columns([
                 TextColumn::make('employee.name')->label('Pegawai')->searchable(),
                 TextColumn::make('location_name')->label('Lokasi')->searchable(),
-                TextColumn::make('starts_at')->label('Mulai')->dateTime()->sortable(),
-                TextColumn::make('ends_at')->label('Selesai')->dateTime()->sortable(),
+                TextColumn::make('starts_at')->label('Mulai')->date()->sortable(),
+                TextColumn::make('ends_at')->label('Selesai')->date()->sortable(),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (DutyTripStatus $state): string => $state->label())

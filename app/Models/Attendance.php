@@ -17,6 +17,7 @@ class Attendance extends Model
     protected $fillable = [
         'duty_trip_id',
         'employee_id',
+        'attendance_date',
         'received_at',
         'latitude',
         'longitude',
@@ -30,6 +31,7 @@ class Attendance extends Model
     protected function casts(): array
     {
         return [
+            'attendance_date' => 'date',
             'received_at' => 'datetime',
             'status' => AttendanceStatus::class,
             'latitude' => 'decimal:7',

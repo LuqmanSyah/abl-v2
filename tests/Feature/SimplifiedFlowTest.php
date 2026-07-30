@@ -25,11 +25,11 @@ class SimplifiedFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_one_trip_accepts_one_server_validated_private_attendance(): void
+    public function test_one_trip_accepts_one_server_validated_attendance_per_day(): void
     {
         Storage::fake('local');
         [$hr, $manager, $employee] = $this->users();
-        $trip = $this->trip($manager, $employee);
+        $trip = $this->trip($manager, $employee, now()->subHour(), now()->addDays(2));
         Storage::disk('local')->put('attendance/evidence.jpg', 'photo');
 
         $recorder = app(AttendanceRecorder::class);
@@ -46,7 +46,19 @@ class SimplifiedFlowTest extends TestCase
 
         $this->assertSame($attendance->id, $duplicate->id);
         $this->assertSame(AttendanceStatus::Valid, $attendance->status);
+        $this->assertSame(today()->toDateString(), $attendance->attendance_date->toDateString());
         $this->assertDatabaseCount('attendances', 1);
+
+        $this->travelTo(now()->addDay());
+        $nextDay = $recorder->record($trip, $employee, [
+            'latitude' => -6.2000,
+            'longitude' => 106.8166,
+            'accuracy_meters' => 20,
+        ], 'attendance/next-day.jpg');
+        $this->assertNotSame($attendance->id, $nextDay->id);
+        $this->assertDatabaseCount('attendances', 2);
+        $this->travelBack();
+
         $this->actingAs($employee)->get(route('attendance.photo', $attendance))->assertOk();
         $this->actingAs(User::factory()->create())->get(route('attendance.photo', $attendance))->assertForbidden();
         $this->actingAs($hr)->get(route('attendance.photo', $attendance))->assertOk();
@@ -82,12 +94,17 @@ class SimplifiedFlowTest extends TestCase
             'target' => 100,
             'achievement' => 120,
         ]);
-        $validTrip = $this->trip($manager, $employee, now()->subHours(3), now()->subHours(2));
-        $this->trip($manager, $employee, now()->subHours(2), now()->subHour());
+        $validTrip = $this->trip(
+            $manager,
+            $employee,
+            now()->subDays(2)->startOfDay()->addHour(),
+            now()->subDay()->endOfDay()->subHour(),
+        );
         Attendance::create([
             'duty_trip_id' => $validTrip->id,
             'employee_id' => $employee->id,
-            'received_at' => now()->subHours(2),
+            'attendance_date' => today()->subDay(),
+            'received_at' => now()->subDay(),
             'latitude' => -6.2,
             'longitude' => 106.8166,
             'accuracy_meters' => 10,

@@ -25,11 +25,16 @@ class AttendanceRecorder
                 throw new BusinessRuleException('Absensi hanya tersedia untuk Pegawai yang ditugaskan.');
             }
 
-            if ($existing = $trip->attendance()->lockForUpdate()->first()) {
+            $receivedAt = now();
+            $attendanceDate = $receivedAt->toDateString();
+
+            if ($existing = $trip->attendances()
+                ->whereDate('attendance_date', $attendanceDate)
+                ->lockForUpdate()
+                ->first()) {
                 return $existing;
             }
 
-            $receivedAt = now();
             if ($receivedAt->isBefore($trip->starts_at) || $receivedAt->isAfter($trip->ends_at)) {
                 throw new BusinessRuleException('Absensi hanya tersedia selama jadwal dinas.');
             }
@@ -50,6 +55,7 @@ class AttendanceRecorder
             return Attendance::create([
                 'duty_trip_id' => $trip->id,
                 'employee_id' => $employee->id,
+                'attendance_date' => $attendanceDate,
                 'received_at' => $receivedAt,
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],

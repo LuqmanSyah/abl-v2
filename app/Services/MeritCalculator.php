@@ -7,6 +7,7 @@ use App\Enums\DutyTripStatus;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
+use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
 use App\Models\MeritResult;
@@ -43,13 +44,22 @@ class MeritCalculator
 
                 $trips = DutyTrip::where('employee_id', $employee->id)
                     ->where('status', DutyTripStatus::Active)
-                    ->whereBetween('ends_at', [$periodStart, $completedUntil]);
-                $tripCount = (clone $trips)->count();
-                $validCount = (clone $trips)->whereHas(
-                    'attendance',
-                    fn ($query) => $query->where('status', AttendanceStatus::Valid),
-                )->count();
-                $attendanceScore = $tripCount ? $validCount / $tripCount * 100 : 0;
+                    ->whereBetween('ends_at', [$periodStart, $completedUntil])
+                    ->get();
+                $requiredAttendanceCount = $trips->sum(function (DutyTrip $trip) use ($periodStart, $completedUntil): int {
+                    $firstDate = $trip->starts_at->greaterThan($periodStart) ? $trip->starts_at : $periodStart;
+                    $lastDate = $trip->ends_at->lessThan($completedUntil) ? $trip->ends_at : $completedUntil;
+
+                    return (int) $firstDate->copy()->startOfDay()->diffInDays($lastDate->copy()->startOfDay()) + 1;
+                });
+                $validCount = Attendance::whereIn('duty_trip_id', $trips->pluck('id'))
+                    ->where('status', AttendanceStatus::Valid)
+                    ->whereDate('attendance_date', '>=', $periodStart)
+                    ->whereDate('attendance_date', '<=', $completedUntil)
+                    ->count();
+                $attendanceScore = $requiredAttendanceCount
+                    ? $validCount / $requiredAttendanceCount * 100
+                    : 0;
 
                 MeritResult::updateOrCreate(
                     ['review_period_id' => $period->id, 'employee_id' => $employee->id],

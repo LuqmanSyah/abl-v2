@@ -24,6 +24,9 @@ class AttendanceController extends Controller
 
         return view('attendance.capture', [
             'trip' => $dutyTrip->load('employee'),
+            'attendance' => $dutyTrip->attendances()
+                ->whereDate('attendance_date', today())
+                ->first(),
         ]);
     }
 

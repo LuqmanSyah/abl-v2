@@ -33,7 +33,7 @@ class ViewDutyTrip extends ViewRecord
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Employee
                     && $this->record->employee_id === auth()->id()
                     && $this->record->status === DutyTripStatus::Active
-                    && ! $this->record->attendance()->exists()
+                    && ! $this->record->attendances()->whereDate('attendance_date', today())->exists()
                     && now()->between($this->record->starts_at, $this->record->ends_at)),
         ];
     }

@@ -79,6 +79,7 @@ class AttendanceResource extends Resource
         return $schema->components([
             TextEntry::make('employee.name')->label('Pegawai'),
             TextEntry::make('dutyTrip.location_name')->label('Lokasi dinas'),
+            TextEntry::make('attendance_date')->label('Tanggal')->date(),
             TextEntry::make('received_at')->label('Waktu server')->dateTime(),
             TextEntry::make('status')
                 ->badge()
@@ -100,6 +101,7 @@ class AttendanceResource extends Resource
             ->columns([
                 TextColumn::make('employee.name')->label('Pegawai')->searchable(),
                 TextColumn::make('dutyTrip.location_name')->label('Lokasi')->searchable(),
+                TextColumn::make('attendance_date')->label('Tanggal')->date()->sortable(),
                 TextColumn::make('received_at')->label('Waktu')->dateTime()->sortable(),
                 TextColumn::make('distance_meters')->label('Jarak')->suffix(' m')->sortable(),
                 TextColumn::make('status')

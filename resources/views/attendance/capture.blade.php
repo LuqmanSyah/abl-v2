@@ -67,7 +67,7 @@
 <body>
 <main>
     <nav class="topbar" aria-label="Navigasi halaman">
-        <a class="back" href="{{ url('/pegawai') }}">Kembali ke portal</a>
+        <a class="back" href="{{ url('/app') }}">Kembali ke portal</a>
         <span id="network" class="network">Terhubung</span>
     </nav>
 
@@ -80,16 +80,18 @@
 
         <div class="content">
             <dl class="facts">
-                <div class="fact"><dt>Jadwal</dt><dd>{{ $trip->starts_at->translatedFormat('d M Y, H:i') }} – {{ $trip->ends_at->translatedFormat('d M Y, H:i') }} WIB</dd></div>
+                <div class="fact"><dt>Jadwal</dt><dd>{{ $trip->starts_at->translatedFormat('d M Y') }} – {{ $trip->ends_at->translatedFormat('d M Y') }}</dd></div>
                 <div class="fact"><dt>Lokasi</dt><dd>{{ $trip->address }}</dd></div>
                 <div class="fact"><dt>Batas jarak</dt><dd>Maksimal {{ number_format($trip->radius_meters) }} meter dari titik tugas</dd></div>
                 <div class="fact"><dt>Pegawai</dt><dd>{{ $trip->employee->name }}</dd></div>
             </dl>
 
-            @if ($trip->attendance)
-                <p class="notice success">Absensi sudah tercatat dengan status <strong>{{ $trip->attendance->status->label() }}</strong>.</p>
+            @if ($attendance)
+                <p class="notice success">Absensi hari ini sudah tercatat dengan status <strong>{{ $attendance->status->label() }}</strong>.</p>
             @elseif (now()->isBefore($trip->starts_at))
-                <p class="notice warning">Absensi dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y, H:i') }} WIB</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
+                <p class="notice warning">Absensi dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y') }}</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
+            @elseif (now()->isAfter($trip->ends_at))
+                <p class="notice warning">Jadwal perjalanan dinas sudah selesai.</p>
             @else
                 <ol class="steps" aria-label="Langkah absensi">
                     <li>Izinkan browser mengakses kamera dan lokasi akurat.</li>

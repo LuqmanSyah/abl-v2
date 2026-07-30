@@ -29,8 +29,9 @@ return new class extends Migration
 
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('duty_trip_id')->unique()->constrained()->cascadeOnDelete();
+            $table->foreignId('duty_trip_id')->constrained()->cascadeOnDelete();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
+            $table->date('attendance_date');
             $table->dateTime('received_at');
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
@@ -40,6 +41,7 @@ return new class extends Migration
             $table->string('status')->default(AttendanceStatus::Valid->value)->index();
             $table->text('review_reason')->nullable();
             $table->timestamps();
+            $table->unique(['duty_trip_id', 'attendance_date']);
         });
     }
 

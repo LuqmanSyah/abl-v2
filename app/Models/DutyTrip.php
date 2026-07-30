@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DutyTrip extends Model
 {
@@ -57,10 +57,10 @@ class DutyTrip extends Model
             }
 
             if ($trip->ends_at->lte($trip->starts_at)) {
-                throw new BusinessRuleException('Waktu selesai harus setelah waktu mulai.');
+                throw new BusinessRuleException('Tanggal selesai tidak boleh sebelum tanggal mulai.');
             }
 
-            if ($trip->exists && $trip->attendance()->exists() && $trip->isDirty([
+            if ($trip->exists && $trip->attendances()->exists() && $trip->isDirty([
                 'employee_id',
                 'manager_id',
                 'location_name',
@@ -86,9 +86,9 @@ class DutyTrip extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
-    public function attendance(): HasOne
+    public function attendances(): HasMany
     {
-        return $this->hasOne(Attendance::class);
+        return $this->hasMany(Attendance::class);
     }
 
     public function canBeChangedBy(User $manager): bool
@@ -97,7 +97,7 @@ class DutyTrip extends Model
             && $this->manager_id === $manager->id
             && $this->status === DutyTripStatus::Active
             && $this->starts_at->isFuture()
-            && ! $this->attendance()->exists();
+            && ! $this->attendances()->exists();
     }
 
     public function cancel(User $manager): void

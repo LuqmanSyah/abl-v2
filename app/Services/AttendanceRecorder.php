@@ -4,46 +4,34 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
-use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
-use App\Models\ActivityLog;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\User;
-use App\Notifications\AttendanceNeedsReview;
 use App\Support\GeoDistance;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
-use Throwable;
 
 class AttendanceRecorder
 {
+    private const MAX_ACCURACY_METERS = 150;
+
     /** @param array<string, mixed> $data */
     public function record(DutyTrip $trip, User $employee, array $data, string $photoPath): Attendance
     {
         return DB::transaction(function () use ($trip, $employee, $data, $photoPath): Attendance {
             $trip = DutyTrip::query()->lockForUpdate()->findOrFail($trip->getKey());
 
-            if ($trip->employee_id !== $employee->id) {
-                throw new BusinessRuleException('Absensi hanya tersedia untuk pegawai yang ditugaskan.');
+            if ($trip->employee_id !== $employee->id || $trip->status !== DutyTripStatus::Active) {
+                throw new BusinessRuleException('Absensi hanya tersedia untuk Pegawai yang ditugaskan.');
             }
 
-            $capturedAt = CarbonImmutable::parse($data['captured_at']);
-            $attendanceDate = $capturedAt->toDateString();
-
-            if ($existing = $trip->attendances()->whereDate('attendance_date', $attendanceDate)->lockForUpdate()->first()) {
+            if ($existing = $trip->attendance()->lockForUpdate()->first()) {
                 return $existing;
             }
 
-            if ($trip->status !== DutyTripStatus::Approved) {
-                throw new BusinessRuleException('Absensi hanya tersedia untuk dinas aktif.');
-            }
-
-            $receivedAt = CarbonImmutable::now();
-
-            if ($receivedAt->isBefore($trip->starts_at) || $capturedAt->isBefore($trip->starts_at)) {
-                throw new BusinessRuleException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
+            $receivedAt = now();
+            if ($receivedAt->isBefore($trip->starts_at) || $receivedAt->isAfter($trip->ends_at)) {
+                throw new BusinessRuleException('Absensi hanya tersedia selama jadwal dinas.');
             }
 
             $distance = GeoDistance::meters(
@@ -52,50 +40,25 @@ class AttendanceRecorder
                 (float) $data['latitude'],
                 (float) $data['longitude'],
             );
-            $clockMismatch = abs($capturedAt->getTimestamp() - $receivedAt->getTimestamp())
-                > config('hr.attendance_clock_tolerance_minutes') * 60;
-            $status = match (true) {
-                $distance > $trip->radius_meters => AttendanceStatus::NeedsReview,
-                $capturedAt->isAfter($trip->ends_at) => AttendanceStatus::Late,
-                default => AttendanceStatus::Valid,
-            };
-
-            if ($clockMismatch) {
-                $status = AttendanceStatus::NeedsReview;
-            }
-
+            $outsideRadius = $distance > $trip->radius_meters;
+            $poorAccuracy = $data['accuracy_meters'] > self::MAX_ACCURACY_METERS;
             $reasons = array_filter([
-                $clockMismatch ? 'Waktu perangkat melewati batas toleransi.' : null,
-                $distance > $trip->radius_meters ? 'Lokasi berada di luar radius dinas.' : null,
-                $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,
+                $outsideRadius ? 'Lokasi berada di luar radius dinas.' : null,
+                $poorAccuracy ? 'Akurasi GPS melebihi 150 meter.' : null,
             ]);
 
-            $attendance = Attendance::create([
+            return Attendance::create([
                 'duty_trip_id' => $trip->id,
                 'employee_id' => $employee->id,
-                'attendance_date' => $attendanceDate,
-                'captured_at' => $capturedAt,
+                'received_at' => $receivedAt,
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
-                'accuracy_meters' => $data['accuracy_meters'] ?? null,
+                'accuracy_meters' => $data['accuracy_meters'],
                 'distance_meters' => $distance,
                 'photo_path' => $photoPath,
-                'status' => $status,
+                'status' => $reasons ? AttendanceStatus::NeedsReview : AttendanceStatus::Valid,
                 'review_reason' => $reasons ? implode(' ', $reasons) : null,
             ]);
-
-            ActivityLog::record('attendance.created', $attendance, $employee);
-
-            if ($attendance->status === AttendanceStatus::NeedsReview) {
-                try {
-                    $hrUsers = User::where('role', UserRole::Hr)->where('is_active', true)->get();
-                    Notification::send($hrUsers, new AttendanceNeedsReview($attendance));
-                } catch (Throwable $exception) {
-                    report($exception);
-                }
-            }
-
-            return $attendance;
         }, 3);
     }
 }

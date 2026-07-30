@@ -4,102 +4,67 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
-use App\Enums\ReviewType;
+use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
 use App\Models\MeritResult;
-use App\Models\PerformanceReview;
 use App\Models\ReviewPeriod;
 use App\Models\User;
-use App\Notifications\MeritReadyForVerification;
-use Carbon\CarbonImmutable;
-use DomainException;
 use Illuminate\Support\Facades\DB;
 
 class MeritCalculator
 {
-    public function calculate(ReviewPeriod $period, User $employee): MeritResult
+    public function publish(ReviewPeriod $period, User $hr): int
     {
-        return DB::transaction(function () use ($period, $employee): MeritResult {
+        return DB::transaction(function () use ($period, $hr): int {
             $period = ReviewPeriod::query()->lockForUpdate()->findOrFail($period->id);
-            $identity = ['review_period_id' => $period->id, 'employee_id' => $employee->id];
-            $result = MeritResult::where($identity)->lockForUpdate()->first();
 
-            if ($result?->manager_verified_at || $result?->hr_verified_at || $result?->published_at) {
-                throw new DomainException('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.');
+            if ($hr->role !== UserRole::Hr || $period->published_at) {
+                throw new BusinessRuleException('Periode tidak dapat dipublikasikan pengguna ini.');
             }
 
-            $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
-            $indicatorWeight = $kpis->sum(fn (EmployeeKpi $kpi) => $kpi->indicator?->weight ?? 0);
-            $kpiScore = $indicatorWeight
-                ? $kpis->sum(fn (EmployeeKpi $kpi) => min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2) * ($kpi->indicator?->weight ?? 0)) / $indicatorWeight * 100
-                : 0;
-
+            $employees = User::where('role', UserRole::Employee)->where('is_active', true)->get();
             $periodStart = $period->starts_at->startOfDay();
             $periodEnd = $period->ends_at->endOfDay();
-            $dutyTrips = DutyTrip::where('employee_id', $employee->id)
-                ->where('starts_at', '<=', $periodEnd)
-                ->where('ends_at', '>=', $periodStart)
-                ->where('status', DutyTripStatus::Approved)
-                ->where('ends_at', '<=', now())
-                ->with(['attendances' => fn ($q) => $q
-                    ->where('status', AttendanceStatus::Valid)
-                    ->whereBetween('captured_at', [$periodStart, $periodEnd]),
-                ])->get();
-            $allDates = collect();
-            $validDates = collect();
-            foreach ($dutyTrips as $trip) {
-                $range = collect(CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
-                    ->map(fn ($d) => $d->toDateString());
-                $allDates = $allDates->merge($range)->unique();
-                $validDates = $validDates->merge(
-                    $trip->attendances->pluck('attendance_date')->map(fn ($d) => $d instanceof CarbonImmutable ? $d->toDateString() : $d)
-                )->unique();
-            }
-            $totalDays = $allDates->count();
-            $validDays = $validDates->count();
-            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
+            $completedUntil = $periodEnd->isFuture() ? now() : $periodEnd;
 
-            $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);
-            $review360Score = $this->reviewScore($period, $employee, [ReviewType::EmployeeToManager, ReviewType::Peer]);
-            $total = ($kpiScore * $period->kpi_weight + $disciplineScore * $period->discipline_weight
-                + $managerScore * $period->manager_weight + $review360Score * $period->review_360_weight) / 100;
-            $scores = [
-                'kpi_score' => round($kpiScore, 2), 'discipline_score' => round($disciplineScore, 2),
-                'manager_score' => round($managerScore, 2), 'review_360_score' => round($review360Score, 2),
-                'total_score' => round($total, 2), 'estimated_bonus' => round((float) $period->base_bonus * $total / 100, 2),
-                'calculated_at' => now(),
-                'manager_verified_by' => null, 'manager_verified_at' => null, 'hr_verified_by' => null,
-                'hr_verified_at' => null, 'published_at' => null,
-            ];
+            foreach ($employees as $employee) {
+                $kpis = EmployeeKpi::where('review_period_id', $period->id)
+                    ->where('employee_id', $employee->id)
+                    ->get();
+                $kpiScore = $kpis->isEmpty()
+                    ? 0
+                    : $kpis->avg(fn (EmployeeKpi $kpi): float => min(
+                        (float) $kpi->achievement / (float) $kpi->target,
+                        1.2,
+                    ) * 100);
 
-            if ($result) {
-                $result->update($scores);
-            } else {
-                $result = MeritResult::create([...$identity, ...$scores]);
+                $trips = DutyTrip::where('employee_id', $employee->id)
+                    ->where('status', DutyTripStatus::Active)
+                    ->whereBetween('ends_at', [$periodStart, $completedUntil]);
+                $tripCount = (clone $trips)->count();
+                $validCount = (clone $trips)->whereHas(
+                    'attendance',
+                    fn ($query) => $query->where('status', AttendanceStatus::Valid),
+                )->count();
+                $attendanceScore = $tripCount ? $validCount / $tripCount * 100 : 0;
+
+                MeritResult::updateOrCreate(
+                    ['review_period_id' => $period->id, 'employee_id' => $employee->id],
+                    [
+                        'kpi_score' => round($kpiScore, 2),
+                        'attendance_score' => round($attendanceScore, 2),
+                        'total_score' => round($kpiScore * 0.8 + $attendanceScore * 0.2, 2),
+                    ],
+                );
             }
 
-            ActivityLog::record('merit.calculated', $result);
+            $period->forceFill(['published_at' => now()])->save();
+            ActivityLog::record('merit.published', $period, $hr, ['employees' => $employees->count()]);
 
-            if (! $result->wasRecentlyCreated && $result->wasChanged('total_score')) {
-                ActivityLog::record('merit.recalculated', $result);
-            }
-
-            if ($result->wasRecentlyCreated) {
-                $employee->manager?->notify(new MeritReadyForVerification($result));
-            }
-
-            return $result;
+            return $employees->count();
         }, 3);
-    }
-
-    /** @param array<ReviewType> $types */
-    private function reviewScore(ReviewPeriod $period, User $employee, array $types): float
-    {
-        $average = PerformanceReview::where('review_period_id', $period->id)
-            ->where('reviewee_id', $employee->id)->whereIn('type', array_map(fn (ReviewType $type) => $type->value, $types))->avg('score');
-
-        return $average !== null ? (float) $average / 5 * 100 : 0;
     }
 }

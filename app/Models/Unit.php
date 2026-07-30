@@ -10,7 +10,7 @@ class Unit extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'code'];
+    protected $fillable = ['name'];
 
     public function positions(): HasMany
     {

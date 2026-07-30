@@ -13,7 +13,15 @@ class EmployeeKpi extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['review_period_id', 'kpi_indicator_id', 'employee_id', 'manager_id', 'target', 'achievement', 'notes'];
+    protected $fillable = [
+        'review_period_id',
+        'employee_id',
+        'manager_id',
+        'name',
+        'target',
+        'achievement',
+        'notes',
+    ];
 
     protected function casts(): array
     {
@@ -23,61 +31,38 @@ class EmployeeKpi extends Model
     protected static function booted(): void
     {
         static::saving(function (self $kpi): void {
-            if (($kpi->hasPublishedMeritResult() || ($kpi->exists && $kpi->hasPublishedMeritResult(true)))
-                && (! $kpi->exists || $kpi->isDirty($kpi->getFillable()))) {
-                throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat diubah.');
+            $periodIds = array_filter([
+                $kpi->review_period_id,
+                $kpi->exists ? $kpi->getRawOriginal('review_period_id') : null,
+            ]);
+
+            if (ReviewPeriod::whereKey($periodIds)->whereNotNull('published_at')->exists()) {
+                throw new BusinessRuleException('KPI pada periode terpublikasi tidak dapat diubah.');
             }
 
-            if ((float) $kpi->target <= 0) {
-                throw new BusinessRuleException('Target KPI harus lebih dari 0.');
+            if ((float) $kpi->target <= 0 || (float) $kpi->achievement < 0) {
+                throw new BusinessRuleException('Target harus lebih dari 0 dan capaian tidak boleh negatif.');
             }
-            if ((float) $kpi->achievement < 0) {
-                throw new BusinessRuleException('Capaian KPI tidak boleh negatif.');
-            }
-            if (KpiIndicator::whereKey($kpi->kpi_indicator_id)->where('review_period_id', $kpi->review_period_id)->doesntExist()) {
-                throw new BusinessRuleException('Indikator KPI bukan bagian periode terpilih.');
-            }
-            if (User::whereKey($kpi->employee_id)->where('manager_id', $kpi->manager_id)->doesntExist()) {
-                throw new BusinessRuleException('Pegawai bukan bawahan Atasan terpilih.');
-            }
-        });
 
-        static::created(fn (self $kpi) => ActivityLog::record('kpi.created', $kpi, data: [
-            'values' => $kpi->only($kpi->getFillable()),
-        ]));
-
-        static::updated(function (self $kpi): void {
-            $changes = collect($kpi->getChanges())
-                ->except('updated_at')
-                ->mapWithKeys(fn (mixed $value, string $field): array => [
-                    $field => ['old' => $kpi->getRawOriginal($field), 'new' => $value],
-                ])
-                ->all();
-
-            if ($changes) {
-                ActivityLog::record('kpi.updated', $kpi, data: ['changes' => $changes]);
+            if (User::whereKey($kpi->employee_id)
+                ->where('role', UserRole::Employee)
+                ->where('manager_id', $kpi->manager_id)
+                ->where('is_active', true)
+                ->doesntExist()) {
+                throw new BusinessRuleException('Pegawai bukan bawahan aktif Atasan terpilih.');
             }
         });
 
         static::deleting(function (self $kpi): void {
-            if ($kpi->hasPublishedMeritResult()) {
-                throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
+            if ($kpi->reviewPeriod()->whereNotNull('published_at')->exists()) {
+                throw new BusinessRuleException('KPI pada periode terpublikasi tidak dapat dihapus.');
             }
         });
-
-        static::deleted(fn (self $kpi) => ActivityLog::record('kpi.deleted', $kpi, data: [
-            'values' => $kpi->only($kpi->getFillable()),
-        ]));
     }
 
     public function reviewPeriod(): BelongsTo
     {
         return $this->belongsTo(ReviewPeriod::class);
-    }
-
-    public function indicator(): BelongsTo
-    {
-        return $this->belongsTo(KpiIndicator::class, 'kpi_indicator_id');
     }
 
     public function employee(): BelongsTo
@@ -88,14 +73,6 @@ class EmployeeKpi extends Model
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
-    }
-
-    public function hasPublishedMeritResult(bool $original = false): bool
-    {
-        return MeritResult::where('review_period_id', $original ? $this->getRawOriginal('review_period_id') : $this->review_period_id)
-            ->where('employee_id', $original ? $this->getRawOriginal('employee_id') : $this->employee_id)
-            ->whereNotNull('published_at')
-            ->exists();
     }
 
     public function scopeVisibleTo(Builder $query, User $user): Builder

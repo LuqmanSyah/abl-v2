@@ -2,16 +2,21 @@
 
 namespace App\Filament\Resources\Attendances;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\UserRole;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
 use App\Filament\Resources\Attendances\Pages\ViewAttendance;
-use App\Filament\Resources\Attendances\Schemas\AttendanceInfolist;
-use App\Filament\Resources\Attendances\Tables\AttendancesTable;
 use App\Models\Attendance;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -25,20 +30,9 @@ class AttendanceResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Operasional';
 
-    protected static ?int $navigationSort = 20;
-
     protected static ?string $modelLabel = 'absensi';
 
-    protected static ?string $pluralModelLabel = 'riwayat absensi';
-
-    public static function getNavigationLabel(): string
-    {
-        return match (auth()->user()?->role) {
-            UserRole::Employee => 'Riwayat Absensi',
-            UserRole::Manager, UserRole::Hr => 'Monitoring Absensi',
-            default => 'Absensi',
-        };
-    }
+    protected static ?string $pluralModelLabel = 'absensi';
 
     public static function getEloquentQuery(): Builder
     {
@@ -47,7 +41,10 @@ class AttendanceResource extends Resource
 
         return match ($user->role) {
             UserRole::Employee => $query->where('employee_id', $user->id),
-            UserRole::Manager => $query->whereHas('dutyTrip', fn (Builder $query) => $query->where('manager_id', $user->id)),
+            UserRole::Manager => $query->whereHas(
+                'dutyTrip',
+                fn (Builder $query) => $query->where('manager_id', $user->id),
+            ),
             UserRole::Hr => $query,
         };
     }
@@ -79,12 +76,52 @@ class AttendanceResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return AttendanceInfolist::configure($schema);
+        return $schema->components([
+            TextEntry::make('employee.name')->label('Pegawai'),
+            TextEntry::make('dutyTrip.location_name')->label('Lokasi dinas'),
+            TextEntry::make('received_at')->label('Waktu server')->dateTime(),
+            TextEntry::make('status')
+                ->badge()
+                ->formatStateUsing(fn (AttendanceStatus $state): string => $state->label())
+                ->color(fn (AttendanceStatus $state): string => $state->color()),
+            TextEntry::make('distance_meters')->label('Jarak')->suffix(' meter'),
+            TextEntry::make('accuracy_meters')->label('Akurasi GPS')->suffix(' meter'),
+            TextEntry::make('review_reason')->label('Alasan pemeriksaan')->placeholder('-'),
+            ImageEntry::make('photo_path')
+                ->label('Foto')
+                ->getStateUsing(fn (Attendance $record): string => route('attendance.photo', $record))
+                ->imageHeight(240),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
-        return AttendancesTable::configure($table);
+        return $table
+            ->columns([
+                TextColumn::make('employee.name')->label('Pegawai')->searchable(),
+                TextColumn::make('dutyTrip.location_name')->label('Lokasi')->searchable(),
+                TextColumn::make('received_at')->label('Waktu')->dateTime()->sortable(),
+                TextColumn::make('distance_meters')->label('Jarak')->suffix(' m')->sortable(),
+                TextColumn::make('status')
+                    ->badge()
+                    ->formatStateUsing(fn (AttendanceStatus $state): string => $state->label())
+                    ->color(fn (AttendanceStatus $state): string => $state->color()),
+            ])
+            ->filters([
+                SelectFilter::make('status')->options(AttendanceStatus::options()),
+            ])
+            ->recordActions([
+                ViewAction::make(),
+                Action::make('verify')
+                    ->label('Verifikasi')
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (Attendance $record): bool => auth()->user()?->role === UserRole::Hr
+                        && $record->status === AttendanceStatus::NeedsReview)
+                    ->action(fn (Attendance $record) => $record->verifyByHr(auth()->user())),
+            ])
+            ->defaultSort('received_at', 'desc');
     }
 
     public static function getPages(): array

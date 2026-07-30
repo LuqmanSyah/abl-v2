@@ -11,8 +11,7 @@ return new class extends Migration
     {
         Schema::create('units', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('code')->unique();
+            $table->string('name')->unique();
             $table->timestamps();
         });
 
@@ -31,7 +30,6 @@ return new class extends Migration
             $table->foreignId('position_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('employee_number')->nullable()->unique();
-            $table->string('phone')->nullable();
             $table->boolean('is_active')->default(true)->index();
         });
     }
@@ -48,7 +46,6 @@ return new class extends Migration
                 'position_id',
                 'manager_id',
                 'employee_number',
-                'phone',
                 'is_active',
             ]);
         });

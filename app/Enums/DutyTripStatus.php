@@ -4,13 +4,13 @@ namespace App\Enums;
 
 enum DutyTripStatus: string
 {
-    case Approved = 'approved';
+    case Active = 'active';
     case Cancelled = 'cancelled';
 
     public function label(): string
     {
         return match ($this) {
-            self::Approved => 'Ditugaskan',
+            self::Active => 'Aktif',
             self::Cancelled => 'Dibatalkan',
         };
     }
@@ -18,7 +18,7 @@ enum DutyTripStatus: string
     public function color(): string
     {
         return match ($this) {
-            self::Approved => 'info',
+            self::Active => 'info',
             self::Cancelled => 'danger',
         };
     }

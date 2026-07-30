@@ -32,10 +32,9 @@ class AttendanceController extends Controller
         abort_unless($this->canAttend($request, $dutyTrip), 403);
 
         $data = $request->validate([
-            'captured_at' => ['required', 'date'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'accuracy_meters' => ['nullable', 'integer', 'min:0'],
+            'accuracy_meters' => ['required', 'integer', 'min:0'],
             'photo' => ['required', 'image', 'max:5120'],
         ]);
 
@@ -85,6 +84,6 @@ class AttendanceController extends Controller
         return $request->user()?->role === UserRole::Employee
             && $request->user()->is_active
             && $trip->employee_id === $request->user()->id
-            && $trip->status === DutyTripStatus::Approved;
+            && $trip->status === DutyTripStatus::Active;
     }
 }

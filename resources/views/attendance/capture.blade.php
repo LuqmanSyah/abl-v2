@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#2563eb">
-    <title>Absensi · {{ $trip->destination }}</title>
+    <title>Absensi · {{ $trip->location_name }}</title>
     <style>
         :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; }
         * { box-sizing: border-box; }
@@ -75,7 +75,7 @@
         <header class="hero">
             <p class="eyebrow">Absensi dinas</p>
             <h1>Catat kehadiran di lokasi</h1>
-            <p class="destination"><strong>{{ $trip->destination }}</strong><br>{{ $trip->location_name }}</p>
+            <p class="destination"><strong>{{ $trip->location_name }}</strong><br>{{ $trip->address }}</p>
         </header>
 
         <div class="content">
@@ -86,9 +86,8 @@
                 <div class="fact"><dt>Pegawai</dt><dd>{{ $trip->employee->name }}</dd></div>
             </dl>
 
-            @php $todayAttendance = $trip->attendances()->whereDate('captured_at', today())->first(); @endphp
-            @if ($todayAttendance)
-                <p class="notice success">Absensi hari ini sudah tercatat dengan status <strong>{{ $todayAttendance->status->label() }}</strong>.</p>
+            @if ($trip->attendance)
+                <p class="notice success">Absensi sudah tercatat dengan status <strong>{{ $trip->attendance->status->label() }}</strong>.</p>
             @elseif (now()->isBefore($trip->starts_at))
                 <p class="notice warning">Absensi dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y, H:i') }} WIB</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
             @else
@@ -235,7 +234,7 @@ async function watermarkedPhoto(blob, data) {
         canvas.height = Math.round(image.height * scale);
         const context = canvas.getContext('2d');
         context.drawImage(image, 0, 0, canvas.width, canvas.height);
-        const lines = [employee, new Date(data.captured_at).toLocaleString('id-ID'), `${data.latitude}, ${data.longitude}`, place];
+        const lines = [employee, new Date().toLocaleString('id-ID'), `${data.latitude}, ${data.longitude}`, place];
         context.font = `${Math.max(18, canvas.width / 45)}px system-ui`;
         const lineHeight = Math.max(25, canvas.width / 32);
         context.fillStyle = '#000b';
@@ -282,7 +281,6 @@ form?.addEventListener('submit', async event => {
         const position = await locationNow();
         button.textContent = 'Menyiapkan foto…';
         const data = {
-            captured_at: new Date().toISOString(),
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy_meters: Math.round(position.coords.accuracy),

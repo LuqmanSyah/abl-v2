@@ -32,8 +32,9 @@ class ViewDutyTrip extends ViewRecord
                 ->url(fn (): string => route('attendance.capture', $this->record))
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Employee
                     && $this->record->employee_id === auth()->id()
-                    && $this->record->status === DutyTripStatus::Approved
-                    && ! $this->record->attendances()->whereDate('captured_at', today())->exists()),
+                    && $this->record->status === DutyTripStatus::Active
+                    && ! $this->record->attendance()->exists()
+                    && now()->between($this->record->starts_at, $this->record->ends_at)),
         ];
     }
 }

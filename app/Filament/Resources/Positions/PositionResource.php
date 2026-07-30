@@ -6,13 +6,15 @@ use App\Enums\UserRole;
 use App\Filament\Resources\Positions\Pages\CreatePosition;
 use App\Filament\Resources\Positions\Pages\EditPosition;
 use App\Filament\Resources\Positions\Pages\ListPositions;
-use App\Filament\Resources\Positions\Schemas\PositionForm;
-use App\Filament\Resources\Positions\Tables\PositionsTable;
 use App\Models\Position;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
@@ -24,8 +26,6 @@ class PositionResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedIdentification;
 
     protected static string|UnitEnum|null $navigationGroup = 'Organisasi';
-
-    protected static ?int $navigationSort = 30;
 
     protected static ?string $modelLabel = 'jabatan';
 
@@ -51,19 +51,25 @@ class PositionResource extends Resource
         return static::canViewAny();
     }
 
-    public static function canDeleteAny(): bool
-    {
-        return static::canViewAny();
-    }
-
     public static function form(Schema $schema): Schema
     {
-        return PositionForm::configure($schema);
+        return $schema->components([
+            Select::make('unit_id')->label('Unit')->relationship('unit', 'name')->required(),
+            TextInput::make('name')->label('Nama')->required(),
+            TextInput::make('level')->numeric()->minValue(1)->default(1)->required(),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
-        return PositionsTable::configure($table);
+        return $table
+            ->columns([
+                TextColumn::make('name')->label('Nama')->searchable()->sortable(),
+                TextColumn::make('unit.name')->label('Unit')->searchable(),
+                TextColumn::make('level')->label('Level')->sortable(),
+                TextColumn::make('users_count')->label('Pegawai')->counts('users'),
+            ])
+            ->recordActions([EditAction::make()]);
     }
 
     public static function getPages(): array

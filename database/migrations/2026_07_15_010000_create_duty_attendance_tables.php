@@ -10,33 +10,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('duty_locations', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->text('address');
-            $table->decimal('latitude', 10, 7);
-            $table->decimal('longitude', 10, 7);
-            $table->unsignedInteger('radius_meters')->default(100);
-            $table->boolean('is_active')->default(true)->index();
-            $table->timestamps();
-        });
-
         Schema::create('duty_trips', function (Blueprint $table) {
             $table->id();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('manager_id')->constrained('users')->restrictOnDelete();
-            $table->foreignId('duty_location_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('destination');
-            $table->text('purpose');
-            $table->dateTime('starts_at');
-            $table->dateTime('ends_at');
             $table->string('location_name');
             $table->text('address');
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
-            $table->unsignedInteger('radius_meters');
-            $table->string('status')->default(DutyTripStatus::Approved->value)->index();
-            $table->timestamp('approved_at')->nullable();
+            $table->unsignedInteger('radius_meters')->default(100);
+            $table->dateTime('starts_at');
+            $table->dateTime('ends_at');
+            $table->string('status')->default(DutyTripStatus::Active->value)->index();
             $table->timestamps();
             $table->index(['employee_id', 'starts_at']);
             $table->index(['manager_id', 'status']);
@@ -44,19 +29,17 @@ return new class extends Migration
 
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('duty_trip_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('duty_trip_id')->unique()->constrained()->cascadeOnDelete();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
-            $table->date('attendance_date');
-            $table->dateTime('captured_at');
+            $table->dateTime('received_at');
             $table->decimal('latitude', 10, 7);
             $table->decimal('longitude', 10, 7);
-            $table->unsignedInteger('accuracy_meters')->nullable();
+            $table->unsignedInteger('accuracy_meters');
             $table->unsignedInteger('distance_meters');
             $table->string('photo_path');
             $table->string('status')->default(AttendanceStatus::Valid->value)->index();
             $table->text('review_reason')->nullable();
             $table->timestamps();
-            $table->unique(['duty_trip_id', 'employee_id', 'attendance_date']);
         });
     }
 
@@ -64,6 +47,5 @@ return new class extends Migration
     {
         Schema::dropIfExists('attendances');
         Schema::dropIfExists('duty_trips');
-        Schema::dropIfExists('duty_locations');
     }
 };

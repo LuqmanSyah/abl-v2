@@ -3,35 +3,39 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class MeritResult extends Model
+class DevelopmentPlan extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'review_period_id',
         'employee_id',
-        'kpi_score',
-        'attendance_score',
-        'total_score',
+        'target',
+        'current_gap',
+        'recommended_action',
+        'review_date',
     ];
 
     protected function casts(): array
     {
-        return [
-            'kpi_score' => 'decimal:2',
-            'attendance_score' => 'decimal:2',
-            'total_score' => 'decimal:2',
-        ];
+        return ['review_date' => 'date'];
     }
 
-    public function reviewPeriod(): BelongsTo
+    protected static function booted(): void
     {
-        return $this->belongsTo(ReviewPeriod::class);
+        static::saving(function (self $plan): void {
+            if (User::whereKey($plan->employee_id)
+                ->where('role', UserRole::Employee)
+                ->where('is_active', true)
+                ->doesntExist()) {
+                throw new BusinessRuleException('Rencana pengembangan hanya untuk Pegawai aktif.');
+            }
+        });
     }
 
     public function employee(): BelongsTo
@@ -42,9 +46,7 @@ class MeritResult extends Model
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         return match ($user->role) {
-            UserRole::Employee => $query
-                ->where('employee_id', $user->id)
-                ->whereHas('reviewPeriod', fn (Builder $query) => $query->whereNotNull('published_at')),
+            UserRole::Employee => $query->where('employee_id', $user->id),
             UserRole::Manager => $query->whereHas(
                 'employee',
                 fn (Builder $query) => $query->where('manager_id', $user->id),

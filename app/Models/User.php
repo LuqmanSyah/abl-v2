@@ -12,12 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
     protected static function booted(): void
     {
@@ -56,10 +55,7 @@ class User extends Authenticatable implements FilamentUser
         'unit_id',
         'position_id',
         'manager_id',
-        'delegate_id',
         'employee_number',
-        'phone',
-        'avatar_url',
         'is_active',
     ];
 
@@ -90,12 +86,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active && match ($panel->getId()) {
-            'employee' => $this->role === UserRole::Employee,
-            'manager' => $this->role === UserRole::Manager,
-            'hr' => $this->role === UserRole::Hr,
-            default => false,
-        };
+        return $this->is_active;
     }
 
     public function unit(): BelongsTo
@@ -113,19 +104,9 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(self::class, 'manager_id');
     }
 
-    public function delegate(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'delegate_id');
-    }
-
     public function subordinates(): HasMany
     {
         return $this->hasMany(self::class, 'manager_id');
-    }
-
-    public function delegatedFrom(): HasMany
-    {
-        return $this->hasMany(self::class, 'delegate_id');
     }
 
     public function dutyTrips(): HasMany
@@ -153,23 +134,13 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Attendance::class, 'employee_id');
     }
 
-    public function competencies(): HasMany
+    public function developmentPlan(): HasOne
     {
-        return $this->hasMany(EmployeeCompetency::class);
+        return $this->hasOne(DevelopmentPlan::class, 'employee_id');
     }
 
-    public function careerGoal(): HasOne
+    public function developmentRequests(): HasMany
     {
-        return $this->hasOne(CareerGoal::class);
-    }
-
-    public function trainingRequests(): HasMany
-    {
-        return $this->hasMany(TrainingRequest::class);
-    }
-
-    public function mentorings(): HasMany
-    {
-        return $this->hasMany(Mentoring::class, 'employee_id');
+        return $this->hasMany(DevelopmentRequest::class, 'employee_id');
     }
 }

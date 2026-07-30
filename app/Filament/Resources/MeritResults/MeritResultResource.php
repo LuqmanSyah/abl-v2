@@ -2,16 +2,16 @@
 
 namespace App\Filament\Resources\MeritResults;
 
-use App\Enums\UserRole;
 use App\Filament\Resources\MeritResults\Pages\ListMeritResults;
 use App\Filament\Resources\MeritResults\Pages\ViewMeritResult;
-use App\Filament\Resources\MeritResults\Schemas\MeritResultInfolist;
-use App\Filament\Resources\MeritResults\Tables\MeritResultsTable;
 use App\Models\MeritResult;
 use BackedEnum;
+use Filament\Actions\ViewAction;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -25,21 +25,9 @@ class MeritResultResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Kinerja';
 
-    protected static ?int $navigationSort = 50;
-
     protected static ?string $modelLabel = 'hasil merit';
 
     protected static ?string $pluralModelLabel = 'hasil merit';
-
-    public static function getNavigationLabel(): string
-    {
-        return match (auth()->user()?->role) {
-            UserRole::Employee => 'Hasil Merit',
-            UserRole::Manager => 'Verifikasi Merit',
-            UserRole::Hr => 'Publikasi Merit',
-            default => 'Hasil Merit',
-        };
-    }
 
     public static function getEloquentQuery(): Builder
     {
@@ -73,12 +61,27 @@ class MeritResultResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return MeritResultInfolist::configure($schema);
+        return $schema->components([
+            TextEntry::make('reviewPeriod.name')->label('Periode'),
+            TextEntry::make('employee.name')->label('Pegawai'),
+            TextEntry::make('kpi_score')->label('KPI (80%)')->numeric(decimalPlaces: 2),
+            TextEntry::make('attendance_score')->label('Kehadiran (20%)')->numeric(decimalPlaces: 2),
+            TextEntry::make('total_score')->label('Nilai akhir')->numeric(decimalPlaces: 2),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
-        return MeritResultsTable::configure($table);
+        return $table
+            ->columns([
+                TextColumn::make('reviewPeriod.name')->label('Periode')->searchable(),
+                TextColumn::make('employee.name')->label('Pegawai')->searchable(),
+                TextColumn::make('kpi_score')->label('KPI')->numeric(decimalPlaces: 2)->sortable(),
+                TextColumn::make('attendance_score')->label('Kehadiran')->numeric(decimalPlaces: 2)->sortable(),
+                TextColumn::make('total_score')->label('Nilai akhir')->numeric(decimalPlaces: 2)->sortable(),
+            ])
+            ->recordActions([ViewAction::make()])
+            ->defaultSort('total_score', 'desc');
     }
 
     public static function getPages(): array

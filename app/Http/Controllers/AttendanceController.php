@@ -59,8 +59,8 @@ class AttendanceController extends Controller
         }
 
         $message = $attendance->status === AttendanceStatus::Valid
-            ? 'Absensi berhasil disimpan.'
-            : 'Absensi tersimpan dengan status: '.$attendance->status->label().'.';
+            ? 'Absensi dinas berhasil disimpan.'
+            : 'Absensi dinas tersimpan dengan status: '.$attendance->status->label().'.';
 
         return response()->json(['message' => $message, 'attendance' => $attendance], $created ? 201 : 200);
     }

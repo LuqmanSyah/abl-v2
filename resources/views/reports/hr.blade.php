@@ -42,7 +42,7 @@
 <main>
     <div class="card">
         <div class="head">
-            <div><a class="back" href="{{ url('/hr') }}">Kembali ke Panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.</p></div>
+            <div><a class="back" href="{{ url('/hr') }}">Kembali ke Panel HR</a><h1>Laporan SDM</h1><p class="subtitle">Ringkasan absensi dinas, merit, pelatihan, dan mentoring pegawai.</p></div>
             <div class="actions">
                 @php $queryParams = array_filter(['review_period_id' => $filters['review_period_id'], 'unit_id' => $filters['unit_id'], 'position_id' => $filters['position_id'], 'group_by' => $filters['group_by']] + (isset($filters['columns']) ? ['columns' => $filters['columns']] : [])); @endphp
                 <a class="button btn-csv" href="{{ route('hr.reports.export', $queryParams) }}">

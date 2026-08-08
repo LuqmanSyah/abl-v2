@@ -27,16 +27,16 @@ class AttendanceResource extends Resource
 
     protected static ?int $navigationSort = 20;
 
-    protected static ?string $modelLabel = 'absensi';
+    protected static ?string $modelLabel = 'absensi dinas';
 
-    protected static ?string $pluralModelLabel = 'riwayat absensi';
+    protected static ?string $pluralModelLabel = 'riwayat absensi dinas';
 
     public static function getNavigationLabel(): string
     {
         return match (auth()->user()?->role) {
-            UserRole::Employee => 'Riwayat Absensi',
-            UserRole::Manager, UserRole::Hr => 'Monitoring Absensi',
-            default => 'Absensi',
+            UserRole::Employee => 'Riwayat Absensi Dinas',
+            UserRole::Manager, UserRole::Hr => 'Monitoring Absensi Dinas',
+            default => 'Absensi Dinas',
         };
     }
 

@@ -24,7 +24,7 @@ class MeritPublished extends Notification
     {
         return [
             'title' => 'Hasil Merit Telah Dipublikasikan',
-            'body' => "Periode {$this->merit->reviewPeriod->name}: skor total {$this->merit->total_score}, estimasi bonus Rp ".number_format($this->merit->estimated_bonus, 0, ',', '.').'.',
+            'body' => "Periode {$this->merit->reviewPeriod->name}: skor total {$this->merit->total_score}, simulasi bonus Rp ".number_format($this->merit->estimated_bonus, 0, ',', '.').' (bukan payroll).',
             'url' => url("/pegawai/merit-results/{$this->merit->id}"),
             'icon' => 'heroicon-o-document-chart-bar',
         ];
@@ -37,7 +37,7 @@ class MeritPublished extends Notification
             ->greeting("Halo {$notifiable->name},")
             ->line("Hasil merit periode {$this->merit->reviewPeriod->name} sudah dipublikasikan.")
             ->line("Skor total: {$this->merit->total_score}")
-            ->line('Estimasi bonus: Rp '.number_format($this->merit->estimated_bonus, 0, ',', '.'))
+            ->line('Simulasi bonus: Rp '.number_format($this->merit->estimated_bonus, 0, ',', '.').' (bukan payroll)')
             ->action('Lihat Hasil Merit', url("/pegawai/merit-results/{$this->merit->id}"));
     }
 }

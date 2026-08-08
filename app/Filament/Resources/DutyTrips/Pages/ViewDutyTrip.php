@@ -22,13 +22,13 @@ class ViewDutyTrip extends ViewRecord
                 ->color('danger')
                 ->requiresConfirmation()
                 ->modalHeading('Batalkan Perintah Dinas')
-                ->modalDescription('Perintah dinas akan dibatalkan dan Pegawai tidak dapat melakukan absensi.')
+                ->modalDescription('Perintah dinas akan dibatalkan dan Pegawai tidak dapat melakukan absensi dinas.')
                 ->modalSubmitActionLabel('Batalkan Perintah')
                 ->modalWidth('md')
                 ->visible(fn (): bool => $this->record->canBeChangedBy(auth()->user()))
                 ->action(fn () => $this->record->cancel(auth()->user())),
             Action::make('attendance')
-                ->label('Lakukan Absensi')
+                ->label('Lakukan Absensi Dinas')
                 ->url(fn (): string => route('attendance.capture', $this->record))
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Employee
                     && $this->record->employee_id === auth()->id()

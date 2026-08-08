@@ -1,6 +1,6 @@
 # ABL — Sistem SDM
 
-Aplikasi pengelolaan absensi dinas, KPI, merit, kompetensi, pelatihan, dan mentoring. Laravel serta Vite berjalan lokal; MySQL berjalan dalam Docker.
+Aplikasi SDM internal untuk absensi dinas lapangan, KPI, merit sederhana, kompetensi, pelatihan, dan mentoring. Bukan HRIS lengkap atau mesin payroll. Laravel serta Vite berjalan lokal; MySQL berjalan dalam Docker.
 
 ## Kebutuhan
 

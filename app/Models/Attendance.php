@@ -43,7 +43,7 @@ class Attendance extends Model
             $attendance = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($hr->role !== UserRole::Hr || $attendance->status !== AttendanceStatus::NeedsReview) {
-                throw new BusinessRuleException('Absensi tidak dapat diverifikasi pengguna ini.');
+                throw new BusinessRuleException('Absensi dinas tidak dapat diverifikasi pengguna ini.');
             }
 
             $attendance->update(['status' => AttendanceStatus::Valid]);

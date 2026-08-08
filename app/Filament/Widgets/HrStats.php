@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\MentoringStatus;
 use App\Enums\TrainingRequestStatus;
@@ -39,8 +40,8 @@ class HrStats extends StatsOverviewWidget
                 ->color('info')
                 ->icon(Heroicon::OutlinedBriefcase)
                 ->url(DutyTripResource::getUrl()),
-            Stat::make('Absensi hari ini', Attendance::whereDate('captured_at', today())->count())
-                ->description('Lihat absensi terbaru')
+            Stat::make('Absensi dinas hari ini', Attendance::whereDate('captured_at', today())->count())
+                ->description('Lihat absensi dinas terbaru')
                 ->color('success')
                 ->icon(Heroicon::OutlinedMapPin)
                 ->url(AttendanceResource::getUrl()),
@@ -59,7 +60,7 @@ class HrStats extends StatsOverviewWidget
                 ->color('primary')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->url(MentoringResource::getUrl()),
-            Stat::make('Absensi perlu review', Attendance::where('status', \App\Enums\AttendanceStatus::NeedsReview)->count())
+            Stat::make('Absensi dinas perlu review', Attendance::where('status', AttendanceStatus::NeedsReview)->count())
                 ->description('Perlu dicek HR')
                 ->color('danger')
                 ->icon(Heroicon::OutlinedShieldExclamation)

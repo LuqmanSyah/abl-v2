@@ -37,7 +37,7 @@ class ReviewPeriodsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('review_360_weight')
-                    ->label('Bobot umpan balik (%)')
+                    ->label('Bobot umpan balik rekan (%)')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('base_bonus')

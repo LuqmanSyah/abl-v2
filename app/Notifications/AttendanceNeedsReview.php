@@ -27,8 +27,8 @@ class AttendanceNeedsReview extends Notification implements ShouldQueue
     public function toDatabase(User $notifiable): array
     {
         return [
-            'title' => 'Absensi Perlu Pemeriksaan',
-            'body' => "Absensi {$this->attendance->employee->name} untuk dinas {$this->attendance->dutyTrip->destination} memerlukan pemeriksaan.",
+            'title' => 'Absensi Dinas Perlu Pemeriksaan',
+            'body' => "Absensi dinas {$this->attendance->employee->name} untuk {$this->attendance->dutyTrip->destination} memerlukan pemeriksaan.",
             'url' => url("/hr/attendances/{$this->attendance->id}"),
             'icon' => 'heroicon-o-exclamation-triangle',
         ];
@@ -37,11 +37,11 @@ class AttendanceNeedsReview extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Absensi Memerlukan Pemeriksaan')
+            ->subject('Absensi Dinas Memerlukan Pemeriksaan')
             ->greeting("Halo {$notifiable->name},")
-            ->line("Absensi {$this->attendance->employee->name} memerlukan pemeriksaan:")
+            ->line("Absensi dinas {$this->attendance->employee->name} memerlukan pemeriksaan:")
             ->line("Dinas: {$this->attendance->dutyTrip->destination}")
             ->line("Status: {$this->attendance->status->label()}")
-            ->action('Periksa Absensi', url("/hr/attendances/{$this->attendance->id}"));
+            ->action('Periksa Absensi Dinas', url("/hr/attendances/{$this->attendance->id}"));
     }
 }

@@ -39,8 +39,8 @@ class ManagerStats extends StatsOverviewWidget
                 ->color('gray')
                 ->icon(Heroicon::OutlinedClipboardDocumentList)
                 ->url(DutyTripResource::getUrl()),
-            Stat::make('Absensi bawahan', Attendance::whereHas('dutyTrip', fn ($query) => $query->where('manager_id', $managerId))->count())
-                ->description('Periksa riwayat absensi')
+            Stat::make('Absensi dinas bawahan', Attendance::whereHas('dutyTrip', fn ($query) => $query->where('manager_id', $managerId))->count())
+                ->description('Periksa riwayat absensi dinas')
                 ->color('info')
                 ->icon(Heroicon::OutlinedMapPin)
                 ->url(AttendanceResource::getUrl()),

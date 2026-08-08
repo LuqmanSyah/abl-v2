@@ -29,16 +29,16 @@ class EmployeeLatestMerit extends StatsOverviewWidget
 
         return [
             Stat::make('Skor KPI', number_format($merit->kpi_score, 2))
-                ->description('Periode: ' . ($merit->reviewPeriod?->name ?? '-'))
+                ->description('Periode: '.($merit->reviewPeriod?->name ?? '-'))
                 ->color('primary')
                 ->icon('heroicon-o-chart-bar')
                 ->url(MeritResultResource::getUrl('view', [$merit])),
-            Stat::make('Skor Kedisiplinan', number_format($merit->discipline_score, 2))
-                ->description('Berdasarkan status absensi')
+            Stat::make('Skor Kepatuhan Dinas', number_format($merit->discipline_score, 2))
+                ->description('Berdasarkan absensi dinas')
                 ->color('info')
                 ->icon('heroicon-o-check-circle'),
             Stat::make('Total Skor', number_format($merit->total_score, 2))
-                ->description('Estimasi bonus: Rp ' . number_format($merit->estimated_bonus ?? 0, 0, ',', '.'))
+                ->description('Simulasi bonus: Rp '.number_format($merit->estimated_bonus ?? 0, 0, ',', '.').' · bukan payroll')
                 ->color('success')
                 ->icon('heroicon-o-trophy')
                 ->url(MeritResultResource::getUrl('view', [$merit])),

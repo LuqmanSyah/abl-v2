@@ -14,8 +14,8 @@ class AttendanceInfolist
     {
         return $schema
             ->components([
-                Section::make('Informasi absensi')
-                    ->description('Ringkasan pelaksanaan absensi pada perintah dinas.')
+                Section::make('Informasi absensi dinas')
+                    ->description('Ringkasan absensi pada perintah dinas.')
                     ->icon('heroicon-o-clock')
                     ->columns(2)
                     ->schema([
@@ -24,7 +24,7 @@ class AttendanceInfolist
                         TextEntry::make('dutyTrip.destination')
                             ->label('Dinas'),
                         TextEntry::make('captured_at')
-                            ->label('Waktu absensi')
+                            ->label('Waktu absensi dinas')
                             ->dateTime(),
                         TextEntry::make('status')
                             ->label('Status')
@@ -38,7 +38,7 @@ class AttendanceInfolist
                     ])
                     ->columnSpanFull(),
                 Section::make('Lokasi dan bukti')
-                    ->description('Data GPS dan foto yang dipakai untuk pemeriksaan absensi.')
+                    ->description('Data GPS dan foto yang dipakai untuk pemeriksaan absensi dinas.')
                     ->icon('heroicon-o-map-pin')
                     ->columns(2)
                     ->schema([
@@ -56,7 +56,7 @@ class AttendanceInfolist
                             ->label('Jarak dari lokasi (meter)')
                             ->numeric(),
                         ImageEntry::make('photo_path')
-                            ->label('Foto absensi')
+                            ->label('Foto absensi dinas')
                             ->getStateUsing(fn ($record): string => route('attendance.photo', $record))
                             ->imageHeight(240)
                             ->columnSpanFull(),

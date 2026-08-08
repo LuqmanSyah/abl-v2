@@ -18,7 +18,7 @@
 <body>
     <h1>Laporan SDM</h1>
     <p class="subtitle">
-        Ringkasan absensi, merit, pelatihan, dan mentoring pegawai.
+        Ringkasan absensi dinas, merit, pelatihan, dan mentoring pegawai.
         Dicetak {{ now()->translatedFormat('d F Y H:i') }}
     </p>
     <table>

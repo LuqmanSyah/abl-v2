@@ -23,7 +23,7 @@ class AttendancesTable
                     ->label('Pegawai')
                     ->searchable(),
                 TextColumn::make('captured_at')
-                    ->label('Waktu absensi')
+                    ->label('Waktu absensi dinas')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('latitude')
@@ -61,7 +61,7 @@ class AttendancesTable
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Status absensi')
+                    ->label('Status absensi dinas')
                     ->options(AttendanceStatus::options()),
             ])
             ->recordActions([
@@ -71,14 +71,14 @@ class AttendancesTable
                     ->icon('heroicon-o-check-badge')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Verifikasi Absensi')
-                    ->modalDescription('Status absensi akan diubah menjadi Valid dan dipakai dalam perhitungan kedisiplinan.')
-                    ->modalSubmitActionLabel('Verifikasi Absensi')
+                    ->modalHeading('Verifikasi Absensi Dinas')
+                    ->modalDescription('Status absensi dinas akan diubah menjadi Valid dan dipakai dalam perhitungan kepatuhan dinas.')
+                    ->modalSubmitActionLabel('Verifikasi Absensi Dinas')
                     ->modalWidth('md')
                     ->visible(fn ($record): bool => auth()->user()?->role === UserRole::Hr
                         && $record->status === AttendanceStatus::NeedsReview)
                     ->action(fn ($record) => $record->verifyByHr(auth()->user()))
-                    ->successNotificationTitle('Absensi berhasil diverifikasi'),
+                    ->successNotificationTitle('Absensi dinas berhasil diverifikasi'),
             ])
             ->defaultSort('captured_at', 'desc');
     }

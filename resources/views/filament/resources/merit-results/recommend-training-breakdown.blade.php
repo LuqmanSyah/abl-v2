@@ -22,7 +22,7 @@
             @endforeach
         </div>
         <div class="mt-3 text-sm text-gray-600 dark:text-gray-300">
-            Estimasi bonus: Rp {{ number_format((float) $breakdown['scores']['estimated_bonus'], 0, ',', '.') }}
+            Simulasi bonus: Rp {{ number_format((float) $breakdown['scores']['estimated_bonus'], 0, ',', '.') }} (bukan payroll)
         </div>
     </div>
 
@@ -109,7 +109,7 @@
         <div class="mt-3 overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead class="text-gray-500 dark:text-gray-400">
-                    <tr><th class="p-2">Dinas</th><th class="p-2">Tanggal</th><th class="p-2">Status Absensi</th></tr>
+                    <tr><th class="p-2">Dinas</th><th class="p-2">Tanggal</th><th class="p-2">Status Absensi Dinas</th></tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
                     @forelse ($breakdown['discipline'] as $trip)

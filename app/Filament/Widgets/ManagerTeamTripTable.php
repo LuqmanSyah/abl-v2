@@ -17,7 +17,7 @@ class ManagerTeamTripTable extends TableWidget
 
     protected static ?int $sort = 4;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -42,7 +42,7 @@ class ManagerTeamTripTable extends TableWidget
                     ->formatStateUsing(fn ($state): string => $state instanceof DutyTripStatus ? $state->label() : (string) $state)
                     ->color(fn ($state): string => $state instanceof DutyTripStatus ? $state->color() : 'gray'),
                 TextColumn::make('attendances_count')
-                    ->label('Absensi')
+                    ->label('Absensi Dinas')
                     ->counts('attendances')
                     ->formatStateUsing(fn (DutyTrip $record): string => $record->attendances()->count() > 0 ? 'Sudah absen' : 'Belum absen')
                     ->color(fn (DutyTrip $record): string => $record->attendances()->count() > 0 ? 'success' : 'warning')

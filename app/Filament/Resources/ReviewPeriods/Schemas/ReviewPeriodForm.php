@@ -32,7 +32,7 @@ class ReviewPeriodForm
                     ->minValue(0)->maxValue(100)
                     ->default(40),
                 TextInput::make('discipline_weight')
-                    ->label('Bobot kedisiplinan (%)')
+                    ->label('Bobot kepatuhan dinas (%)')
                     ->required()
                     ->integer()->minValue(0)->maxValue(100)
                     ->default(20),
@@ -42,7 +42,7 @@ class ReviewPeriodForm
                     ->integer()->minValue(0)->maxValue(100)
                     ->default(20),
                 TextInput::make('review_360_weight')
-                    ->label('Bobot umpan balik kinerja (%)')
+                    ->label('Bobot umpan balik rekan (%)')
                     ->required()
                     ->integer()->minValue(0)->maxValue(100)
                     ->rules([
@@ -65,7 +65,8 @@ class ReviewPeriodForm
                     ])
                     ->default(20),
                 TextInput::make('base_bonus')
-                    ->label('Dasar estimasi bonus')
+                    ->label('Dasar simulasi bonus')
+                    ->helperText('Hanya simulasi; tidak terhubung ke payroll.')
                     ->prefix('Rp')
                     ->required()
                     ->numeric()

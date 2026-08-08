@@ -30,18 +30,18 @@ class HrAttendanceStats extends StatsOverviewWidget
         $avg6Months = round($total6Months / $monthCount);
 
         return [
-            Stat::make('Absensi Bulan Ini', number_format($monthlyCount))
-                ->description(($change >= 0 ? 'Naik ' : 'Turun ') . abs($change) . '% dari bulan lalu')
+            Stat::make('Absensi Dinas Bulan Ini', number_format($monthlyCount))
+                ->description(($change >= 0 ? 'Naik ' : 'Turun ').abs($change).'% dari bulan lalu')
                 ->color($change >= 0 ? 'success' : 'danger')
                 ->icon('heroicon-o-calendar-days')
                 ->url(AttendanceResource::getUrl('index')),
-            Stat::make('Absensi Hari Ini', number_format(Attendance::whereDate('captured_at', today())->count()))
+            Stat::make('Absensi Dinas Hari Ini', number_format(Attendance::whereDate('captured_at', today())->count()))
                 ->description(now()->isoFormat('dddd, D MMM Y'))
                 ->color('info')
                 ->icon('heroicon-o-map-pin')
                 ->url(AttendanceResource::getUrl('index')),
-            Stat::make('Rata-rata 6 Bulan', number_format($avg6Months) . '/bulan')
-                ->description('Total ' . number_format($total6Months) . ' sesi')
+            Stat::make('Rata-rata 6 Bulan', number_format($avg6Months).'/bulan')
+                ->description('Total '.number_format($total6Months).' sesi')
                 ->color('primary')
                 ->icon('heroicon-o-clock')
                 ->url(AttendanceResource::getUrl('index')),

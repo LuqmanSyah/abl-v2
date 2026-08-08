@@ -219,7 +219,7 @@ class FilamentAccessTest extends TestCase
         $expected = [
             UserRole::Employee->value => [
                 DutyTripResource::class => 'Pelaksanaan Dinas',
-                AttendanceResource::class => 'Riwayat Absensi',
+                AttendanceResource::class => 'Riwayat Absensi Dinas',
                 EmployeeKpiResource::class => 'Capaian KPI',
                 PerformanceReviewResource::class => 'Umpan Balik Kinerja',
                 MeritResultResource::class => 'Hasil Merit',
@@ -231,7 +231,7 @@ class FilamentAccessTest extends TestCase
             ],
             UserRole::Manager->value => [
                 DutyTripResource::class => 'Pengelolaan Dinas',
-                AttendanceResource::class => 'Monitoring Absensi',
+                AttendanceResource::class => 'Monitoring Absensi Dinas',
                 EmployeeKpiResource::class => 'Pengelolaan KPI',
                 PerformanceReviewResource::class => 'Umpan Balik Kinerja',
                 MeritResultResource::class => 'Verifikasi Merit',
@@ -243,7 +243,7 @@ class FilamentAccessTest extends TestCase
             ],
             UserRole::Hr->value => [
                 DutyTripResource::class => 'Monitoring Dinas',
-                AttendanceResource::class => 'Monitoring Absensi',
+                AttendanceResource::class => 'Monitoring Absensi Dinas',
                 EmployeeKpiResource::class => 'Monitoring KPI',
                 PerformanceReviewResource::class => 'Umpan Balik Kinerja',
                 MeritResultResource::class => 'Publikasi Merit',

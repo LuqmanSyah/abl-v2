@@ -135,8 +135,9 @@ class DutyAttendanceTest extends TestCase
         $this->assertDatabaseCount('attendances', 1);
     }
 
-    public function test_poor_accuracy_inside_radius_is_valid(): void
+    public function test_gps_accuracy_boundary_and_missing_value_control_review(): void
     {
+        config()->set('hr.attendance_max_accuracy_meters', 150);
         [$employee, $manager, $trip] = $this->trip();
         $attendance = app(AttendanceRecorder::class)->record($trip, $employee, [
             'captured_at' => now()->toIso8601String(),
@@ -147,6 +148,26 @@ class DutyAttendanceTest extends TestCase
 
         $this->assertSame(AttendanceStatus::Valid, $attendance->status);
         $this->assertNull($attendance->review_reason);
+
+        [$inaccurateEmployee, , $inaccurateTrip] = $this->trip();
+        $inaccurate = app(AttendanceRecorder::class)->record($inaccurateTrip, $inaccurateEmployee, [
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+            'accuracy_meters' => 151,
+        ], 'attendance/inaccurate.jpg');
+
+        [$missingEmployee, , $missingTrip] = $this->trip();
+        $missing = app(AttendanceRecorder::class)->record($missingTrip, $missingEmployee, [
+            'captured_at' => now()->toIso8601String(),
+            'latitude' => -6.1754,
+            'longitude' => 106.8272,
+        ], 'attendance/missing-accuracy.jpg');
+
+        $this->assertSame(AttendanceStatus::NeedsReview, $inaccurate->status);
+        $this->assertSame('Akurasi GPS tidak tersedia atau melewati batas.', $inaccurate->review_reason);
+        $this->assertSame(AttendanceStatus::NeedsReview, $missing->status);
+        $this->assertSame('Akurasi GPS tidak tersedia atau melewati batas.', $missing->review_reason);
     }
 
     public function test_outside_radius_requires_review_and_late_attendance_is_classified(): void
@@ -206,7 +227,7 @@ class DutyAttendanceTest extends TestCase
             $attendance->verifyByHr($manager);
             $this->fail('Atasan tidak boleh memverifikasi absensi.');
         } catch (DomainException $exception) {
-            $this->assertSame('Absensi tidak dapat diverifikasi pengguna ini.', $exception->getMessage());
+            $this->assertSame('Absensi dinas tidak dapat diverifikasi pengguna ini.', $exception->getMessage());
         }
 
         $this->assertSame(AttendanceStatus::NeedsReview, $attendance->fresh()->status);
@@ -323,7 +344,7 @@ class DutyAttendanceTest extends TestCase
             'longitude' => 106.8272,
             'accuracy_meters' => 10,
             'photo' => UploadedFile::fake()->createWithContent('photo.png', $png),
-        ])->assertUnprocessable()->assertJsonPath('message', 'Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
+        ])->assertUnprocessable()->assertJsonPath('message', 'Absensi dinas belum dibuka. Coba lagi saat jadwal dinas dimulai.');
 
         $this->assertDatabaseCount('attendances', 0);
         $this->assertSame([], Storage::disk('local')->allFiles('attendance'));
@@ -379,7 +400,7 @@ class DutyAttendanceTest extends TestCase
         $this->actingAs($employee)
             ->get(route('attendance.capture', $trip))
             ->assertOk()
-            ->assertSee('Ambil lokasi dan simpan absensi')
+            ->assertSee('Ambil lokasi dan simpan absensi dinas')
             ->assertSee('fetch(endpoint', false)
             ->assertSee('Perangkat sedang luring', false)
             ->assertDontSee('indexedDB', false)

@@ -103,6 +103,17 @@ class CareerDevelopmentTest extends TestCase
         $this->actingAs($manager);
         Filament::setCurrentPanel(Filament::getPanel('manager'));
         Livewire::test(ListMeritResults::class)
+            ->assertTableActionHidden('recommend_training', $result);
+
+        try {
+            TrainingRequest::recommendByManager($manager, $employee, $training, $result, 'Belum final');
+            $this->fail('Merit belum terpublikasi tidak boleh menjadi dasar rekomendasi.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Rekomendasi pelatihan tidak valid.', $exception->getMessage());
+        }
+
+        $result->update(['published_at' => now()]);
+        Livewire::test(ListMeritResults::class)
             ->assertTableActionVisible('recommend_training', $result)
             ->callTableAction('recommend_training', $result, [
                 'training_id' => $training->id,
@@ -145,12 +156,12 @@ class CareerDevelopmentTest extends TestCase
         $result = MeritResult::create([
             'review_period_id' => $period->id, 'employee_id' => $employee->id,
             'kpi_score' => 0, 'discipline_score' => 100, 'manager_score' => 0,
-            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0,
+            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0, 'published_at' => now(),
         ]);
         $inactiveResult = MeritResult::create([
             'review_period_id' => $period->id, 'employee_id' => $inactiveEmployee->id,
             'kpi_score' => 0, 'discipline_score' => 100, 'manager_score' => 0,
-            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0,
+            'review_360_score' => 0, 'total_score' => 20, 'estimated_bonus' => 0, 'published_at' => now(),
         ]);
 
         foreach ([

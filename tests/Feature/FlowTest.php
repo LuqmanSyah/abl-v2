@@ -49,6 +49,10 @@ class FlowTest extends TestCase
 
         $hr = User::factory()->create(['role' => UserRole::Hr, 'name' => 'HR Admin']);
         $manager = User::factory()->create(['role' => UserRole::Manager, 'unit_id' => $unit->id, 'position_id' => $supPos->id, 'name' => 'Manager TI']);
+        $peer = User::factory()->create([
+            'role' => UserRole::Employee, 'unit_id' => $unit->id,
+            'position_id' => $staffPos->id, 'manager_id' => $manager->id, 'name' => 'Rekan TI',
+        ]);
         $employee = User::factory()->create([
             'role' => UserRole::Employee, 'unit_id' => $unit->id,
             'position_id' => $staffPos->id, 'manager_id' => $manager->id,
@@ -112,6 +116,11 @@ class FlowTest extends TestCase
             'reviewee_id' => $manager->id, 'type' => ReviewType::EmployeeToManager,
             'score' => 5, 'submitted_at' => now(),
         ]);
+        PerformanceReview::create([
+            'review_period_id' => $period->id, 'reviewer_id' => $peer->id,
+            'reviewee_id' => $employee->id, 'type' => ReviewType::Peer,
+            'score' => 5, 'submitted_at' => now(),
+        ]);
 
         // ===== 6. HR hitung MERIT =====
         $result = app(MeritCalculator::class)->calculate($period, $employee);
@@ -126,6 +135,7 @@ class FlowTest extends TestCase
         $result->verifyByManager($manager);
         $this->assertNotNull($result->fresh()->manager_verified_at);
 
+        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByHr($hr);
         $this->assertNotNull($result->fresh()->published_at);
 
@@ -175,11 +185,11 @@ class FlowTest extends TestCase
             ->assertSee($employee->name);
 
         // ===== 12. FINAL ASSERTIONS =====
-        $this->assertDatabaseCount('users', 3);
+        $this->assertDatabaseCount('users', 4);
         $this->assertDatabaseCount('duty_trips', 1);
         $this->assertDatabaseCount('attendances', 1);
         $this->assertDatabaseCount('employee_kpis', 1);
-        $this->assertDatabaseCount('performance_reviews', 2);
+        $this->assertDatabaseCount('performance_reviews', 3);
         $this->assertDatabaseCount('merit_results', 1);
         $this->assertDatabaseCount('career_goals', 1);
         $this->assertDatabaseCount('training_requests', 2);

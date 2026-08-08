@@ -92,7 +92,7 @@ class TrainingRequest extends Model
             || User::whereKey($manager->id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
             || User::whereKey($employee->id)->where('role', UserRole::Employee)->where('is_active', true)->where('manager_id', $manager->id)->doesntExist()
             || Training::whereKey($training->id)->where('is_active', true)->doesntExist()
-            || MeritResult::whereKey($meritResult->id)->where('employee_id', $employee->id)->doesntExist()) {
+            || MeritResult::whereKey($meritResult->id)->where('employee_id', $employee->id)->whereNotNull('published_at')->doesntExist()) {
             throw new BusinessRuleException('Rekomendasi pelatihan tidak valid.');
         }
 

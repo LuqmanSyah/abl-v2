@@ -26,10 +26,34 @@ class EmployeeCompetency extends Model
             if ($competency->level < 1 || $competency->level > 5) {
                 throw new BusinessRuleException('Level kompetensi Pegawai harus 1 sampai 5.');
             }
+            if ($competency->assessed_at?->isFuture()) {
+                throw new BusinessRuleException('Tanggal penilaian kompetensi tidak boleh di masa depan.');
+            }
             if (User::whereKey($competency->user_id)->where('role', UserRole::Employee)->doesntExist()) {
                 throw new BusinessRuleException('Kompetensi hanya dapat dicatat untuk Pegawai.');
             }
         });
+
+        static::created(fn (self $competency) => ActivityLog::record('competency.created', $competency, data: [
+            'values' => $competency->only($competency->getFillable()),
+        ]));
+
+        static::updated(function (self $competency): void {
+            $changes = collect($competency->getChanges())
+                ->except('updated_at')
+                ->mapWithKeys(fn (mixed $value, string $field): array => [
+                    $field => ['old' => $competency->getRawOriginal($field), 'new' => $value],
+                ])
+                ->all();
+
+            if ($changes) {
+                ActivityLog::record('competency.updated', $competency, data: ['changes' => $changes]);
+            }
+        });
+
+        static::deleted(fn (self $competency) => ActivityLog::record('competency.deleted', $competency, data: [
+            'values' => $competency->only($competency->getFillable()),
+        ]));
     }
 
     public function employee(): BelongsTo

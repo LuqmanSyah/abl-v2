@@ -52,6 +52,46 @@ class CareerDevelopmentTest extends TestCase
         $this->assertTrue(CareerGoal::visibleTo($hr)->whereKey($goal)->exists());
     }
 
+    public function test_competency_assessment_is_audited_and_rejects_future_dates(): void
+    {
+        [$employee, , $hr, , $target] = $this->organization();
+        $competency = Competency::create(['name' => 'Kepemimpinan']);
+        PositionCompetency::create([
+            'position_id' => $target->id, 'competency_id' => $competency->id, 'required_level' => 4,
+        ]);
+        $goal = CareerGoal::create(['user_id' => $employee->id, 'target_position_id' => $target->id]);
+
+        $this->actingAs($hr);
+        $assessment = EmployeeCompetency::create([
+            'user_id' => $employee->id, 'competency_id' => $competency->id,
+            'level' => 2, 'assessed_at' => today(), 'notes' => 'Asesmen awal',
+        ]);
+        $assessment->update(['level' => 3, 'notes' => 'Asesmen ulang']);
+
+        $created = ActivityLog::where('action', 'competency.created')->sole();
+        $updated = ActivityLog::where('action', 'competency.updated')->sole();
+        $this->assertSame($hr->id, $created->user_id);
+        $this->assertSame($hr->id, $updated->user_id);
+        $this->assertEquals(2, $updated->data['changes']['level']['old']);
+        $this->assertEquals(3, $updated->data['changes']['level']['new']);
+        $this->assertSame(1, app(CareerGapService::class)->analyze($goal)->first()['gap']);
+
+        try {
+            EmployeeCompetency::create([
+                'user_id' => $employee->id,
+                'competency_id' => Competency::create(['name' => 'Komunikasi'])->id,
+                'level' => 2,
+                'assessed_at' => today()->addDay(),
+            ]);
+            $this->fail('Tanggal asesmen masa depan harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Tanggal penilaian kompetensi tidak boleh di masa depan.', $exception->getMessage());
+        }
+
+        $assessment->delete();
+        $this->assertSame($hr->id, ActivityLog::where('action', 'competency.deleted')->sole()->user_id);
+    }
+
     public function test_training_and_mentoring_workflows_enforce_role_order(): void
     {
         [$employee, $manager, $hr] = $this->organization();

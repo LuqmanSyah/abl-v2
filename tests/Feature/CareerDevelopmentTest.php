@@ -52,6 +52,28 @@ class CareerDevelopmentTest extends TestCase
         $this->assertTrue(CareerGoal::visibleTo($hr)->whereKey($goal)->exists());
     }
 
+    public function test_career_goal_requires_a_higher_position(): void
+    {
+        [$employee, , , $current] = $this->organization();
+
+        foreach ([['Setara', $current->level], ['Lebih Rendah', $current->level - 1]] as [$name, $level]) {
+            $position = Position::create([
+                'unit_id' => $current->unit_id,
+                'name' => $name,
+                'level' => $level,
+            ]);
+
+            try {
+                CareerGoal::create(['user_id' => $employee->id, 'target_position_id' => $position->id]);
+                $this->fail('Jabatan tujuan setara atau lebih rendah harus ditolak.');
+            } catch (DomainException $exception) {
+                $this->assertSame('Jabatan tujuan harus lebih tinggi dari jabatan Pegawai saat ini.', $exception->getMessage());
+            }
+        }
+
+        $this->assertDatabaseCount('career_goals', 0);
+    }
+
     public function test_competency_assessment_is_audited_and_rejects_future_dates(): void
     {
         [$employee, , $hr, , $target] = $this->organization();
@@ -354,7 +376,7 @@ class CareerDevelopmentTest extends TestCase
     private function organization(): array
     {
         $unit = Unit::create(['name' => 'Teknologi', 'code' => 'TI']);
-        $current = Position::create(['unit_id' => $unit->id, 'name' => 'Staf', 'level' => 1]);
+        $current = Position::create(['unit_id' => $unit->id, 'name' => 'Staf', 'level' => 2]);
         $target = Position::create(['unit_id' => $unit->id, 'name' => 'Supervisor', 'level' => 3]);
         $manager = User::factory()->create(['role' => UserRole::Manager, 'unit_id' => $unit->id, 'position_id' => $target->id]);
         $employee = User::factory()->create([

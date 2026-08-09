@@ -22,7 +22,8 @@ class PositionForm
                     ->label('Nama jabatan')
                     ->required(),
                 TextInput::make('level')
-                    ->label('Level')
+                    ->label('Jenjang jabatan')
+                    ->helperText('Semakin besar angka, semakin tinggi jenjang jabatan.')
                     ->required()
                     ->numeric()
                     ->minValue(1)

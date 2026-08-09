@@ -15,11 +15,15 @@ class DatabaseSeederTest extends TestCase
         $this->seed();
         $this->seed();
 
-        foreach (['units', 'positions', 'approval_chains'] as $table) {
-            $this->assertSame(2, DB::table($table)->count(), "Table {$table} must contain exactly two seeded rows.");
-        }
+        $this->assertSame(2, DB::table('units')->count());
+        $this->assertSame(3, DB::table('positions')->count());
+        $this->assertSame(1, DB::table('positions')->where('name', 'Admin SDM')->value('level'));
+        $this->assertSame(1, DB::table('positions')->where('name', 'Staf Operasional')->value('level'));
+        $this->assertSame(2, DB::table('positions')->where('name', 'Kepala Bagian')->value('level'));
 
         $this->assertSame(7, DB::table('users')->count());
+        $this->assertSame('Kepala Bagian', DB::table('users')->join('positions', 'users.position_id', '=', 'positions.id')->where('email', 'atasan@example.com')->value('positions.name'));
+        $this->assertSame('Staf Operasional', DB::table('users')->join('positions', 'users.position_id', '=', 'positions.id')->where('email', 'pegawai@example.com')->value('positions.name'));
 
         foreach ([
             'duty_locations',

@@ -21,7 +21,7 @@ class PositionsTable
                     ->label('Jabatan')
                     ->searchable(),
                 TextColumn::make('level')
-                    ->label('Level')
+                    ->label('Jenjang')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('created_at')

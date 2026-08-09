@@ -3,7 +3,6 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Resources\ActivityLogs\ActivityLogResource;
-use App\Filament\Resources\ApprovalChains\ApprovalChainResource;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Filament\Resources\CareerGoals\CareerGoalResource;
 use App\Filament\Resources\Competencies\CompetencyResource;
@@ -59,7 +58,6 @@ class HrPanelProvider extends RolePanelProvider
                 TrainingRequestResource::class,
                 MentoringResource::class,
                 ActivityLogResource::class,
-                ApprovalChainResource::class,
             ])
             ->navigationGroups([
                 'Organisasi',

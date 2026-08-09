@@ -18,8 +18,9 @@ class OrganizationSeeder extends Seeder
 
         $units = DB::table('units')->pluck('id', 'code');
         DB::table('positions')->upsert([
-            ['unit_id' => $units['SDM'], 'name' => 'Admin SDM', 'level' => 10, 'created_at' => $now, 'updated_at' => $now],
-            ['unit_id' => $units['OPS'], 'name' => 'Kepala Bagian', 'level' => 8, 'created_at' => $now, 'updated_at' => $now],
+            ['unit_id' => $units['SDM'], 'name' => 'Admin SDM', 'level' => 1, 'created_at' => $now, 'updated_at' => $now],
+            ['unit_id' => $units['OPS'], 'name' => 'Staf Operasional', 'level' => 1, 'created_at' => $now, 'updated_at' => $now],
+            ['unit_id' => $units['OPS'], 'name' => 'Kepala Bagian', 'level' => 2, 'created_at' => $now, 'updated_at' => $now],
         ], ['unit_id', 'name'], ['level', 'updated_at']);
     }
 }

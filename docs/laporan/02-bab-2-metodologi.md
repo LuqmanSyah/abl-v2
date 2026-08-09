@@ -6,7 +6,7 @@
 
 ### 2.1.1 Modular Monolith
 
-Sistem ABL diimplementasikan sebagai modular monolith berbasis Laravel. Seluruh panel, controller, service, model, notifikasi, command, dan laporan berjalan dalam satu aplikasi, memakai satu basis data, dan dirilis sebagai satu unit deployment. Pemisahan modul dilakukan pada struktur kode dan tanggung jawab kelas, bukan melalui layanan jaringan yang berdiri sendiri.
+Sistem SDM diimplementasikan sebagai modular monolith berbasis Laravel. Seluruh panel, controller, service, model, notifikasi, command, dan laporan berjalan dalam satu aplikasi, memakai satu basis data, dan dirilis sebagai satu unit deployment. Pemisahan modul dilakukan pada struktur kode dan tanggung jawab kelas, bukan melalui layanan jaringan yang berdiri sendiri.
 
 Pendekatan ini dipilih karena ruang lingkup aplikasi masih berada pada satu organisasi dan seluruh proses membutuhkan konsistensi data yang kuat. Transaksi lintas tabel dapat ditangani langsung oleh Laravel dan basis data tanpa mekanisme komunikasi terdistribusi. Operasi sistem juga lebih sederhana karena tidak memerlukan service discovery, API gateway, distributed tracing, atau orkestrasi banyak layanan.
 
@@ -187,4 +187,3 @@ CSV dan XLSX dikirim sebagai streamed response. Nilai teks yang dapat dibaca spr
 ### 2.3.7 Komponen yang Tidak Digunakan
 
 Implementasi aktif tidak memakai `face-api.js`, Laravel Reverb, Laravel Sanctum, Laravel Socialite, Web Push, WhatsApp, service worker absensi, atau IndexedDB untuk antrean luring. Komponen tersebut tidak menjadi bagian rancangan as-built karena tidak ditemukan pada dependency, route, maupun alur aplikasi saat ini.
-

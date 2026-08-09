@@ -6,7 +6,7 @@
 
 Berdasarkan implementasi dan pengujian saat laporan diperbarui, diperoleh kesimpulan berikut.
 
-1. Aplikasi ABL berhasil mengintegrasikan data organisasi, perjalanan dinas, absensi, KPI, merit, kompetensi, target karier, pelatihan, mentoring, laporan, dan audit dalam satu aplikasi web.
+1. Sistem SDM berhasil mengintegrasikan data organisasi, perjalanan dinas, absensi, KPI, merit, kompetensi, target karier, pelatihan, mentoring, laporan, dan audit dalam satu aplikasi web.
 2. Arsitektur aktual adalah modular monolith berbasis Laravel dengan application service layer. Tiga panel Filament melayani Pegawai, Atasan, dan HR menggunakan autentikasi session, satu basis data, dan satu unit deployment.
 3. Absensi dinas menggabungkan jadwal penugasan, GPS, akurasi, radius Haversine, pemeriksaan waktu perangkat, foto kamera, watermark, idempotensi, dan pemeriksaan HR. Foto berfungsi sebagai bukti visual privat, bukan verifikasi biometrik.
 4. Sistem merit menghitung KPI, kepatuhan dinas, penilaian Atasan, dan umpan balik rekan menggunakan bobot per periode yang totalnya wajib 100%. Setelah periode berakhir, hasil diverifikasi Atasan; aksi HR kemudian memverifikasi sekaligus mempublikasikannya setelah seluruh Pegawai aktif siap. Nilai bonus hanya berupa simulasi, bukan pembayaran riil.

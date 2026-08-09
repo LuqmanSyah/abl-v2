@@ -253,7 +253,7 @@ Placeholder berikut sengaja disediakan untuk diganti dengan tangkapan layar buil
 
 ### 5.3.1 Halaman Login
 
-> [PLACEHOLDER GAMBAR 5.1 — Login terpusat ABL pada desktop dan mobile]
+> [PLACEHOLDER GAMBAR 5.1 — Login terpusat Sistem SDM pada desktop dan mobile]
 
 ### 5.3.2 Panel Pegawai
 

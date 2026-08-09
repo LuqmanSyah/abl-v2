@@ -12,7 +12,7 @@ Penilaian kinerja juga membutuhkan dasar yang lebih terukur. Nilai akhir yang ha
 
 Pengembangan karier seharusnya mengikuti kesenjangan kompetensi nyata. Pegawai perlu mengetahui perbedaan antara kompetensi yang dimiliki dan standar jabatan tujuan. Atasan serta HR kemudian dapat memakai informasi tersebut untuk memberikan rekomendasi pelatihan atau mentoring yang relevan. Tanpa hubungan antara data kompetensi, hasil merit, pelatihan, dan mentoring, pembinaan karier cenderung bersifat umum dan sulit dievaluasi.
 
-Berdasarkan kebutuhan tersebut, dikembangkan aplikasi web ABL, singkatan dari **Absensi, Benefit, dan Learning**. Aplikasi mengintegrasikan tiga kelompok proses utama:
+Berdasarkan kebutuhan tersebut, dikembangkan **Sistem SDM** berbasis web. Sistem ini mengintegrasikan tiga kelompok proses utama:
 
 1. **Absensi**, berupa pengelolaan perintah dinas dan pencatatan kehadiran berbasis GPS serta foto;
 2. **Benefit**, berupa sistem merit dan simulasi bonus berdasarkan hasil penilaian;
@@ -59,7 +59,7 @@ Rumusan masalah proyek ini adalah sebagai berikut.
 
 ### 1.4.1 Tujuan Umum
 
-Membangun aplikasi ABL yang mengintegrasikan pengelolaan absensi dinas, sistem merit, dan pembinaan karier dalam satu sistem informasi SDM berbasis web.
+Membangun Sistem SDM yang mengintegrasikan pengelolaan absensi dinas, sistem merit, dan pembinaan karier dalam satu aplikasi berbasis web.
 
 ### 1.4.2 Tujuan Khusus
 
@@ -112,4 +112,3 @@ Batasan sistem berdasarkan implementasi aktif adalah sebagai berikut.
 12. Antarmuka menggunakan autentikasi session. Tidak ada REST API independen, Laravel Sanctum, atau login sosial melalui Laravel Socialite.
 13. Penyimpanan utama ditujukan untuk MySQL, sedangkan pengujian otomatis memakai SQLite in-memory.
 14. Pengujian otomatis mencakup level unit, HTTP, model, service, dan Livewire. Otomasi browser penuh serta pengujian kamera/GPS pada perangkat fisik belum menjadi bagian suite otomatis.
-

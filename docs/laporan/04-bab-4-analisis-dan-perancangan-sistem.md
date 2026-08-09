@@ -121,7 +121,7 @@ flowchart LR
     MGR([Atasan])
     HR([Admin SDM / HR])
 
-    subgraph ABL[Sistem ABL]
+    subgraph SDM[Sistem SDM]
         LOGIN[Login dan Kelola Akun]
         ORG[Kelola Organisasi]
         TRIP[Kelola Perintah Dinas]

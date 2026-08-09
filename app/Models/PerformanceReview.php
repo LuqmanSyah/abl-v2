@@ -26,6 +26,11 @@ class PerformanceReview extends Model
                 throw new BusinessRuleException('Nilai penilaian harus antara 1 sampai 5.');
             }
 
+            $period = ReviewPeriod::findOrFail($review->review_period_id);
+            if (! $period->acceptsReviews()) {
+                throw new BusinessRuleException('Umpan balik hanya dapat dikirim selama periode aktif berlangsung.');
+            }
+
             $reviewer = User::findOrFail($review->reviewer_id);
             $reviewee = User::findOrFail($review->reviewee_id);
             $valid = match ($review->type) {

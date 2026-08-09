@@ -13,7 +13,7 @@ class MeritResultInfolist
         return $schema
             ->components([
                 Section::make('Ringkasan merit')
-                    ->description('Skor akhir dan simulasi bonus pegawai. Simulasi tidak terhubung ke payroll.')
+                    ->description('Skor akhir dan simulasi bonus. Capaian KPI dapat membuat bonus melebihi dasar; simulasi tidak terhubung ke payroll.')
                     ->icon('heroicon-o-trophy')
                     ->columns(2)
                     ->schema([
@@ -36,7 +36,7 @@ class MeritResultInfolist
                     ])
                     ->columnSpanFull(),
                 Section::make('Komponen Nilai')
-                    ->description('Rincian nilai berdasarkan KPI, kepatuhan dinas, penilaian atasan, dan umpan balik rekan.')
+                    ->description('Rincian nilai; kepatuhan bernilai 100 bila tidak ada perjalanan dinas dalam periode.')
                     ->icon('heroicon-o-chart-bar')
                     ->columns(4)
                     ->schema([

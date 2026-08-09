@@ -132,10 +132,11 @@ class FlowTest extends TestCase
         $this->assertSame($result->id, $recalc->id);
 
         // ===== 7. MANAGER verifikasi → HR publish =====
+        $peer->update(['is_active' => false]);
+        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByManager($manager);
         $this->assertNotNull($result->fresh()->manager_verified_at);
 
-        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByHr($hr);
         $this->assertNotNull($result->fresh()->published_at);
 

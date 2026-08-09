@@ -142,11 +142,15 @@ class MeritResult extends Model
     public function verifyByManager(User $manager): void
     {
         DB::transaction(function () use ($manager): void {
+            $period = ReviewPeriod::query()->lockForUpdate()->findOrFail($this->review_period_id);
             $result = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($result->employee->manager_id !== $manager->id || $manager->role !== UserRole::Manager
                 || ! $result->calculated_at || $result->manager_verified_at || $result->published_at) {
                 throw new BusinessRuleException('Hasil merit tidak dapat diverifikasi pengguna ini.');
+            }
+            if (! $period->hasEnded()) {
+                throw new BusinessRuleException('Hasil merit hanya dapat diverifikasi setelah periode selesai.');
             }
 
             $result->update(['manager_verified_by' => $manager->id, 'manager_verified_at' => now()]);
@@ -158,14 +162,27 @@ class MeritResult extends Model
     public function verifyByHr(User $hr): void
     {
         DB::transaction(function () use ($hr): void {
+            $period = ReviewPeriod::query()->lockForUpdate()->findOrFail($this->review_period_id);
             $result = self::query()->lockForUpdate()->findOrFail($this->id);
 
             if ($hr->role !== UserRole::Hr || ! $result->calculated_at || ! $result->manager_verified_at || $result->published_at) {
                 throw new BusinessRuleException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
             }
 
-            if ($result->reviewPeriod->ends_at->endOfDay()->isFuture()) {
+            if (! $period->hasEnded()) {
                 throw new BusinessRuleException('Hasil merit hanya dapat dipublikasikan setelah periode selesai.');
+            }
+
+            // ponytail: Current active roster is enough; add period membership snapshots if historical rosters become required.
+            $unreadyCount = User::query()
+                ->where('role', UserRole::Employee)
+                ->where('is_active', true)
+                ->whereDoesntHave('meritResults', fn (Builder $query) => $query
+                    ->where('review_period_id', $result->review_period_id)
+                    ->whereNotNull('manager_verified_at'))
+                ->count();
+            if ($unreadyCount) {
+                throw new BusinessRuleException("Publikasi menunggu {$unreadyCount} Pegawai yang belum dihitung atau diverifikasi Atasan.");
             }
 
             $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);

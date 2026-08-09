@@ -158,7 +158,7 @@ class FilamentAccessTest extends TestCase
             $manager->refresh();
         }
 
-        $employee->update(['manager_id' => null]);
+        $employee->update(['is_active' => false, 'manager_id' => null]);
         $manager->update(['is_active' => false]);
 
         $this->assertFalse($manager->is_active);

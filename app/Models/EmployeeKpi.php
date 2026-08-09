@@ -23,9 +23,20 @@ class EmployeeKpi extends Model
     protected static function booted(): void
     {
         static::saving(function (self $kpi): void {
-            if (($kpi->hasPublishedMeritResult() || ($kpi->exists && $kpi->hasPublishedMeritResult(true)))
-                && (! $kpi->exists || $kpi->isDirty($kpi->getFillable()))) {
+            $periodIds = array_unique(array_filter([
+                $kpi->review_period_id,
+                $kpi->exists ? $kpi->getRawOriginal('review_period_id') : null,
+            ]));
+
+            if ((! $kpi->exists || $kpi->isDirty($kpi->getFillable()))
+                && MeritResult::whereIn('review_period_id', $periodIds)->whereNotNull('published_at')->exists()) {
                 throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat diubah.');
+            }
+            if (ReviewPeriod::whereIn('id', $periodIds)->whereDate('ends_at', '<', today())->exists()) {
+                throw new BusinessRuleException('KPI pada periode yang telah selesai tidak dapat diubah.');
+            }
+            if (ReviewPeriod::whereKey($kpi->review_period_id)->where('is_active', true)->doesntExist()) {
+                throw new BusinessRuleException('Periode KPI tidak aktif.');
             }
 
             if ((float) $kpi->target <= 0) {
@@ -60,8 +71,11 @@ class EmployeeKpi extends Model
         });
 
         static::deleting(function (self $kpi): void {
-            if ($kpi->hasPublishedMeritResult()) {
+            if ($kpi->reviewPeriod->hasPublishedMeritResults()) {
                 throw new BusinessRuleException('KPI dengan hasil merit terpublikasi tidak dapat dihapus.');
+            }
+            if ($kpi->reviewPeriod->hasEnded()) {
+                throw new BusinessRuleException('KPI pada periode yang telah selesai tidak dapat dihapus.');
             }
         });
 

@@ -19,7 +19,9 @@ class CalculateMerit extends Command
         if ($periodId = $this->option('period')) {
             $query->whereKey($periodId);
         } else {
-            $query->where('is_active', true)->whereDate('ends_at', '>=', now()->subMonth());
+            $query->where('is_active', true)
+                ->whereDate('starts_at', '<=', today())
+                ->whereDate('ends_at', '>=', now()->subMonth());
         }
 
         $periods = $query->get();

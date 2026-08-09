@@ -45,12 +45,15 @@ class KpiIndicatorResource extends Resource
     {
         return static::canViewAny()
             && $record instanceof KpiIndicator
+            && $record->reviewPeriod?->hasEnded() === false
             && $record->reviewPeriod?->hasPublishedMeritResults() === false;
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        return static::canEdit($record)
+            && $record instanceof KpiIndicator
+            && ! $record->employeeKpis()->exists();
     }
 
     public static function form(Schema $schema): Schema

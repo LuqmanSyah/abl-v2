@@ -21,6 +21,8 @@ class EmployeeKpiForm
                 Select::make('review_period_id')
                     ->label('Periode')
                     ->relationship('reviewPeriod', 'name', fn (Builder $query) => $query
+                        ->where('is_active', true)
+                        ->whereDate('ends_at', '>=', today())
                         ->whereDoesntHave('meritResults', fn (Builder $query) => $query->whereNotNull('published_at')))
                     ->searchable()->preload()
                     ->live()
@@ -46,6 +48,7 @@ class EmployeeKpiForm
                     ->label('Capaian')
                     ->required()
                     ->numeric()->minValue(0)
+                    ->helperText('Capaian di atas target dibatasi maksimal 120% dalam perhitungan merit.')
                     ->default(0),
                 Textarea::make('notes')
                     ->label('Catatan')

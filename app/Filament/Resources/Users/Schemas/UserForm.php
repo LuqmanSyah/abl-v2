@@ -70,6 +70,7 @@ class UserForm
                     ->searchable()
                     ->preload()
                     ->visible(fn (Get $get): bool => $get('role') === UserRole::Employee->value)
+                    ->required(fn (Get $get): bool => $get('role') === UserRole::Employee->value && (bool) $get('is_active'))
                     ->helperText('Hanya pengguna aktif dengan peran Atasan yang ditampilkan.'),
                 TextInput::make('employee_number')
                     ->label('NIP/Nomor pegawai')
@@ -79,6 +80,7 @@ class UserForm
                     ->tel(),
                 Toggle::make('is_active')
                     ->label('Aktif')
+                    ->live()
                     ->default(true)
                     ->required(),
             ]);

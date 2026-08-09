@@ -64,9 +64,13 @@ class ReviewPeriodsTable
                     ->modalSubmitActionLabel('Hitung Merit')
                     ->modalWidth('md')
                     ->visible(fn (ReviewPeriod $record): bool => auth()->user()?->role === UserRole::Hr
-                        && ! $record->hasPublishedMeritResults())
+                        && $record->is_active && $record->hasStarted() && ! $record->hasPublishedMeritResults())
                     ->action(function (ReviewPeriod $record): void {
-                        if ($record->fresh()->hasPublishedMeritResults()) {
+                        $record = $record->fresh();
+                        if (! $record->hasStarted()) {
+                            throw new BusinessRuleException('Hasil merit belum dapat dihitung sebelum periode dimulai.');
+                        }
+                        if ($record->hasPublishedMeritResults()) {
                             throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
                         }
 

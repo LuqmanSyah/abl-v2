@@ -63,17 +63,17 @@ class MeritSystemTest extends TestCase
         $this->assertNotNull($result->calculated_at);
         $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
 
-        $result->verifyByManager($manager);
-        $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
-
         try {
-            $result->verifyByHr($hr);
-            $this->fail('Merit tidak boleh dipublikasikan sebelum periode selesai.');
+            $result->verifyByManager($manager);
+            $this->fail('Merit tidak boleh diverifikasi sebelum periode selesai.');
         } catch (DomainException $exception) {
-            $this->assertSame('Hasil merit hanya dapat dipublikasikan setelah periode selesai.', $exception->getMessage());
+            $this->assertSame('Hasil merit hanya dapat diverifikasi setelah periode selesai.', $exception->getMessage());
         }
 
+        $peer->update(['is_active' => false]);
         $this->travelTo($period->ends_at->copy()->addDay());
+        $result->verifyByManager($manager);
+        $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
         $result->verifyByHr($hr);
 
         $this->assertNotNull($result->fresh()->published_at);
@@ -454,7 +454,7 @@ class MeritSystemTest extends TestCase
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
         $hr = User::factory()->create(['role' => UserRole::Hr]);
         $period = ReviewPeriod::create([
-            'name' => 'Terkunci', 'starts_at' => today()->subMonth(), 'ends_at' => today()->subDay(),
+            'name' => 'Terkunci', 'starts_at' => today(), 'ends_at' => today(),
             'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
             'review_360_weight' => 0, 'base_bonus' => 1_000_000,
         ]);
@@ -465,6 +465,7 @@ class MeritSystemTest extends TestCase
             'target' => 100, 'achievement' => 80,
         ]);
         $result = app(MeritCalculator::class)->calculate($period, $employee);
+        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByManager($manager);
         $result->verifyByHr($hr);
 
@@ -522,6 +523,7 @@ class MeritSystemTest extends TestCase
             'target' => 100, 'achievement' => 80,
         ]);
         $result = app(MeritCalculator::class)->calculate($period, $employee);
+        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByManager($manager);
         $verifiedAt = $result->manager_verified_at;
 
@@ -553,6 +555,156 @@ class MeritSystemTest extends TestCase
             'reviewee_id' => $stranger->id, 'type' => ReviewType::Peer,
             'score' => 5, 'submitted_at' => now(),
         ]);
+    }
+
+    public function test_period_dates_control_calculation_reviews_and_scheduler(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $future = ReviewPeriod::create([
+            'name' => 'Masa Depan', 'starts_at' => today()->addDay(), 'ends_at' => today()->addWeek(),
+            'kpi_weight' => 0, 'discipline_weight' => 100, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+
+        try {
+            app(MeritCalculator::class)->calculate($future, $employee);
+            $this->fail('Periode masa depan tidak boleh dihitung.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Hasil merit belum dapat dihitung sebelum periode dimulai.', $exception->getMessage());
+        }
+
+        $this->artisan('merit:calculate')
+            ->expectsOutput('Tidak ada periode yang perlu dihitung.')
+            ->assertSuccessful();
+
+        $future->update(['is_active' => false]);
+        $closed = ReviewPeriod::create([
+            'name' => 'Selesai', 'starts_at' => today()->subWeek(), 'ends_at' => today()->subDay(),
+            'kpi_weight' => 0, 'discipline_weight' => 0, 'manager_weight' => 100,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+
+        $this->expectExceptionMessage('Umpan balik hanya dapat dikirim selama periode aktif berlangsung.');
+        PerformanceReview::create([
+            'review_period_id' => $closed->id, 'reviewer_id' => $manager->id,
+            'reviewee_id' => $employee->id, 'type' => ReviewType::ManagerToEmployee,
+            'score' => 5, 'submitted_at' => now(),
+        ]);
+    }
+
+    public function test_publication_waits_for_every_active_employee(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $first = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $second = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $period = ReviewPeriod::create([
+            'name' => 'Finalisasi', 'starts_at' => today(), 'ends_at' => today(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        $indicator = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 100]);
+
+        foreach ([$first, $second] as $employee) {
+            EmployeeKpi::create([
+                'review_period_id' => $period->id, 'kpi_indicator_id' => $indicator->id,
+                'employee_id' => $employee->id, 'manager_id' => $manager->id,
+                'target' => 100, 'achievement' => 80,
+            ]);
+        }
+
+        $firstResult = app(MeritCalculator::class)->calculate($period, $first);
+        $secondResult = app(MeritCalculator::class)->calculate($period, $second);
+        $this->travelTo($period->ends_at->copy()->addDay());
+        $firstResult->verifyByManager($manager);
+
+        try {
+            $firstResult->verifyByHr($hr);
+            $this->fail('Publikasi parsial harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Publikasi menunggu 1 Pegawai yang belum dihitung atau diverifikasi Atasan.', $exception->getMessage());
+        }
+
+        $secondResult->verifyByManager($manager);
+        $firstResult->verifyByHr($hr);
+        $this->assertNotNull($firstResult->fresh()->published_at);
+    }
+
+    public function test_used_indicators_and_closed_kpi_inputs_are_protected(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Berjalan', 'starts_at' => today(), 'ends_at' => today(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        $nextPeriod = ReviewPeriod::create([
+            'name' => 'Berikutnya', 'starts_at' => today()->addDay(), 'ends_at' => today()->addWeek(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        $indicator = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 100]);
+        $kpi = EmployeeKpi::create([
+            'review_period_id' => $period->id, 'kpi_indicator_id' => $indicator->id,
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'target' => 100, 'achievement' => 80,
+        ]);
+
+        foreach ([
+            [fn () => $indicator->update(['review_period_id' => $nextPeriod->id]), 'Periode indikator KPI yang sudah digunakan tidak dapat diubah.'],
+            [fn () => $indicator->delete(), 'Indikator KPI yang sudah digunakan tidak dapat dihapus.'],
+        ] as [$mutation, $message]) {
+            try {
+                $mutation();
+                $this->fail($message);
+            } catch (DomainException $exception) {
+                $this->assertSame($message, $exception->getMessage());
+            }
+        }
+
+        $this->travelTo($period->ends_at->copy()->addDay());
+        try {
+            $kpi->update(['achievement' => 90]);
+            $this->fail('KPI periode selesai tidak boleh diubah.');
+        } catch (DomainException $exception) {
+            $this->assertSame('KPI pada periode yang telah selesai tidak dapat diubah.', $exception->getMessage());
+        }
+    }
+
+    public function test_period_and_employee_master_data_reject_invalid_states(): void
+    {
+        try {
+            ReviewPeriod::create([
+                'name' => 'Bonus Negatif', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+                'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+                'review_360_weight' => 0, 'base_bonus' => -1,
+            ]);
+            $this->fail('Bonus negatif harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Dasar simulasi bonus tidak boleh negatif.', $exception->getMessage());
+        }
+
+        ReviewPeriod::create([
+            'name' => 'Aktif', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        try {
+            ReviewPeriod::create([
+                'name' => 'Tumpang Tindih', 'starts_at' => today()->addWeek(), 'ends_at' => today()->addMonths(2),
+                'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+                'review_360_weight' => 0, 'base_bonus' => 0,
+            ]);
+            $this->fail('Periode aktif tumpang tindih harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Periode aktif tidak boleh memiliki rentang tanggal yang tumpang tindih.', $exception->getMessage());
+        }
+
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'is_active' => false, 'manager_id' => null]);
+        $this->expectExceptionMessage('Pegawai aktif wajib memiliki Atasan langsung.');
+        $employee->update(['is_active' => true]);
     }
 
     private function attendance(User $employee, User $manager, AttendanceStatus $status): Attendance

@@ -25,6 +25,12 @@ class KpiIndicator extends Model
             if (MeritResult::whereIn('review_period_id', $periodIds)->whereNotNull('published_at')->exists()) {
                 throw new BusinessRuleException('Indikator KPI pada periode terpublikasi tidak dapat diubah.');
             }
+            if (ReviewPeriod::whereIn('id', $periodIds)->whereDate('ends_at', '<', today())->exists()) {
+                throw new BusinessRuleException('Indikator KPI pada periode yang telah selesai tidak dapat diubah.');
+            }
+            if ($indicator->exists && $indicator->isDirty('review_period_id') && $indicator->employeeKpis()->exists()) {
+                throw new BusinessRuleException('Periode indikator KPI yang sudah digunakan tidak dapat diubah.');
+            }
 
             $used = self::where('review_period_id', $indicator->review_period_id)
                 ->when($indicator->exists, fn ($query) => $query->whereKeyNot($indicator->id))
@@ -37,6 +43,12 @@ class KpiIndicator extends Model
         static::deleting(function (self $indicator): void {
             if (MeritResult::where('review_period_id', $indicator->review_period_id)->whereNotNull('published_at')->exists()) {
                 throw new BusinessRuleException('Indikator KPI pada periode terpublikasi tidak dapat dihapus.');
+            }
+            if ($indicator->reviewPeriod->hasEnded()) {
+                throw new BusinessRuleException('Indikator KPI pada periode yang telah selesai tidak dapat dihapus.');
+            }
+            if ($indicator->employeeKpis()->exists()) {
+                throw new BusinessRuleException('Indikator KPI yang sudah digunakan tidak dapat dihapus.');
             }
         });
     }

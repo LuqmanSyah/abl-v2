@@ -23,7 +23,8 @@ class ViewMeritResult extends ViewRecord
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Manager
                     && $this->record->employee->manager_id === auth()->id()
                     && ! $this->record->manager_verified_at
-                    && ! $this->record->published_at)
+                    && ! $this->record->published_at
+                    && $this->record->reviewPeriod->hasEnded())
                 ->action(fn () => $this->record->verifyByManager(auth()->user())),
             Action::make('verify_hr')
                 ->label('Verifikasi dan Publikasikan')->color('success')->requiresConfirmation()
@@ -34,7 +35,8 @@ class ViewMeritResult extends ViewRecord
                 ->visible(fn (): bool => auth()->user()->role === UserRole::Hr
                     && $this->record->manager_verified_at
                     && ! $this->record->hr_verified_at
-                    && ! $this->record->published_at)
+                    && ! $this->record->published_at
+                    && $this->record->reviewPeriod->hasEnded())
                 ->action(fn () => $this->record->verifyByHr(auth()->user())),
         ];
     }

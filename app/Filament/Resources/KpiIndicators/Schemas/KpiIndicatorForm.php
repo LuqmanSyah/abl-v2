@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KpiIndicators\Schemas;
 
+use App\Models\KpiIndicator;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -17,8 +18,10 @@ class KpiIndicatorForm
                 Select::make('review_period_id')
                     ->label('Periode')
                     ->relationship('reviewPeriod', 'name', fn (Builder $query) => $query
+                        ->whereDate('ends_at', '>=', today())
                         ->whereDoesntHave('meritResults', fn (Builder $query) => $query->whereNotNull('published_at')))
                     ->searchable()->preload()
+                    ->disabled(fn (?KpiIndicator $record): bool => $record?->employeeKpis()->exists() ?? false)
                     ->required(),
                 TextInput::make('name')
                     ->label('Indikator')

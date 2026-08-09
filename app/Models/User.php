@@ -32,6 +32,10 @@ class User extends Authenticatable implements FilamentUser
                 throw new BusinessRuleException('Atasan yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.');
             }
 
+            if ($user->role === UserRole::Employee && $user->is_active && ! $user->manager_id) {
+                throw new BusinessRuleException('Pegawai aktif wajib memiliki Atasan langsung.');
+            }
+
             if (! $user->manager_id) {
                 return;
             }

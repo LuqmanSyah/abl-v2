@@ -27,8 +27,17 @@ class MeritCalculator
             $identity = ['review_period_id' => $period->id, 'employee_id' => $employee->id];
             $result = MeritResult::where($identity)->lockForUpdate()->first();
 
+            if (! $period->hasStarted()) {
+                throw new BusinessRuleException('Hasil merit belum dapat dihitung sebelum periode dimulai.');
+            }
+            if (! $period->is_active) {
+                throw new BusinessRuleException('Hasil merit hanya dapat dihitung untuk periode aktif.');
+            }
             if ($result?->manager_verified_at || $result?->hr_verified_at || $result?->published_at) {
                 throw new DomainException('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.');
+            }
+            if ($period->hasPublishedMeritResults()) {
+                throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();

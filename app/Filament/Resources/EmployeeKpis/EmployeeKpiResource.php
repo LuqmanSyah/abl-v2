@@ -69,7 +69,9 @@ class EmployeeKpiResource extends Resource
         return auth()->user()?->role === UserRole::Manager
             && $record instanceof EmployeeKpi
             && $record->manager_id === auth()->id()
-            && ! $record->hasPublishedMeritResult();
+            && $record->reviewPeriod?->is_active
+            && $record->reviewPeriod?->hasEnded() === false
+            && $record->reviewPeriod?->hasPublishedMeritResults() === false;
     }
 
     public static function canDelete(Model $record): bool

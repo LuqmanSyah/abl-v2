@@ -150,6 +150,38 @@ class MeritSystemTest extends TestCase
         $this->assertEquals(100, $withoutTrip->total_score);
     }
 
+    public function test_discipline_score_clips_duty_trips_to_review_period(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $periodDate = today()->subDays(2);
+        $period = ReviewPeriod::create([
+            'name' => 'Batas Disiplin', 'starts_at' => $periodDate, 'ends_at' => $periodDate,
+            'kpi_weight' => 0, 'discipline_weight' => 100, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+
+        foreach ([
+            [$periodDate->copy()->subDay()->addHours(8), $periodDate->copy()->addHours(17)],
+            [$periodDate->copy()->addHours(8), $periodDate->copy()->addDay()->addHours(17)],
+        ] as [$startsAt, $endsAt]) {
+            $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+            $trip = DutyTrip::create([
+                'employee_id' => $employee->id, 'manager_id' => $manager->id, 'destination' => 'Batas periode',
+                'purpose' => 'Tugas', 'starts_at' => $startsAt, 'ends_at' => $endsAt,
+                'location_name' => 'Kantor', 'address' => 'Jakarta', 'latitude' => -6.2,
+                'longitude' => 106.8, 'radius_meters' => 100, 'status' => DutyTripStatus::Approved,
+            ]);
+            Attendance::create([
+                'duty_trip_id' => $trip->id, 'employee_id' => $employee->id,
+                'attendance_date' => $periodDate, 'captured_at' => $periodDate->copy()->addHours(12),
+                'latitude' => -6.2, 'longitude' => 106.8, 'distance_meters' => 0,
+                'photo_path' => 'attendance/test.jpg', 'status' => AttendanceStatus::Valid,
+            ]);
+
+            $this->assertEquals(100, app(MeritCalculator::class)->calculate($period, $employee)->discipline_score);
+        }
+    }
+
     public function test_merit_requires_complete_weighted_inputs(): void
     {
         $unit = Unit::create(['name' => 'Operasional', 'code' => 'OPS']);
@@ -177,6 +209,29 @@ class MeritSystemTest extends TestCase
                 $exception->getMessage(),
             );
         }
+    }
+
+    public function test_merit_reports_incomplete_indicator_weight(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Bobot Belum Lengkap', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        $indicator = KpiIndicator::create([
+            'review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 90,
+        ]);
+        EmployeeKpi::create([
+            'review_period_id' => $period->id, 'kpi_indicator_id' => $indicator->id,
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'target' => 100, 'achievement' => 80,
+        ]);
+
+        $this->expectExceptionMessage('Total bobot indikator KPI wajib 100% (saat ini 90%).');
+
+        app(MeritCalculator::class)->calculate($period, $employee);
     }
 
     public function test_upward_review_does_not_satisfy_peer_feedback(): void
@@ -267,6 +322,42 @@ class MeritSystemTest extends TestCase
             ->assertNotNotified('Merit berhasil dihitung');
 
         $this->assertDatabaseCount('merit_results', 0);
+    }
+
+    public function test_command_and_filament_calculate_review_only_merit(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $incompleteEmployee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $period = ReviewPeriod::create([
+            'name' => 'Review Saja', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 0, 'discipline_weight' => 0, 'manager_weight' => 100,
+            'review_360_weight' => 0, 'base_bonus' => 0,
+        ]);
+        PerformanceReview::create([
+            'review_period_id' => $period->id, 'reviewer_id' => $manager->id,
+            'reviewee_id' => $employee->id, 'type' => ReviewType::ManagerToEmployee,
+            'score' => 4, 'submitted_at' => now(),
+        ]);
+
+        $this->artisan('merit:calculate', ['--period' => $period->id])
+            ->expectsOutputToContain('Merit selesai: 1 dibuat, 1 dilewati.')
+            ->assertSuccessful();
+        $this->assertDatabaseHas('merit_results', [
+            'review_period_id' => $period->id, 'employee_id' => $employee->id, 'total_score' => 80,
+        ]);
+        $this->assertDatabaseMissing('merit_results', [
+            'review_period_id' => $period->id, 'employee_id' => $incompleteEmployee->id,
+        ]);
+
+        $this->actingAs($hr);
+        Filament::setCurrentPanel(Filament::getPanel('hr'));
+        Livewire::test(ListReviewPeriods::class)
+            ->callTableAction('calculate', $period)
+            ->assertNotified('Merit selesai: 1 berhasil, 1 dilewati');
+
+        $this->assertDatabaseCount('merit_results', 1);
     }
 
     public function test_kpi_target_and_achievement_must_be_non_negative(): void

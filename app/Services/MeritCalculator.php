@@ -36,9 +36,13 @@ class MeritCalculator
 
             if ($period->kpi_weight > 0) {
                 $indicators = $period->indicators()->get();
+                $totalIndicatorWeight = (int) $indicators->sum('weight');
 
-                if ((int) $indicators->sum('weight') !== 100
-                    || $indicators->pluck('id')->diff($kpis->pluck('kpi_indicator_id'))->isNotEmpty()) {
+                if ($totalIndicatorWeight !== 100) {
+                    throw new BusinessRuleException("Total bobot indikator KPI wajib 100% (saat ini {$totalIndicatorWeight}%).");
+                }
+
+                if ($indicators->pluck('id')->diff($kpis->pluck('kpi_indicator_id'))->isNotEmpty()) {
                     $missing->push('KPI Pegawai');
                 }
             }
@@ -80,7 +84,9 @@ class MeritCalculator
             $allDates = collect();
             $validDates = collect();
             foreach ($dutyTrips as $trip) {
-                $range = collect(CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
+                $tripStart = CarbonImmutable::parse($trip->starts_at)->max($periodStart);
+                $tripEnd = CarbonImmutable::parse($trip->ends_at)->min($periodEnd);
+                $range = collect($tripStart->toPeriod($tripEnd))
                     ->map(fn ($d) => $d->toDateString());
                 $allDates = $allDates->merge($range)->unique();
                 $validDates = $validDates->merge(

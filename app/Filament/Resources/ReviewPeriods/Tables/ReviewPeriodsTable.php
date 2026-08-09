@@ -4,11 +4,11 @@ namespace App\Filament\Resources\ReviewPeriods\Tables;
 
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
-use App\Models\EmployeeKpi;
 use App\Models\ReviewPeriod;
-use App\Services\MeritCalculator;
+use App\Services\MeritBatchCalculator;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -70,17 +70,29 @@ class ReviewPeriodsTable
                             throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
                         }
 
-                        $employees = EmployeeKpi::with('employee')->where('review_period_id', $record->id)
-                            ->get()->pluck('employee')->unique('id');
-                        if ($employees->isEmpty()) {
-                            throw new BusinessRuleException('Data merit belum tersedia: belum ada KPI Pegawai pada periode ini.');
+                        $summary = app(MeritBatchCalculator::class)->calculate($record);
+                        $errorCount = count($summary['errors']);
+
+                        if ($summary['processed'] === 0) {
+                            $message = $errorCount
+                                ? "Tidak ada hasil merit yang dapat dihitung. {$errorCount} Pegawai dilewati."
+                                : 'Data merit belum tersedia: tidak ada Pegawai aktif.';
+
+                            throw new BusinessRuleException($message);
                         }
 
-                        foreach ($employees as $employee) {
-                            app(MeritCalculator::class)->calculate($record, $employee);
+                        $notification = Notification::make();
+                        if ($errorCount) {
+                            $notification
+                                ->title("Merit selesai: {$summary['processed']} berhasil, {$errorCount} dilewati")
+                                ->warning();
+                        } else {
+                            $notification->title('Merit berhasil dihitung')->success();
                         }
+
+                        $notification->send();
                     })
-                    ->successNotificationTitle('Merit berhasil dihitung'),
+                    ->successNotification(null),
                 EditAction::make(),
             ]);
     }

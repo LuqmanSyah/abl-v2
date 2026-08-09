@@ -39,9 +39,11 @@
         #captured-canvas { display: none; }
         #captured-img { width: 100%; max-height: 400px; border-radius: 12px; object-fit: cover; }
         .camera-actions { display: flex; gap: 10px; margin-top: 14px; }
+        #attendance-form { margin-top: 14px; }
         .camera-actions button { flex: 1; }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 51px; border: 0; border-radius: 12px; font-weight: 850; cursor: pointer; touch-action: manipulation; }
         .btn-primary { background: #2563eb; color: white; box-shadow: 0 9px 20px #2563eb33; }
+        .btn-block { display: flex; width: 100%; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-secondary { background: #e2e8f0; color: #334155; }
         .btn-secondary:hover { background: #cbd5e1; }
@@ -111,7 +113,7 @@
                 </div>
 
                 <form id="attendance-form" hidden>
-                    <button id="submit" class="btn btn-primary" type="submit">Ambil lokasi dan simpan absensi dinas</button>
+                    <button id="submit" class="btn btn-primary btn-block" type="submit">Ambil lokasi dan simpan absensi dinas</button>
                 </form>
             @endif
 

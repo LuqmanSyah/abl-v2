@@ -72,6 +72,10 @@ class ReviewPeriodsTable
 
                         $employees = EmployeeKpi::with('employee')->where('review_period_id', $record->id)
                             ->get()->pluck('employee')->unique('id');
+                        if ($employees->isEmpty()) {
+                            throw new BusinessRuleException('Data merit belum tersedia: belum ada KPI Pegawai pada periode ini.');
+                        }
+
                         foreach ($employees as $employee) {
                             app(MeritCalculator::class)->calculate($record, $employee);
                         }

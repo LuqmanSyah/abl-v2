@@ -249,6 +249,26 @@ class MeritSystemTest extends TestCase
         $this->assertDatabaseCount('kpi_indicators', 1);
     }
 
+    public function test_filament_does_not_report_merit_success_without_employee_kpi(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::Hr]);
+        $period = ReviewPeriod::create([
+            'name' => 'Merit Kosong', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0,
+        ]);
+
+        $this->actingAs($hr);
+        Filament::setCurrentPanel(Filament::getPanel('hr'));
+
+        Livewire::test(ListReviewPeriods::class)
+            ->callTableAction('calculate', $period)
+            ->assertNotified('Tindakan tidak dapat diproses')
+            ->assertNotNotified('Merit berhasil dihitung');
+
+        $this->assertDatabaseCount('merit_results', 0);
+    }
+
     public function test_kpi_target_and_achievement_must_be_non_negative(): void
     {
         $manager = User::factory()->create(['role' => UserRole::Manager]);

@@ -1,6 +1,6 @@
 # Testing Absensi Dinas Multi-hari
 
-Gunakan waktu palsu yang sama di Laravel dan payload JavaScript halaman absensi. Jam Windows/WSL tidak perlu diubah.
+Bekukan waktu Laravel, lalu gunakan waktu Laravel tersebut sebagai `captured_at` di halaman absensi. Jam Windows/WSL tidak perlu diubah.
 
 ### Persiapan
 
@@ -27,16 +27,13 @@ public function boot(): void
 }
 ```
 
-3. Di `resources/views/attendance/capture.blade.php`, ubah nilai `captured_at` agar tanggal dan jamnya sama. Offset `+07:00` mengikuti zona waktu aplikasi `Asia/Jakarta`.
+3. Di `resources/views/attendance/capture.blade.php`, ubah hanya sumber waktu `captured_at` agar mengambil `now()` Laravel yang sudah dibekukan:
 
 ```js
-const data = {
-    captured_at: new Date('2026-07-29T08:00:00+07:00').toISOString(),
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    accuracy_meters: Math.round(position.coords.accuracy),
-};
+captured_at: @json(now()->toIso8601String()),
 ```
+
+Kamera, foto, GPS, dan tombol simpan tetap memakai alur halaman asli.
 
 4. Pastikan waktu Laravel sudah sesuai:
 
@@ -48,17 +45,13 @@ php artisan tinker --execute="dump(now()->toDateTimeString());"
 
 ### Simulasikan hari berikutnya
 
-Ubah kedua nilai waktu ke tanggal berikutnya, misalnya:
+Ubah tanggal `Carbon::setTestNow()` ke hari berikutnya, misalnya:
 
 ```php
 Carbon::setTestNow('2026-07-30 08:00:00');
 ```
 
-```js
-captured_at: new Date('2026-07-30T08:00:00+07:00').toISOString(),
-```
-
-Refresh halaman dinas, lalu lakukan absensi lagi. Sistem harus membuat baris absensi baru untuk 30 Juli. Ulangi langkah yang sama untuk 31 Juli.
+Baris JavaScript tidak perlu diubah karena nilainya selalu mengikuti `now()` Laravel. Refresh halaman dinas, ambil foto dan lokasi seperti biasa, lalu simpan absensi. Sistem harus membuat baris absensi baru untuk 30 Juli. Ulangi langkah yang sama untuk 31 Juli.
 
 ### Setelah selesai
 

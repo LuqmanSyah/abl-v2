@@ -14,7 +14,7 @@ class EmployeeTrainingMentoringTable extends TableWidget
 
     protected static ?int $sort = 5;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -26,7 +26,7 @@ class EmployeeTrainingMentoringTable extends TableWidget
                     ->limit(10)
             )
             ->columns([
-                TextColumn::make('training.title')
+                TextColumn::make('training.name')
                     ->label('Pelatihan')
                     ->limit(40),
                 TextColumn::make('status')

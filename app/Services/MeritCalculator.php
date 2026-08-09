@@ -27,8 +27,17 @@ class MeritCalculator
             $identity = ['review_period_id' => $period->id, 'employee_id' => $employee->id];
             $result = MeritResult::where($identity)->lockForUpdate()->first();
 
+            if (! $period->hasStarted()) {
+                throw new BusinessRuleException('Hasil merit belum dapat dihitung sebelum periode dimulai.');
+            }
+            if (! $period->is_active) {
+                throw new BusinessRuleException('Hasil merit hanya dapat dihitung untuk periode aktif.');
+            }
             if ($result?->manager_verified_at || $result?->hr_verified_at || $result?->published_at) {
                 throw new DomainException('Hasil merit sudah diverifikasi dan tidak dapat dihitung ulang.');
+            }
+            if ($period->hasPublishedMeritResults()) {
+                throw new BusinessRuleException('Hasil merit yang telah dipublikasikan tidak dapat dihitung ulang.');
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
@@ -36,9 +45,13 @@ class MeritCalculator
 
             if ($period->kpi_weight > 0) {
                 $indicators = $period->indicators()->get();
+                $totalIndicatorWeight = (int) $indicators->sum('weight');
 
-                if ((int) $indicators->sum('weight') !== 100
-                    || $indicators->pluck('id')->diff($kpis->pluck('kpi_indicator_id'))->isNotEmpty()) {
+                if ($totalIndicatorWeight !== 100) {
+                    throw new BusinessRuleException("Total bobot indikator KPI wajib 100% (saat ini {$totalIndicatorWeight}%).");
+                }
+
+                if ($indicators->pluck('id')->diff($kpis->pluck('kpi_indicator_id'))->isNotEmpty()) {
                     $missing->push('KPI Pegawai');
                 }
             }
@@ -80,7 +93,9 @@ class MeritCalculator
             $allDates = collect();
             $validDates = collect();
             foreach ($dutyTrips as $trip) {
-                $range = collect(CarbonImmutable::parse($trip->starts_at->toDateString())->toPeriod($trip->ends_at->toDateString()))
+                $tripStart = CarbonImmutable::parse($trip->starts_at)->max($periodStart);
+                $tripEnd = CarbonImmutable::parse($trip->ends_at)->min($periodEnd);
+                $range = collect($tripStart->toPeriod($tripEnd))
                     ->map(fn ($d) => $d->toDateString());
                 $allDates = $allDates->merge($range)->unique();
                 $validDates = $validDates->merge(

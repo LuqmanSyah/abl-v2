@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\MentoringStatus;
 use App\Enums\UserRole;
+use App\Models\Competency;
 use App\Models\Mentoring;
 use App\Models\User;
 use DomainException;
@@ -17,10 +18,12 @@ class MentoringWorkflowTest extends TestCase
     public function test_employee_can_request_mentoring(): void
     {
         [$employee, $manager] = $this->users();
+        $competency = Competency::create(['name' => 'Kepemimpinan']);
 
         $mentoring = Mentoring::create([
             'employee_id' => $employee->id,
             'manager_id' => $manager->id,
+            'competency_id' => $competency->id,
             'topic' => 'Belajar leadership',
             'target' => 'Jadi leader',
             'requested_at' => now()->addDay(),
@@ -28,6 +31,7 @@ class MentoringWorkflowTest extends TestCase
 
         $this->assertTrue($mentoring->exists);
         $this->assertSame(MentoringStatus::Pending, $mentoring->status);
+        $this->assertTrue($mentoring->competency->is($competency));
     }
 
     public function test_employee_cannot_request_past_date(): void
@@ -107,12 +111,30 @@ class MentoringWorkflowTest extends TestCase
             'target' => 'Test',
             'status' => MentoringStatus::Approved,
             'requested_at' => now()->subDay(),
+            'scheduled_at' => now()->subHour(),
         ]);
 
         $mentoring->complete($manager, 'Berhasil', 'Lanjutkan');
 
         $this->assertSame(MentoringStatus::Completed, $mentoring->fresh()->status);
         $this->assertNotNull($mentoring->fresh()->completed_at);
+    }
+
+    public function test_manager_cannot_complete_mentoring_before_schedule(): void
+    {
+        [$employee, $manager] = $this->users();
+        $mentoring = Mentoring::create([
+            'employee_id' => $employee->id,
+            'manager_id' => $manager->id,
+            'topic' => 'Test',
+            'target' => 'Test',
+            'status' => MentoringStatus::Approved,
+            'requested_at' => now()->addDay(),
+            'scheduled_at' => now()->addDay(),
+        ]);
+
+        $this->expectException(DomainException::class);
+        $mentoring->complete($manager, 'Terlalu cepat', 'Tunggu jadwal');
     }
 
     public function test_employee_cannot_approve_own_mentoring(): void
@@ -139,6 +161,7 @@ class MentoringWorkflowTest extends TestCase
             'role' => UserRole::Employee,
             'manager_id' => $manager->id,
         ]);
+
         return [$employee, $manager];
     }
 }

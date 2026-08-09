@@ -52,6 +52,48 @@ class CareerDevelopmentTest extends TestCase
         $this->assertTrue(CareerGoal::visibleTo($hr)->whereKey($goal)->exists());
     }
 
+    public function test_gap_summary_distinguishes_missing_standards_and_assessments(): void
+    {
+        [$employee, , , , $target] = $this->organization();
+        $goal = CareerGoal::create(['user_id' => $employee->id, 'target_position_id' => $target->id]);
+
+        $this->assertSame('Standar kompetensi jabatan belum ditetapkan.', $goal->gap_summary);
+
+        $competency = Competency::create(['name' => 'Kepemimpinan']);
+        PositionCompetency::create([
+            'position_id' => $target->id,
+            'competency_id' => $competency->id,
+            'required_level' => 3,
+        ]);
+
+        $analysis = app(CareerGapService::class)->analyze($goal)->sole();
+        $this->assertNull($analysis['current']);
+        $this->assertSame(3, $analysis['gap']);
+        $this->assertStringContainsString('Belum dinilai/3 — Ajukan mentoring', $goal->gap_summary);
+    }
+
+    public function test_career_goal_requires_a_higher_position(): void
+    {
+        [$employee, , , $current] = $this->organization();
+
+        foreach ([['Setara', $current->level], ['Lebih Rendah', $current->level - 1]] as [$name, $level]) {
+            $position = Position::create([
+                'unit_id' => $current->unit_id,
+                'name' => $name,
+                'level' => $level,
+            ]);
+
+            try {
+                CareerGoal::create(['user_id' => $employee->id, 'target_position_id' => $position->id]);
+                $this->fail('Jabatan tujuan setara atau lebih rendah harus ditolak.');
+            } catch (DomainException $exception) {
+                $this->assertSame('Jabatan tujuan harus lebih tinggi dari jabatan Pegawai saat ini.', $exception->getMessage());
+            }
+        }
+
+        $this->assertDatabaseCount('career_goals', 0);
+    }
+
     public function test_competency_assessment_is_audited_and_rejects_future_dates(): void
     {
         [$employee, , $hr, , $target] = $this->organization();
@@ -92,6 +134,29 @@ class CareerDevelopmentTest extends TestCase
         $this->assertSame($hr->id, ActivityLog::where('action', 'competency.deleted')->sole()->user_id);
     }
 
+    public function test_competency_in_use_cannot_be_deleted(): void
+    {
+        [, , , , $target] = $this->organization();
+        $competency = Competency::create(['name' => 'Kepemimpinan']);
+        $standard = PositionCompetency::create([
+            'position_id' => $target->id,
+            'competency_id' => $competency->id,
+            'required_level' => 3,
+        ]);
+
+        try {
+            $competency->delete();
+            $this->fail('Kompetensi yang masih digunakan harus dilindungi.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Kompetensi yang masih digunakan tidak dapat dihapus.', $exception->getMessage());
+        }
+
+        $this->assertTrue($competency->fresh()->exists);
+        $standard->delete();
+        $competency->delete();
+        $this->assertModelMissing($competency);
+    }
+
     public function test_training_and_mentoring_workflows_enforce_role_order(): void
     {
         [$employee, $manager, $hr] = $this->organization();
@@ -119,13 +184,14 @@ class CareerDevelopmentTest extends TestCase
             'topic' => 'Karier', 'target' => 'Rencana promosi', 'requested_at' => now()->addDay(),
         ]);
         $mentoring->approve($manager, now()->addDays(2), 'Siapkan agenda');
+        $this->travel(3)->days();
         $mentoring->complete($manager, 'Target jelas', 'Evaluasi bulan depan');
 
         $this->assertSame(MentoringStatus::Completed, $mentoring->fresh()->status);
         $this->assertSame(7, ActivityLog::count());
     }
 
-    public function test_manager_recommendation_is_approved_without_hr_queue(): void
+    public function test_manager_recommendation_waits_for_hr_verification(): void
     {
         [$employee, $manager, $hr] = $this->organization();
         $training = Training::create(['name' => 'Komunikasi Lanjutan', 'type' => 'internal', 'is_active' => true]);
@@ -162,11 +228,11 @@ class CareerDevelopmentTest extends TestCase
             ->assertHasNoTableActionErrors();
 
         $request = TrainingRequest::sole();
-        $this->assertSame(TrainingRequestStatus::Approved, $request->status);
+        $this->assertSame(TrainingRequestStatus::PendingHr, $request->status);
         $this->assertNotNull($request->manager_decided_at);
         $this->assertNull($request->hr_verified_at);
         $this->assertTrue(TrainingRequest::visibleTo($employee)->whereKey($request)->exists());
-        $this->assertFalse(TrainingRequest::where('status', TrainingRequestStatus::PendingHr)->exists());
+        $this->assertTrue(TrainingRequest::where('status', TrainingRequestStatus::PendingHr)->exists());
 
         $log = ActivityLog::where('action', 'training.recommended')->sole();
         $this->assertSame($result->id, $log->data['merit_result_id']);
@@ -174,6 +240,7 @@ class CareerDevelopmentTest extends TestCase
         $this->assertFalse(ActivityLog::where('action', 'training.requested')->where('subject_id', $request->id)->exists());
 
         $this->actingAs($hr);
+        $request->verifyByHr($hr);
         $request->complete($hr, 'Lulus');
         $this->assertSame(TrainingRequestStatus::Completed, $request->fresh()->status);
     }
@@ -354,7 +421,7 @@ class CareerDevelopmentTest extends TestCase
     private function organization(): array
     {
         $unit = Unit::create(['name' => 'Teknologi', 'code' => 'TI']);
-        $current = Position::create(['unit_id' => $unit->id, 'name' => 'Staf', 'level' => 1]);
+        $current = Position::create(['unit_id' => $unit->id, 'name' => 'Staf', 'level' => 2]);
         $target = Position::create(['unit_id' => $unit->id, 'name' => 'Supervisor', 'level' => 3]);
         $manager = User::factory()->create(['role' => UserRole::Manager, 'unit_id' => $unit->id, 'position_id' => $target->id]);
         $employee = User::factory()->create([

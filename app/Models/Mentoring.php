@@ -13,14 +13,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\DB;
 
 class Mentoring extends Model
 {
     use HasFactory, HasWorkflow;
 
     protected $fillable = [
-        'employee_id', 'manager_id', 'status', 'topic', 'target', 'requested_at', 'scheduled_at',
+        'employee_id', 'manager_id', 'competency_id', 'status', 'topic', 'target', 'requested_at', 'scheduled_at',
         'manager_notes', 'result', 'follow_up', 'completed_at',
     ];
 
@@ -69,6 +68,11 @@ class Mentoring extends Model
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    public function competency(): BelongsTo
+    {
+        return $this->belongsTo(Competency::class);
+    }
+
     public function approve(User $manager, mixed $scheduledAt, ?string $notes = null): void
     {
         $this->workflowTransition(function (self $mentoring) use ($manager, $scheduledAt, $notes): void {
@@ -103,7 +107,8 @@ class Mentoring extends Model
     public function complete(User $manager, string $result, string $followUp): void
     {
         $this->workflowTransition(function (self $mentoring) use ($manager, $result, $followUp): void {
-            if (! $this->actorIsManager($manager, $mentoring, MentoringStatus::Approved)) {
+            if (! $this->actorIsManager($manager, $mentoring, MentoringStatus::Approved)
+                || ! $mentoring->scheduled_at || $mentoring->scheduled_at->isFuture()) {
                 throw new BusinessRuleException('Mentoring tidak dapat diproses pengguna ini.');
             }
             $mentoring->update([
@@ -131,19 +136,6 @@ class Mentoring extends Model
             return false;
         }
 
-        if ($mentoring->manager_id === $user->id) {
-            return true;
-        }
-
-        if ($user->delegate_id === $mentoring->manager_id) {
-            ActivityLog::record('mentoring.delegated', $mentoring, $user, [
-                'action' => 'delegated_approval',
-                'delegate_of' => $mentoring->manager_id,
-            ]);
-
-            return true;
-        }
-
-        return false;
+        return $mentoring->manager_id === $user->id;
     }
 }

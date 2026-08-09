@@ -43,7 +43,8 @@ class ReviewPeriodResource extends Resource
 
     public static function canEdit(Model $record): bool
     {
-        return static::canViewAny() && $record instanceof ReviewPeriod && ! $record->hasPublishedMeritResults();
+        return static::canViewAny() && $record instanceof ReviewPeriod
+            && ! $record->hasEnded() && ! $record->hasPublishedMeritResults();
     }
 
     public static function canDelete(Model $record): bool

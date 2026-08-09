@@ -34,7 +34,7 @@ class UserSeeder extends Seeder
             $suffix = $index === 1 ? '' : (string) $index;
             DB::table('users')->updateOrInsert(['email' => "pegawai{$suffix}@example.com"], [
                 'name' => "Pegawai Demo {$index}", 'email_verified_at' => $now, 'password' => $password,
-                'role' => UserRole::Employee->value, 'unit_id' => $units['OPS'], 'position_id' => $positions['Kepala Bagian'],
+                'role' => UserRole::Employee->value, 'unit_id' => $units['OPS'], 'position_id' => $positions['Staf Operasional'],
                 'manager_id' => $managerId, 'employee_number' => sprintf('PGW-%03d', $index),
                 'phone' => sprintf('0812000001%02d', $index), 'is_active' => true,
                 'created_at' => $now, 'updated_at' => $now,

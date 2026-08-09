@@ -20,7 +20,7 @@ class TrainingRequest extends Model
     private bool $managerRecommendation = false;
 
     protected $fillable = [
-        'user_id', 'training_id', 'manager_id', 'status', 'reason', 'manager_notes', 'hr_result',
+        'user_id', 'training_id', 'manager_id', 'status', 'reason', 'manager_notes', 'hr_notes', 'hr_result',
         'requested_at', 'manager_decided_at', 'hr_verified_by', 'hr_verified_at', 'completed_at',
     ];
 
@@ -52,7 +52,7 @@ class TrainingRequest extends Model
 
             if (User::whereKey($request->user_id)->where('role', UserRole::Employee)->where('is_active', true)->where('manager_id', $request->manager_id)->doesntExist()
                 || User::whereKey($request->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
-                || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
+                || Training::available()->whereKey($request->training_id)->doesntExist()) {
                 throw new BusinessRuleException('Pengajuan pelatihan tidak valid.');
             }
         });
@@ -91,7 +91,7 @@ class TrainingRequest extends Model
         if (! $reason
             || User::whereKey($manager->id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
             || User::whereKey($employee->id)->where('role', UserRole::Employee)->where('is_active', true)->where('manager_id', $manager->id)->doesntExist()
-            || Training::whereKey($training->id)->where('is_active', true)->doesntExist()
+            || Training::available()->whereKey($training->id)->doesntExist()
             || MeritResult::whereKey($meritResult->id)->where('employee_id', $employee->id)->whereNotNull('published_at')->doesntExist()) {
             throw new BusinessRuleException('Rekomendasi pelatihan tidak valid.');
         }
@@ -105,7 +105,7 @@ class TrainingRequest extends Model
                 'user_id' => $employee->id,
                 'training_id' => $training->id,
                 'manager_id' => $manager->id,
-                'status' => TrainingRequestStatus::Approved,
+                'status' => TrainingRequestStatus::PendingHr,
                 'reason' => $reason,
                 'requested_at' => now(),
                 'manager_decided_at' => now(),
@@ -153,7 +153,7 @@ class TrainingRequest extends Model
             if ($employee->role !== UserRole::Employee || $request->user_id !== $employee->id
                 || $request->status !== TrainingRequestStatus::Rejected || ! $employee->manager_id
                 || User::whereKey($employee->manager_id)->where('role', UserRole::Manager)->where('is_active', true)->doesntExist()
-                || Training::whereKey($request->training_id)->where('is_active', true)->doesntExist()) {
+                || Training::available()->whereKey($request->training_id)->doesntExist()) {
                 throw new BusinessRuleException('Pengajuan pelatihan ini tidak dapat diajukan ulang.');
             }
 
@@ -162,7 +162,10 @@ class TrainingRequest extends Model
                 'status' => TrainingRequestStatus::PendingManager,
                 'reason' => $reason,
                 'manager_notes' => null,
+                'hr_notes' => null,
                 'manager_decided_at' => null,
+                'hr_verified_by' => null,
+                'hr_verified_at' => null,
                 'requested_at' => now(),
             ]);
             ActivityLog::record('training.resubmitted', $request, $employee);
@@ -202,10 +205,28 @@ class TrainingRequest extends Model
         });
     }
 
+    public function rejectByHr(User $hr, string $notes): void
+    {
+        $this->workflowTransition(function (self $request) use ($hr, $notes): void {
+            if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::PendingHr) {
+                throw new BusinessRuleException('Pengajuan pelatihan belum dapat ditolak HR.');
+            }
+
+            $request->update([
+                'status' => TrainingRequestStatus::Rejected,
+                'hr_notes' => $notes,
+                'hr_verified_by' => $hr->id,
+                'hr_verified_at' => now(),
+            ]);
+            ActivityLog::record('training.hr_rejected', $request, $hr, ['notes' => $notes]);
+        });
+    }
+
     public function complete(User $hr, string $result): void
     {
         $this->workflowTransition(function (self $request) use ($hr, $result): void {
-            if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::Approved) {
+            if ($hr->role !== UserRole::Hr || $request->status !== TrainingRequestStatus::Approved
+                || $request->training()->where('ends_at', '>', now())->exists()) {
                 throw new BusinessRuleException('Pelatihan belum dapat diselesaikan.');
             }
 
@@ -233,19 +254,6 @@ class TrainingRequest extends Model
             return false;
         }
 
-        if ($request->manager_id === $user->id) {
-            return true;
-        }
-
-        if ($user->delegate_id === $request->manager_id) {
-            ActivityLog::record('training.delegated', $request, $user, [
-                'action' => 'delegated_approval',
-                'delegate_of' => $request->manager_id,
-            ]);
-
-            return true;
-        }
-
-        return false;
+        return $request->manager_id === $user->id;
     }
 }

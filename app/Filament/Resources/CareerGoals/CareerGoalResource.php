@@ -37,7 +37,7 @@ class CareerGoalResource extends Resource
     {
         return match (auth()->user()?->role) {
             UserRole::Employee => 'Rencana Karier',
-            UserRole::Manager, UserRole::Hr => 'Monitoring Karier',
+            UserRole::Manager, UserRole::Hr => 'Target & Gap Karier',
             default => 'Target Karier',
         };
     }
@@ -75,7 +75,8 @@ class CareerGoalResource extends Resource
             Select::make('target_position_id')
                 ->label('Jabatan tujuan')
                 ->relationship('targetPosition', 'name', fn (Builder $query) => $query->where('level', '>', auth()->user()->position?->level ?? PHP_INT_MAX))
-                ->searchable()->preload()->required(),
+                ->searchable()->preload()->required()
+                ->helperText('Hanya jabatan dengan level lebih tinggi; satu target aktif per Pegawai.'),
         ]);
     }
 

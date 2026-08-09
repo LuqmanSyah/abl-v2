@@ -3,24 +3,25 @@
 namespace App\Console\Commands;
 
 use App\Models\ReviewPeriod;
-use App\Models\User;
-use App\Services\MeritCalculator;
-use DomainException;
+use App\Services\MeritBatchCalculator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 class CalculateMerit extends Command
 {
     protected $signature = 'merit:calculate {--period= : ID ReviewPeriod}';
+
     protected $description = 'Hitung merit untuk semua periode aktif';
 
-    public function handle(MeritCalculator $calculator): int
+    public function handle(MeritBatchCalculator $calculator): int
     {
         $query = ReviewPeriod::query();
         if ($periodId = $this->option('period')) {
             $query->whereKey($periodId);
         } else {
-            $query->where('is_active', true)->whereDate('ends_at', '>=', now()->subMonth());
+            $query->where('is_active', true)
+                ->whereDate('starts_at', '<=', today())
+                ->whereDate('ends_at', '>=', now()->subMonth());
         }
 
         $periods = $query->get();
@@ -34,27 +35,12 @@ class CalculateMerit extends Command
         $errors = 0;
 
         foreach ($periods as $period) {
-            $employees = User::where('role', \App\Enums\UserRole::Employee)
-                ->where(fn ($q) => $q
-                    ->whereHas('dutyTrips', fn ($q) => $q
-                        ->where('starts_at', '<=', $period->ends_at)
-                        ->where('ends_at', '>=', $period->starts_at)
-                    )
-                    ->orWhereHas('employeeKpis', fn ($q) => $q
-                        ->where('review_period_id', $period->id)
-                    )
-                )->get();
+            $summary = $calculator->calculate($period);
+            $count += $summary['created'];
+            $errors += count($summary['errors']);
 
-            foreach ($employees as $employee) {
-                try {
-                    $result = $calculator->calculate($period, $employee);
-                    if ($result->wasRecentlyCreated) {
-                        $count++;
-                    }
-                } catch (DomainException $e) {
-                    $errors++;
-                    Log::warning("Merit skip {$employee->id}: {$e->getMessage()}");
-                }
+            foreach ($summary['errors'] as $employeeId => $message) {
+                Log::warning("Merit skip {$employeeId}: {$message}");
             }
         }
 

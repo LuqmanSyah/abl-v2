@@ -20,7 +20,7 @@ return new class extends Migration
         Schema::create('position_competency', function (Blueprint $table) {
             $table->id();
             $table->foreignId('position_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('competency_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('competency_id')->constrained()->restrictOnDelete();
             $table->unsignedTinyInteger('required_level');
             $table->timestamps();
             $table->unique(['position_id', 'competency_id']);
@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::create('employee_competencies', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('competency_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('competency_id')->constrained()->restrictOnDelete();
             $table->unsignedTinyInteger('level');
             $table->date('assessed_at');
             $table->text('notes')->nullable();
@@ -46,7 +46,7 @@ return new class extends Migration
 
         Schema::create('trainings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('competency_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('competency_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('name');
             $table->string('provider')->nullable();
             $table->string('type');
@@ -60,11 +60,12 @@ return new class extends Migration
         Schema::create('training_requests', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('training_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('training_id')->constrained()->restrictOnDelete();
             $table->foreignId('manager_id')->constrained('users')->restrictOnDelete();
             $table->string('status')->default(TrainingRequestStatus::PendingManager->value)->index();
             $table->text('reason')->nullable();
             $table->text('manager_notes')->nullable();
+            $table->text('hr_notes')->nullable();
             $table->text('hr_result')->nullable();
             $table->timestamp('requested_at');
             $table->timestamp('manager_decided_at')->nullable();
@@ -79,6 +80,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('employee_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('manager_id')->constrained('users')->restrictOnDelete();
+            $table->foreignId('competency_id')->nullable()->constrained()->restrictOnDelete();
             $table->string('status')->default(MentoringStatus::Pending->value)->index();
             $table->string('topic');
             $table->text('target');

@@ -18,7 +18,11 @@ class PerformanceReviewForm
             ->components([
                 Select::make('review_period_id')
                     ->label('Periode')
-                    ->relationship('reviewPeriod', 'name', fn (Builder $query) => $query->where('is_active', true))
+                    ->relationship('reviewPeriod', 'name', fn (Builder $query) => $query
+                        ->where('is_active', true)
+                        ->whereDate('starts_at', '<=', today())
+                        ->whereDate('ends_at', '>=', today())
+                        ->whereDoesntHave('meritResults', fn (Builder $query) => $query->whereNotNull('published_at')))
                     ->searchable()->preload()
                     ->required(),
                 Hidden::make('reviewer_id'),
@@ -35,6 +39,9 @@ class PerformanceReviewForm
                         });
                     })
                     ->searchable()->preload()
+                    ->helperText(fn (): ?string => auth()->user()->role === UserRole::Employee
+                        ? 'Penilaian kepada Atasan menjadi umpan balik kualitatif HR dan tidak masuk skor merit Pegawai.'
+                        : null)
                     ->required(),
                 Hidden::make('type'),
                 TextInput::make('score')

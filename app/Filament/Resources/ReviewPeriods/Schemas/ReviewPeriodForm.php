@@ -70,6 +70,7 @@ class ReviewPeriodForm
                     ->prefix('Rp')
                     ->required()
                     ->numeric()
+                    ->minValue(0)
                     ->default(0),
                 Toggle::make('is_active')
                     ->label('Aktif')

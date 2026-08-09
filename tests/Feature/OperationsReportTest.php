@@ -7,6 +7,7 @@ use App\Enums\DutyTripStatus;
 use App\Enums\MentoringStatus;
 use App\Enums\TrainingRequestStatus;
 use App\Enums\UserRole;
+use App\Mail\ReportMail;
 use App\Models\Attendance;
 use App\Models\DutyTrip;
 use App\Models\Mentoring;
@@ -16,7 +17,9 @@ use App\Models\Training;
 use App\Models\TrainingRequest;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\HrReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -112,6 +115,37 @@ class OperationsReportTest extends TestCase
         $this->assertSame(1, $row['completed_training_count']);
         $this->assertSame(1, $row['mentoring_count']);
         $this->assertSame(1, $row['completed_mentoring_count']);
+    }
+
+    public function test_web_and_email_reports_share_rows(): void
+    {
+        [$hr, $employee, $other, $unit] = $this->employees();
+        $period = ReviewPeriod::create([
+            'name' => 'Laporan bersama', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
+            'review_360_weight' => 20, 'base_bonus' => 0, 'is_active' => true,
+        ]);
+        $filters = [
+            'review_period_id' => $period->id,
+            'unit_id' => $unit->id,
+            'position_id' => null,
+        ];
+        $expected = app(HrReportService::class)->rows($filters);
+
+        $response = $this->actingAs($hr)->get(route('hr.reports.index', $filters))->assertOk();
+        $actual = $response->viewData('rows')->flatMap(fn ($group) => $group['items'])->values();
+
+        $this->assertSame($expected->values()->all(), $actual->all());
+        $this->assertSame([$employee->name], $actual->pluck('name')->all());
+        $this->assertNotContains($other->name, $actual->pluck('name'));
+
+        Mail::fake();
+        $this->artisan('merit:send-report', [
+            '--review_period_id' => $period->id,
+            '--unit_id' => $unit->id,
+        ])->assertSuccessful();
+
+        Mail::assertSent(ReportMail::class, fn (ReportMail $mail): bool => $mail->rows->values()->all() === $expected->values()->all());
     }
 
     /** @return array{User, User, User, Unit} */

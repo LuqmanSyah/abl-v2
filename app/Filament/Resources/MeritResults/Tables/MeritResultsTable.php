@@ -88,7 +88,7 @@ class MeritResultsTable
                         && $record->employee->is_active
                         && $record->published_at !== null)
                     ->modalHeading(fn (MeritResult $record): string => "Rekomendasi Pelatihan — {$record->employee->name}")
-                    ->modalDescription('Rekomendasi langsung disetujui tanpa antrean verifikasi HR.')
+                    ->modalDescription('Rekomendasi akan diteruskan kepada HR untuk verifikasi.')
                     ->modalWidth('5xl')
                     ->modalContent(fn (MeritResult $record) => view(
                         'filament.resources.merit-results.recommend-training-breakdown',
@@ -97,8 +97,7 @@ class MeritResultsTable
                     ->schema([
                         Select::make('training_id')
                             ->label('Pelatihan')
-                            ->options(fn (MeritResult $record): array => Training::query()
-                                ->where('is_active', true)
+                            ->options(fn (MeritResult $record): array => Training::available()
                                 ->whereDoesntHave('requests', fn (Builder $query) => $query->where('user_id', $record->employee_id))
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
@@ -121,7 +120,7 @@ class MeritResultsTable
                             $data['reason'],
                         );
                     })
-                    ->successNotificationTitle('Pelatihan direkomendasikan dan langsung disetujui'),
+                    ->successNotificationTitle('Pelatihan direkomendasikan kepada HR'),
             ]);
     }
 }

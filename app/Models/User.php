@@ -32,6 +32,10 @@ class User extends Authenticatable implements FilamentUser
                 throw new BusinessRuleException('Atasan yang masih memiliki bawahan tidak dapat dinonaktifkan atau diubah perannya.');
             }
 
+            if ($user->role === UserRole::Employee && $user->is_active && ! $user->manager_id) {
+                throw new BusinessRuleException('Pegawai aktif wajib memiliki Atasan langsung.');
+            }
+
             if (! $user->manager_id) {
                 return;
             }
@@ -56,7 +60,6 @@ class User extends Authenticatable implements FilamentUser
         'unit_id',
         'position_id',
         'manager_id',
-        'delegate_id',
         'employee_number',
         'phone',
         'avatar_url',
@@ -113,19 +116,9 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(self::class, 'manager_id');
     }
 
-    public function delegate(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'delegate_id');
-    }
-
     public function subordinates(): HasMany
     {
         return $this->hasMany(self::class, 'manager_id');
-    }
-
-    public function delegatedFrom(): HasMany
-    {
-        return $this->hasMany(self::class, 'delegate_id');
     }
 
     public function dutyTrips(): HasMany

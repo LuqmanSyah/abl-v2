@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -40,7 +41,7 @@ class MentoringResource extends Resource
         return match (auth()->user()?->role) {
             UserRole::Employee => 'Pengajuan Mentoring',
             UserRole::Manager => 'Pengelolaan Mentoring',
-            UserRole::Hr => 'Monitoring Mentoring',
+            UserRole::Hr => 'Riwayat Mentoring',
             default => 'Mentoring',
         };
     }
@@ -76,6 +77,7 @@ class MentoringResource extends Resource
             Hidden::make('employee_id')->default(fn (): ?int => auth()->id()),
             Hidden::make('manager_id')->default(fn (): ?int => auth()->user()?->manager_id),
             Hidden::make('status')->default(MentoringStatus::Pending->value),
+            Select::make('competency_id')->label('Kompetensi terkait')->relationship('competency', 'name')->searchable()->preload(),
             TextInput::make('topic')->label('Topik')->required(),
             Textarea::make('target')->label('Target')->required()->columnSpanFull(),
             DateTimePicker::make('requested_at')->label('Jadwal yang diajukan')->native(false)->minDate(now())->required(),
@@ -87,6 +89,7 @@ class MentoringResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('employee.name')->label('Pegawai')->searchable(),
+                TextColumn::make('competency.name')->label('Kompetensi')->placeholder('-'),
                 TextColumn::make('topic')->label('Topik')->searchable(),
                 TextColumn::make('target')->label('Target')->limit(50),
                 TextColumn::make('status')->label('Status')->badge()

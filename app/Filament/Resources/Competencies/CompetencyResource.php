@@ -49,7 +49,7 @@ class CompetencyResource extends Resource
 
     public static function canDelete(Model $record): bool
     {
-        return static::canViewAny();
+        return static::canViewAny() && ! $record->isInUse();
     }
 
     public static function form(Schema $schema): Schema

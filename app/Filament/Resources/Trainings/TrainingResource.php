@@ -54,7 +54,7 @@ class TrainingResource extends Resource
     {
         $query = parent::getEloquentQuery();
 
-        return auth()->user()?->role === UserRole::Hr ? $query : $query->where('is_active', true);
+        return auth()->user()?->role === UserRole::Hr ? $query : $query->available();
     }
 
     public static function canCreate(): bool

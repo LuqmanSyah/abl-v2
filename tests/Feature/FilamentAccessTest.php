@@ -158,7 +158,7 @@ class FilamentAccessTest extends TestCase
             $manager->refresh();
         }
 
-        $employee->update(['manager_id' => null]);
+        $employee->update(['is_active' => false, 'manager_id' => null]);
         $manager->update(['is_active' => false]);
 
         $this->assertFalse($manager->is_active);
@@ -236,7 +236,7 @@ class FilamentAccessTest extends TestCase
                 PerformanceReviewResource::class => 'Umpan Balik Kinerja',
                 MeritResultResource::class => 'Verifikasi Merit',
                 EmployeeCompetencyResource::class => 'Monitoring Kompetensi',
-                CareerGoalResource::class => 'Monitoring Karier',
+                CareerGoalResource::class => 'Target & Gap Karier',
                 TrainingResource::class => 'Katalog Pelatihan',
                 TrainingRequestResource::class => 'Persetujuan Pelatihan',
                 MentoringResource::class => 'Pengelolaan Mentoring',
@@ -248,10 +248,10 @@ class FilamentAccessTest extends TestCase
                 PerformanceReviewResource::class => 'Umpan Balik Kinerja',
                 MeritResultResource::class => 'Publikasi Merit',
                 EmployeeCompetencyResource::class => 'Pengelolaan Kompetensi Pegawai',
-                CareerGoalResource::class => 'Monitoring Karier',
+                CareerGoalResource::class => 'Target & Gap Karier',
                 TrainingResource::class => 'Pengelolaan Pelatihan',
-                TrainingRequestResource::class => 'Verifikasi Pelatihan',
-                MentoringResource::class => 'Monitoring Mentoring',
+                TrainingRequestResource::class => 'Verifikasi & Hasil Pelatihan',
+                MentoringResource::class => 'Riwayat Mentoring',
             ],
         ];
 

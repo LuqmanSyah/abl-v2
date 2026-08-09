@@ -36,6 +36,15 @@ class UserFactory extends Factory
         ];
     }
 
+    public function configure(): static
+    {
+        return $this->afterMaking(function (User $user): void {
+            if ($user->role === UserRole::Employee && $user->is_active && ! $user->manager_id) {
+                $user->manager_id = self::new()->create(['role' => UserRole::Manager])->id;
+            }
+        });
+    }
+
     /**
      * Indicate that the model's email address should be unverified.
      */

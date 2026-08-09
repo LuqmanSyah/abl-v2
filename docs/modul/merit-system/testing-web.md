@@ -138,22 +138,24 @@ Login sebagai HR. Jalankan `Hitung Merit` lagi. Hasil wajib berhasil.
 7. Login sebagai Pegawai 1. Hasil tersebut belum boleh terlihat karena belum dipublikasikan.
 8. Login sebagai Atasan. Pada Hasil Merit, aksi `Rekomendasikan Pelatihan` belum boleh terlihat.
 
-### 2.5 Buktikan publikasi sebelum periode selesai ditolak
+### 2.5 Buktikan alur verifikasi dan publikasi
 
-1. Sebagai Atasan, buka detail hasil dan klik `Verifikasi Atasan` > `Verifikasi Hasil`.
-2. Login sebagai HR, buka detail hasil, lalu klik `Verifikasi dan Publikasikan`.
-3. Publikasi wajib ditolak dengan pesan:
+1. Sebagai Atasan, buka detail hasil. Aksi `Verifikasi Atasan` belum boleh terlihat karena periode belum selesai.
+2. Login sebagai HR dan buka detail hasil. Aksi `Verifikasi dan Publikasikan` juga belum boleh terlihat.
+3. Kembali ke Periode Penilaian dan edit `WEB Merit 01`.
+4. Ubah Selesai menjadi kemarin. Mulai tetap dua hari lalu, lalu simpan.
+5. Sebagai HR, pastikan periode dan indikator periode tersebut tidak dapat diedit atau dihapus.
+6. Login sebagai Atasan. Pastikan KPI Pegawai periode tersebut tidak dapat diedit atau dihapus, lalu buka detail hasil dan klik `Verifikasi Atasan` > `Verifikasi Hasil`. Verifikasi wajib berhasil.
+7. Login sebagai HR, buka detail hasil, lalu klik `Verifikasi dan Publikasikan`. Publikasi wajib ditolak karena empat pegawai aktif lain belum dihitung atau diverifikasi:
 
    ```text
-   Hasil merit hanya dapat dipublikasikan setelah periode selesai.
+   Publikasi menunggu 4 Pegawai yang belum dihitung atau diverifikasi Atasan.
    ```
 
-4. Sebagai HR, kembali ke Periode Penilaian dan edit `WEB Merit 01`.
-5. Ubah Selesai menjadi kemarin. Mulai tetap dua hari lalu.
-6. Kembali ke detail Hasil Merit dan jalankan `Verifikasi dan Publikasikan` lagi.
-7. Publikasi wajib berhasil dan hasil terkunci.
-8. Login sebagai Pegawai 1. Hasil sekarang wajib terlihat.
-9. Login sebagai Atasan. Aksi `Rekomendasikan Pelatihan` sekarang wajib terlihat pada baris hasil.
+8. Buka Organisasi > Pegawai. Nonaktifkan `Pegawai Demo 2` sampai `Pegawai Demo 5` karena tidak mengikuti finalisasi periode ini.
+9. Kembali ke detail Hasil Merit dan jalankan `Verifikasi dan Publikasikan` lagi. Publikasi wajib berhasil.
+10. Login sebagai Pegawai 1. Hasil sekarang wajib terlihat.
+11. Login sebagai Atasan. Aksi `Rekomendasikan Pelatihan` sekarang wajib terlihat pada baris hasil.
 
 ## Checklist Lulus
 
@@ -161,5 +163,7 @@ Login sebagai HR. Jalankan `Hitung Merit` lagi. Hasil wajib berhasil.
 - [ ] KPI, penilaian Atasan, dan peer feedback yang kurang memblokir merit.
 - [ ] Penilaian Pegawai kepada Atasan tidak dihitung sebagai peer feedback.
 - [ ] Pegawai tanpa dinas selesai mendapat skor kepatuhan dinas `100`.
-- [ ] Merit tidak dapat dipublikasikan sebelum periode selesai.
+- [ ] Aksi verifikasi hanya tersedia setelah periode selesai.
+- [ ] Publikasi menunggu seluruh Pegawai aktif dihitung dan diverifikasi Atasan.
+- [ ] Periode, indikator, dan KPI Pegawai terkunci setelah periode selesai.
 - [ ] Rekomendasi pelatihan baru tersedia setelah merit dipublikasikan.

@@ -1,17 +1,7 @@
 # Dokumentasi Modul
 
-Tiga layanan utama Portal SDM:
-
-| Folder | Layanan | Service Class | Model Utama |
-|--------|---------|---------------|-------------|
-| [absensi-dinas/](absensi-dinas/) | Absensi Dinas | `AttendanceRecorder` | Attendance, DutyTrip |
-| [merit-system/](merit-system/) | Merit System | `MeritCalculator` | ReviewPeriod, MeritResult, EmployeeKpi, PerformanceReview |
-| [pembinaan-karir/](pembinaan-karir/) | Pembinaan Karir | `CareerGapService` | CareerGoal, Training, TrainingRequest, Mentoring |
-
-## Cepat
-
-| Mau lihat | Buka |
-|-----------|------|
-| Arsitektur verifikasi wajah | [absensi-dinas/verifikasi-wajah.md](absensi-dinas/verifikasi-wajah.md) |
-| Formula merit & bobot | [merit-system/README.md](merit-system/README.md) |
-| Gap analysis & training workflow | [pembinaan-karir/README.md](pembinaan-karir/README.md) |
+| Layanan | Service Class | Panduan | Testing Web |
+| --- | --- | --- | --- |
+| Absensi Dinas | `AttendanceRecorder` | [Ringkasan](absensi-dinas/README.md) | [Skenario](absensi-dinas/testing-web.md) |
+| Merit System | `MeritCalculator` | [Ringkasan](merit-system/README.md) | [Skenario](merit-system/testing-web.md) |
+| Pembinaan Karir | `CareerGapService` | [Ringkasan](pembinaan-karir/README.md) | [Skenario](pembinaan-karir/testing-web.md) |

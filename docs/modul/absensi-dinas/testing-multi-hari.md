@@ -1,4 +1,6 @@
-Bisa. Karena aplikasi berjalan di WSL, tanggal Windows dan WSL harus sama.
+# Testing Absensi Dinas Multi-hari
+
+Karena aplikasi berjalan di WSL, tanggal Windows dan WSL harus sama.
 
 ### Persiapan
 

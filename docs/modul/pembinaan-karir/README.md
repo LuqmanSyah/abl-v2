@@ -53,8 +53,7 @@ HR verify → Complete
 | `app/Models/Training.php` | Master pelatihan (nama, tipe, provider) |
 | `app/Models/TrainingRequest.php` | Pengajuan/rekomendasi pelatihan + workflow |
 | `app/Enums/TrainingRequestStatus.php` | PendingManager, PendingHr, Approved, Rejected, Completed |
-| `app/Notifications/TrainingPending.php` | Notifikasi ke manager |
-| `app/Notifications/TrainingVerified.php` | Notifikasi ke employee |
+| `app/Notifications/TrainingPending.php` | Notifikasi pengajuan ke Atasan |
 
 ### 3. Mentoring
 
@@ -96,9 +95,5 @@ Pembinaan Karir ←── MeritSystem
 
 ## Test
 
-| File | Jumlah |
-|------|--------|
-| `tests/Feature/CareerDevelopmentTest.php` | 9 test |
-| `tests/Feature/TrainingWorkflowTest.php` | 7 test |
-| `tests/Feature/MentoringWorkflowTest.php` | 7 test |
-| `tests/Feature/FlowTest.php` | 1 test (end-to-end) |
+- [Testing web](testing-web.md)
+- Automated test: `tests/Feature/CareerDevelopmentTest.php`, `tests/Feature/TrainingWorkflowTest.php`, `tests/Feature/MentoringWorkflowTest.php`, dan `tests/Feature/FlowTest.php`.

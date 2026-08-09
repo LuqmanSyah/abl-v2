@@ -1,23 +1,23 @@
 # Merit System
 
-Sistem penilaian kinerja periodik — menggabungkan KPI, kedisiplinan, penilaian atasan, dan 360 review menjadi skor akhir + estimasi bonus.
+Sistem penilaian kinerja periodik yang menggabungkan KPI, kepatuhan dinas, penilaian Atasan, dan umpan balik rekan menjadi skor akhir serta simulasi bonus.
 
 ## Alur
 
 ```
-ReviewPeriod dibuat (bobot: KPI, disiplin, atasan, 360)
+ReviewPeriod dibuat (bobot: KPI, kepatuhan dinas, Atasan, rekan)
   ↓
 HR assign KPI indicator per periode
   ↓
 Manager input target & capaian KPI per pegawai
   ↓
-Review: Manager→Employee + Employee→Manager + Peer
+Review: Atasan→Pegawai + Rekan→Pegawai
   ↓
 `merit:calculate` — hitung skor tiap komponen
   ↓
 Manager verifikasi → HR publish
   ↓
-Hasil dipakai untuk rekomendasi pelatihan & bonus
+Hasil dipakai untuk rekomendasi pelatihan dan simulasi bonus
 ```
 
 ## Komponen
@@ -42,28 +42,28 @@ ratio = min(achievement / target, 1.2)  // cap 120%
 kpiScore = sum(ratio × weight) / totalWeight × 100
 ```
 
-### Discipline Score
+### Skor Kepatuhan Dinas
 ```
-totalDays  = sum(day count) dari semua trip dlm periode
-validDays  = sum(attendance Valid) dlm periode
-discipline = min(validDays / totalDays × 100, 100)
+totalDays = jumlah tanggal unik dari dinas selesai dalam periode
+validDays = jumlah tanggal unik dengan absensi Valid dalam periode
+score     = min(validDays / totalDays × 100, 100)
 ```
 
 ### Review Scores
 ```
-managerScore  = avg(Manager→Employee score) / 5 × 100
-review360Score = avg(Employee→Manager + Peer score) / 5 × 100
+managerScore = avg(Atasan→Pegawai) / 5 × 100
+peerScore    = avg(Rekan→Pegawai) / 5 × 100
 ```
 
 ### Total Score
 ```
-total = (kpi × weight_kpi + discipline × weight_disc
-       + manager × weight_mgr + review360 × weight_360) / 100
+total = (kpi × weight_kpi + duty × weight_duty
+       + manager × weight_manager + peer × weight_peer) / 100
 ```
 
 ### Bonus
 ```
-bonus = base_bonus × total / 100
+simulasi_bonus = base_bonus × total / 100
 ```
 
 ## Workflow Verifikasi
@@ -89,21 +89,7 @@ bonus = base_bonus × total / 100
 | KPI tidak bisa diubah setelah publish | `EmployeeKpi::hasPublishedMeritResult()` |
 | Periode tidak bisa diubah setelah publish | `ReviewPeriod::hasPublishedMeritResults()` |
 
-## Bug Fixes
-
-| # | Bug | Status | Fix |
-|---|-----|--------|-----|
-| 1 | OR query tanpa grouping — non-Employee ikut | ✅ | Wrap OR dlm `where(fn)` group |
-| 2 | Attendance luar periode ikut hitung | ✅ | Filter `whereBetween('captured_at')` |
-| 3 | Trip mulai sebelum periode tidak masuk | ✅ | Overlap query |
-| 4 | N+1 query attendance | ✅ | Eager load `with()` |
-| 5 | MeritResult bisa dibuat manual | ⏳ | Perlu `booted()` guard |
-| 6 | DomainException silent skip | ⏳ | Log level `warning` |
-| 7 | Integer cast bobot pecahan | ⏳ | Float cast / toleransi |
-
 ## Test
 
-| File | Jumlah |
-|------|--------|
-| `tests/Feature/MeritSystemTest.php` | 11 test |
-| `tests/Feature/FlowTest.php` | 1 test (end-to-end) |
+- [Testing web](testing-web.md)
+- Automated test: `tests/Feature/MeritSystemTest.php` dan `tests/Feature/FlowTest.php`.

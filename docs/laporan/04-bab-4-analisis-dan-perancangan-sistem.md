@@ -77,6 +77,25 @@ Semua aktor menggunakan halaman login yang sama. Setelah autentikasi berhasil, s
 | NFR-TST-01 | Kemampuan diuji | Factory, seeder idempoten, SQLite in-memory, unit dan feature test |
 | NFR-EXP-01 | Keamanan ekspor | Scope HR, filter tervalidasi, dan netralisasi formula spreadsheet |
 
+### 4.1.4 Pemetaan Kebutuhan terhadap Tujuan Khusus
+
+Setiap kebutuhan fungsional ditelusuri ke tujuan khusus proyek agar cakupan sistem dapat dipertanggungjawabkan. Kelompok `ORG` dan `AUT` mendukung tujuan 1–2; kelompok `DIN` dan `ABS` mendukung tujuan 3–5; kelompok `MER` mendukung tujuan 6–8 dan 12; kelompok `KAR`, `PEL`, dan `MEN` mendukung tujuan 9–10; kelompok `OPS` mendukung tujuan 11.
+
+| Tujuan khusus | Kebutuhan fungsional terkait |
+| --- | --- |
+| 1. Autentikasi terpusat dan panel per peran | FR-AUT-01 s.d. FR-AUT-03 |
+| 2. Unit, jabatan, akun, relasi Atasan–Pegawai | FR-ORG-01 s.d. FR-ORG-04 |
+| 3. Pembuatan dan pemantauan perintah dinas | FR-DIN-01 s.d. FR-DIN-05 |
+| 4. Pencatatan absensi GPS, foto, watermark, validasi radius | FR-ABS-01 s.d. FR-ABS-06 |
+| 5. Pemeriksaan HR untuk absensi meragukan | FR-ABS-07, FR-ABS-08 |
+| 6. Periode, indikator KPI, capaian, penilaian, hasil merit | FR-MER-01 s.d. FR-MER-04 |
+| 7. Verifikasi merit oleh Atasan dan HR sebelum publikasi | FR-MER-06, FR-MER-07 |
+| 8. Simulasi bonus tanpa memproses pembayaran | FR-MER-05 |
+| 9. Analisis kesenjangan kompetensi terhadap jabatan tujuan | FR-KAR-01 s.d. FR-KAR-04 |
+| 10. Alur pengajuan, persetujuan, dan penyelesaian pelatihan/mentoring | FR-PEL-01 s.d. FR-PEL-04, FR-MEN-01, FR-MEN-02 |
+| 11. Laporan, ekspor, notifikasi, audit, scheduler, backup | FR-OPS-01 s.d. FR-OPS-05 |
+| 12. Perlindungan aturan bisnis oleh validasi, transaksi, dan pengujian | FR-MER-05, FR-OPS-04, NFR-SEC-01 s.d. NFR-SEC-03, NFR-DAT-01, NFR-DAT-02 |
+
 ## 4.2 Perancangan Arsitektur Sistem
 
 ### 4.2.1 Pembagian Lapisan
@@ -98,6 +117,8 @@ flowchart TB
 ```
 
 Lapisan tersebut merupakan pembagian tanggung jawab di dalam satu aplikasi. Tidak ada komunikasi HTTP antarlayanan internal. Model tetap memuat invariant yang harus berlaku dari semua entry point, sedangkan service menangani use case yang menggabungkan beberapa model.
+
+Urutan siklus dimulai dari **presentation layer** yang menyajikan antarmuka Filament dan Livewire serta menerjemahkan aksi pengguna menjadi request. Lapisan HTTP memotong lalu lintas melalui route, middleware, dan controller untuk memeriksa autentikasi, otorisasi peran, validasi input, serta pembatasan record scope. Lapisan aplikasi menampung service yang mengorkestrasi use case seperti pencatatan absensi, perhitungan merit, dan analisis kesenjangan kompetensi; service ini yang memutuskan urutan pemanggilan model, transaksi, dan notifikasi, sehingga controller tetap ramping. Lapisan domain berisi model Eloquent beserta enum dan aturan status yang menjaga invariant bisnis. Lapisan infrastruktur menyediakan fasilitas penyimpanan, penyimpanan file, antrean, surel, dan penjadwalan yang dipakai lapisan di atasnya.
 
 ### 4.2.2 Siklus Request
 
@@ -461,11 +482,87 @@ erDiagram
 
 Tabel operasional tambahan meliputi `activity_logs`, `notifications`, `approval_chains`, tabel queue, cache, dan session Laravel. Relasi audit bersifat polymorphic sehingga tidak ditampilkan sebagai foreign key tunggal pada diagram inti.
 
+### 4.3.10 Rancangan Struktur Tabel Inti
+
+Rancangan skema dirinci per kelompok tabel untuk memperjelas tipe data, kunci, dan aturan unik.
+
+#### Tabel `users`
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `id` | bigint | PK | Identitas |
+| `unit_id` | bigint | FK → `units` | Unit pengguna |
+| `position_id` | bigint | FK → `positions` | Jabatan pengguna |
+| `manager_id` | bigint | FK → `users`, nullable | Atasan langsung |
+| `role` | enum | — | `Employee`, `Manager`, `Hr` |
+| `email`, `password` | varchar | — | Kredensial; password ter-hash |
+| `is_active` | boolean | — | Status akun |
+
+#### Tabel `duty_trips`
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `id` | bigint | PK | Identitas |
+| `employee_id` | bigint | FK → `users` | Pegawai yang ditugaskan |
+| `manager_id` | bigint | FK → `users` | Atasan pembuat dinas |
+| `starts_at`, `ends_at` | datetime | — | Jadwal dinas |
+| `latitude`, `longitude` | decimal | — | Snapshot lokasi dinas |
+| `radius_meters` | unsigned int | — | Radius geofence snapshot |
+| `status` | enum | — | `Approved`, `Cancelled`, dst. |
+
+#### Tabel `attendances`
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `id` | bigint | PK | Identitas |
+| `duty_trip_id` | bigint | FK → `duty_trips` | Dinas terkait |
+| `employee_id` | bigint | FK → `users` | Pegawai pencatat |
+| `attendance_date` | date | UNIQUE bersama `duty_trip_id` | Tanggal absensi (idempotensi) |
+| `latitude`, `longitude` | decimal | — | Koordinat pengambilan |
+| `accuracy_meters` | unsigned int, nullable | — | Akurasi GPS |
+| `distance_meters` | decimal | — | Jarak Haversine ke titik dinas |
+| `photo_path` | varchar | — | Lokasi foto pada private disk |
+| `status` | enum | — | `Valid`, `Late`, `NeedsReview` |
+| `review_reason` | text, nullable | — | Alasan memerlukan pemeriksaan |
+
+#### Tabel `review_periods`, `kpi_indicators`, `employee_kpis`
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `review_periods.starts_at`, `ends_at` | datetime | — | Rentang penilaian |
+| `review_periods.*_weight` | unsigned int | — | Bobot KPI, kepatuhan, Atasan, rekan; total 100 |
+| `review_periods.base_bonus` | decimal | — | Dasar simulasi bonus |
+| `kpi_indicators.weight` | unsigned int | — | Bobot indikator; total 100 per periode |
+| `employee_kpis.target`, `achievement` | decimal | UNIQUE (`review_period_id`, `employee_id`, `kpi_indicator_id`) | Target dan capaian |
+
+#### Tabel `performance_reviews`, `merit_results`
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `performance_reviews.type` | enum | — | `ManagerToEmployee`, `EmployeeToManager`, `Peer` |
+| `performance_reviews.score` | tinyint | — | Skala 1–5 |
+| `merit_results.total_score` | decimal | — | Skor total snapshot |
+| `merit_results.estimated_bonus` | decimal | — | Simulasi bonus |
+| `merit_results.manager_verified_at`, `hr_verified_at`, `published_at` | datetime, nullable | — | Bukti tahap verifikasi/publikasi |
+
+#### Tabel pengembangan karier
+
+| Kolom | Tipe | Kunci | Keterangan |
+| --- | --- | --- | --- |
+| `competencies.name`, `description` | varchar, text | — | Kamus kompetensi |
+| `position_competency.required_level` | tinyint | UNIQUE jumlah jabatan+kop kompetensi | Level wajib jabatan |
+| `employee_competencies.actual_level` | tinyint | — | Level aktual penilaian |
+| `career_goals.target_position_id` | bigint | UNIQUE per pegawai | Jabatan tujuan |
+| `training_requests.status` | enum | — | `Menunggu Atasan`, `Menunggu HR`, `Disetujui`, `Selesai` |
+| `mentorings.status` | enum | — | Status persetujuan, jadwal, selesai |
+
 ## 4.4 Perancangan UI/UX
 
 ### 4.4.1 Halaman Login
 
 Halaman login menjadi entry point tunggal. Form hanya meminta email dan kata sandi, memakai rate limit, menampilkan validasi Indonesia, serta mengarahkan pengguna ke panel berdasarkan peran.
+
+Pemakaian satu halaman login menyederhanakan pemeliharaan dan memastikan seluruh pengguna melewati pemeriksaan yang sama. Setelah otentikasi berhasil, sistem menentukan tujuan panel berdasarkan peran sehingga pengguna tidak perlu memilih menu panel secara manual.
 
 > [PLACEHOLDER GAMBAR 4.1 — Halaman login versi implementasi aktif]
 
@@ -473,11 +570,15 @@ Halaman login menjadi entry point tunggal. Form hanya meminta email dan kata san
 
 Panel Pegawai menekankan tugas yang harus dilakukan pengguna: dinas aktif dan status absensi, KPI, hasil merit terpublikasi, kompetensi, target karier, katalog dan pengajuan pelatihan, serta mentoring. Record dibatasi pada data milik Pegawai.
 
+Pembatasan record menghindarkan pegawai melihat informasi pengguna lain dan menegaskan bahwa panel berfungsi sebagai alat bekerja, bukan pusat administrasi. Widget dinas aktif menampilkan penugasan yang membutuhkan tindakan agar pegawai segera melaksanakan absensi sesuai jadwal.
+
 > [PLACEHOLDER GAMBAR 4.2 — Dashboard dan navigasi Panel Pegawai]
 
 ### 4.4.3 Panel Atasan
 
 Panel Atasan menampilkan konteks bawahan langsung. Navigasi mencakup perintah dinas, riwayat absensi, KPI, penilaian, hasil merit, kompetensi dan target karier bawahan, pengajuan pelatihan, serta mentoring.
+
+Seluruh tindakan Atasan dibatasi pada pegawai yang berada dalam struktur bawahannya. Pembatasan ini menjaga keabsahan keputusan penugasan dan penilaian, sekaligus mencegah Atasan mengelola pegawai di luar kewenangannya.
 
 > [PLACEHOLDER GAMBAR 4.3 — Dashboard dan navigasi Panel Atasan]
 
@@ -485,10 +586,16 @@ Panel Atasan menampilkan konteks bawahan langsung. Navigasi mencakup perintah di
 
 Panel HR menyediakan data organisasi, monitoring operasional, konfigurasi merit, pengembangan karier, laporan, dan audit. Aksi ditampilkan sesuai state record agar pengguna tidak menjalankan transisi yang tidak sah.
 
+Penyesuaian aksi terhadap status mengurangi kesalahan operasi dan melatih pengguna memahami urutan alur. Hak akses HR hanya dikenakan pada panel ini, sehingga aktivitas administrasi tidak tercampur dengan fungsi operasional Pegawai atau Atasan.
+
 > [PLACEHOLDER GAMBAR 4.4 — Dashboard dan navigasi Panel HR]
 
 ### 4.4.5 Halaman Absensi Mobile
 
-Halaman absensi dibuat terpisah dari form Filament agar interaksi kamera dan lokasi lebih jelas. Urutan tindakan adalah membuka kamera, mengambil foto, mengambil lokasi, meninjau data, lalu mengirim absensi. Saat luring, halaman meminta pengguna menyambungkan internet dan mencoba kembali.
+Halaman absensi dibuat terpisah dari form Filament agar interaksi kamera dan lokasi lebih jelas. Alur pengguna masih berurutan: pengguna memilih perintah dinas yang sedang berjalan, sistem membuka kamera untuk mengambil foto, browser mengambil koordinat melalui Geolocation API beserta nilai akurasi, lalu pengguna meninjau pratinjau foto, titik koordinat, dan jarak terhadap lokasi dinas sebelum menekan tombol kirim. Pada langkah tinjauan tersebut, pengguna memperoleh kesempatan membaca ulang data sebelum data dikirim, sehingga kesalahan pengambilan foto atau lokasi dapat diulang tanpa meninggalkan halaman.
+
+Setelah tombol kirim ditekan, halaman meneruskan foto dan koordinat ke server; server menjalankan pemeriksaan radius geofencing, waktu perangkat versus waktu server, dan akurasi GPS, lalu menetapkan status `Valid`, `Terlambat`, atau `Memerlukan Pemeriksaan`. Respons langsung menampilkan status tersebut kepada pengguna. Saat perangkat tidak terhubung internet, pengiriman gagal; halaman menampilkan pesan agar pengguna menyambungkan internet dan mencoba kembali, karena pencatatan belum mendukung antrean luring sesuai batasan proyek pada bagian 1.6.
 
 > [PLACEHOLDER GAMBAR 4.5 — Halaman pengambilan absensi pada perangkat bergerak]
+
+---

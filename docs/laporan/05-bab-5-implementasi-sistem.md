@@ -47,6 +47,70 @@ Alur yang rawan dijalankan bersamaan memakai transaction dan `lockForUpdate`. Co
 
 Transaksi dicoba ulang sampai tiga kali pada beberapa operasi untuk menangani deadlock sementara.
 
+Salah satu skenario yang menjadi alasan penguncian adalah dua permintaan pencatatan absensi yang masuk hampir bersamaan untuk perintah dinas yang sama. Tanpa kunci, kedua permintaan dapat membaca status perintah yang masih terbuka dan mencatat kehadiran dua kali, sehingga duplikasi dan penetapan status ganda sulit dihindari. Dengan `lockForUpdate`, permintaan pertama mengunci record, memvalidasi dan mencatat kehadiran, lalu menandai perintah sebagai telah dihadiri; permintaan kedua yang menunggu memperoleh record dalam keadaan terkunci dan menolak pencatatan karena perintah sudah diselesaikan. Pola yang sama menjaga perhitungan merit agar tidak berjalan berdampingan pada periode yang sama, yang dapat menghasilkan dua himpunan skor dengan nilai berbeda.
+
+### 5.1.4 Potongan Kode Inti
+
+Berikut potongan kode yang menjadi bukti implementasi aturan inti. Kode disajikan dalam bentuk disederhanakan untuk keterbacaan; versi penuh tersedia pada Lampiran A.
+
+Perhitungan jarak mengimplementasikan rumus Haversine pada `app/Support/GeoDistance.php`:
+
+```php
+public static function meters(
+    float $fromLatitude, float $fromLongitude,
+    float $toLatitude, float $toLongitude,
+): int {
+    $latitudeDelta = deg2rad($toLatitude - $fromLatitude);
+    $longitudeDelta = deg2rad($toLongitude - $fromLongitude);
+    $a = sin($latitudeDelta / 2) ** 2
+        + cos(deg2rad($fromLatitude)) * cos(deg2rad($toLatitude))
+        * sin($longitudeDelta / 2) ** 2;
+
+    return (int) round(6371000 * 2 * atan2(sqrt($a), sqrt(1 - $a)));
+}
+```
+
+Penentuan status absensi pada `app/Services/AttendanceRecorder.php` menggabungkan akurasi, radius, dan waktu:
+
+```php
+$status = match (true) {
+    $inaccurate                              => AttendanceStatus::NeedsReview,
+    $distance > $trip->radius_meters         => AttendanceStatus::NeedsReview,
+    $capturedAt->isAfter($trip->ends_at)     => AttendanceStatus::Late,
+    default                                  => AttendanceStatus::Valid,
+};
+```
+
+Skor KPI dan total merit pada `app/Services/MeritCalculator.php`:
+
+```php
+$kpiScore = $indicatorWeight
+    ? $kpis->sum(fn (EmployeeKpi $kpi) =>
+        min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2)
+            * ($kpi->indicator?->weight ?? 0)) / $indicatorWeight * 100
+    : 0;
+
+$total = ($kpiScore * $period->kpi_weight
+    + $disciplineScore * $period->discipline_weight
+    + $managerScore * $period->manager_weight
+    + $review360Score * $period->review_360_weight) / 100;
+```
+
+Idempotensi absensi dicapai dengan kunci baris dan pemeriksaan tanggal:
+
+```php
+DB::transaction(function () use ($trip, $employee, $data, $photoPath) {
+    $trip = DutyTrip::query()->lockForUpdate()->findOrFail($trip->getKey());
+
+    if ($existing = $trip->attendances()
+        ->whereDate('attendance_date', $attendanceDate)
+        ->lockForUpdate()->first()) {
+        return $existing; // record lama dikembalikan, foto baru dibersihkan
+    }
+    // ... hitung jarak, tentukan status, simpan absensi
+}, 3);
+```
+
 ## 5.2 Implementasi Modul
 
 ### 5.2.1 Autentikasi, Peran, dan Organisasi
@@ -132,48 +196,65 @@ Penilaian hanya dapat dibuat selama periode menerima review dan tidak dapat diub
 
 #### Skor KPI
 
-Untuk setiap KPI, rasio capaian dihitung dan dibatasi maksimum `1,2`:
+Untuk setiap KPI, rasio capaian dihitung terlebih dahulu. Rasio tersebut dibatasi maksimum `1,2` agar capaian berlebih tetap diakui tanpa mendominasi total nilai.
 
-\[
-r_i = \min\left(\frac{capaian_i}{target_i}, 1{,}2\right)
-\]
+`r_i = minimal(capaian_i ÷ target_i, 1,2)`
 
-\[
-skor\_KPI = \frac{\sum(r_i \times bobot\_indikator_i)}{\sum bobot\_indikator_i} \times 100
-\]
+Keterangan:
+- `r_i` adalah rasio capaian indikator ke-i;
+- `capaian_i` adalah nilai capaian indikator ke-i;
+- `target_i` adalah nilai target indikator ke-i;
+- `minimal` memilih nilai terendah antara hasil pembagian dan batas 1,2.
+
+Skor KPI merupakan rata-rata tertimbang seluruh rasio indikator kemudian dikalikan 100.
+
+`skor KPI = (Σ (r_i × bobot indikator_i) ÷ Σ bobot indikator_i) × 100`
+
+Keterangan:
+- `Σ` adalah jumlah seluruh indikator pada periode tersebut;
+- `bobot indikator_i` adalah bobot dari indikator ke-i;
+- hasil akhir berada pada rentang 0 sampai 120 karena rasio dibatasi 1,2.
 
 #### Skor Kepatuhan Dinas
 
 Sistem membentuk himpunan tanggal dari semua dinas berstatus disetujui yang telah selesai dan beririsan dengan periode. Tanggal dengan absensi `Valid` dihitung sebagai tanggal patuh.
 
-\[
-skor\_kepatuhan = \min\left(\frac{tanggal\_valid}{seluruh\_tanggal\_dinas} \times 100, 100\right)
-\]
+`skor kepatuhan = minimal((tanggal valid ÷ seluruh tanggal dinas) × 100, 100)`
 
-Jika tidak ada tanggal dinas selesai, skor kepatuhan bernilai 100.
+Keterangan:
+- `tanggal valid` adalah jumlah tanggal dinas yang memiliki absensi berstatus `Valid`;
+- `seluruh tanggal dinas` adalah jumlah seluruh tanggal dinas selesai yang beririsan dengan periode;
+- `minimal` memastikan skor tidak melebihi 100;
+- jika tidak ada tanggal dinas selesai, skor kepatuhan bernilai 100.
 
 #### Skor Penilaian
 
-Rata-rata penilaian skala 1–5 dinormalisasi ke 0–100:
+Rata-rata penilaian skala 1–5 dinormalisasi ke 0–100 dengan membagi rata-rata tersebut dengan 5 lalu mengalikannya dengan 100.
 
-\[
-skor\_review = \frac{rata\text{-}rata\_nilai}{5} \times 100
-\]
+`skor penilaian = (rata-rata nilai ÷ 5) × 100`
+
+Keterangan:
+- `rata-rata nilai` adalah rata-rata penilaian Atasan atau umpan balik rekan pada skala 1–5;
+- hasil `5` pada penyebut merupakan nilai maksimum skala penilaian.
 
 #### Skor Total dan Simulasi Bonus
 
-\[
-total = \frac{
-(KPI \times w_{KPI}) +
-(kepatuhan \times w_{kepatuhan}) +
-(Atasan \times w_{Atasan}) +
-(rekan \times w_{rekan})
-}{100}
-\]
+Skor total menggabungkan keempat komponen sesuai bobot masing-masing pada periode. Total bobot seluruh komponen wajib 100.
 
-\[
-simulasi\_bonus = dasar\_bonus \times \frac{total}{100}
-\]
+`total = (KPI × w_KPI + kepatuhan × w_kepatuhan + Atasan × w_Atasan + rekan × w_rekan) ÷ 100`
+
+Keterangan:
+- `KPI`, `kepatuhan`, `Atasan`, dan `rekan` adalah skor masing-masing komponen;
+- `w_KPI`, `w_kepatuhan`, `w_Atasan`, dan `w_rekan` adalah bobot komponen dalam persen;
+- pembagian dengan 100 memastikan hasil akhir berada pada rentang 0 sampai 120 sesuai skor komponen tertinggi.
+
+Simulasi bonus dihitung dari dasar bonus periode dikalikan proporsi skor total.
+
+`simulasi bonus = dasar bonus × (total ÷ 100)`
+
+Keterangan:
+- `dasar bonus` adalah nilai bonus maksimum yang ditetapkan HR per periode;
+- `total` adalah skor merit total pegawai.
 
 Bobot tidak ditetapkan tetap pada nilai 40/20/20/20. HR dapat mengubah bobot per periode selama totalnya 100% dan data belum dikunci oleh publikasi.
 
@@ -222,6 +303,8 @@ Notifikasi utama yang tersedia adalah:
 
 Database notification ditampilkan pada Filament dan dipolling setiap 30 detik. Penugasan dinas, publikasi merit, serta absensi yang memerlukan pemeriksaan juga dapat memakai email. Queue lokal memakai driver database dan mail lokal memakai driver log. Pada production, queue worker dan mail transport harus dikonfigurasi agar pekerjaan antrean benar-benar terkirim.
 
+Kombinasi notifikasi database dan email menyeimbangkan kecepatan akses di dalam panel dengan jangkauan di luar platform. Pengguna dapat memeriksa notifikasi langsung dari antarmuka tanpa membuka email, sementara kejadian penting tetap terkirim sebagai catatan persisten. Konfigurasi production tetap menjadi prasyarat agar pengiriman antrean dan surat elektronik berjalan sesuai rencana.
+
 ### 5.2.9 Laporan, Ekspor, dan Audit
 
 `HrReportService` menyusun ringkasan per Pegawai dari data absensi, merit, pelatihan, dan mentoring. `HrReportController` menyediakan filter periode, unit, jabatan, serta pilihan kolom. Kolom yang tersedia meliputi identitas Pegawai, organisasi, jumlah absensi, absensi valid, skor merit, jumlah/penyelesaian pelatihan, dan jumlah/penyelesaian mentoring.
@@ -246,6 +329,8 @@ Command aplikasi mendukung:
 - backup basis data pada lingkungan yang didukung.
 
 `merit:send-report` menerima filter periode, unit, dan jabatan, memakai `HrReportService`, lalu mengirim hasil kepada pengguna HR aktif. Backup SQLite diuji dengan pemeriksaan bahwa berkas hasil valid dan dapat dipulihkan. Deployment MySQL tetap membutuhkan strategi backup server/database yang sesuai lingkungan operasi.
+
+Kehadiran command dan scheduler menunjukkan bahwa proses penting dapat berjalan otomatis tanpa bergantung pada interaksi pengguna. Pemakaian service yang sama dengan panel membuat hasil command konsisten dengan hasil antarmuka, sementara backup yang teruji memberikan dasar pemulihan data pada lingkungan yang didukung.
 
 ## 5.3 Tangkapan Layar Implementasi
 
@@ -274,3 +359,5 @@ Placeholder berikut sengaja disediakan untuk diganti dengan tangkapan layar buil
 ### 5.3.6 Laporan HR
 
 > [PLACEHOLDER GAMBAR 5.6 — Filter laporan, pilihan kolom, tabel, dan tombol ekspor]
+
+---

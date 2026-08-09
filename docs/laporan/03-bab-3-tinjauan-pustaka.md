@@ -54,6 +54,8 @@ Keuntungan pendekatan ini adalah konsistensi transaksi, deployment sederhana, de
 
 Application service mengoordinasikan satu use case yang dapat melibatkan beberapa model atau sumber daya. Service tidak harus menjadi layanan jaringan. Pada Sistem SDM, `AttendanceRecorder` mengoordinasikan penugasan, idempotensi, jarak, status, log, dan notifikasi. `MeritCalculator` mengoordinasikan KPI, absensi, penilaian, formula, hasil, dan notifikasi. Pendekatan ini menjaga controller tetap fokus pada HTTP dan tampilan.
 
+Pemisahan tersebut membuat aturan bisnis dapat diuji secara langsung tanpa melalui antarmuka web. Apabila kebijakan berubah, perbaikan cukup dilakukan pada satu service sehingga risiko ketidakkonsistenan logika antarmodul dapat ditekan.
+
 ### 3.2.3 Role-Based Access Control dan Record Scope
 
 Role-Based Access Control (RBAC) membatasi kemampuan berdasarkan peran. Dalam aplikasi bisnis, pembatasan menu saja tidak cukup. Query dan aksi pada record juga perlu dibatasi. Sistem SDM menerapkan dua tingkat kontrol:
@@ -71,26 +73,43 @@ Pada Sistem SDM, kombinasi tersebut memungkinkan sebagian besar antarmuka memaka
 
 ### 3.2.5 Geofencing dan Rumus Haversine
 
-Geofencing menentukan apakah suatu posisi berada dalam wilayah yang ditetapkan. Sistem SDM memakai geofence berbentuk lingkaran yang terdiri atas titik pusat dan radius dalam meter. Jarak permukaan bumi dihitung menggunakan rumus Haversine:
+Geofencing menentukan apakah suatu posisi berada dalam wilayah yang ditetapkan. Sistem SDM memakai geofence berbentuk lingkaran yang terdiri atas titik pusat dan radius dalam meter. Jarak permukaan bumi dihitung menggunakan rumus Haversine. Rumus dihitung bertahap dengan tiga langkah berikut.
 
-\[
-a = \sin^2\left(\frac{\Delta\varphi}{2}\right) +
-\cos(\varphi_1)\cos(\varphi_2)\sin^2\left(\frac{\Delta\lambda}{2}\right)
-\]
+**Langkah 1 — menghitung nilai `a`.**
 
-\[
-c = 2\arctan2(\sqrt{a}, \sqrt{1-a})
-\]
+`a = (sin(Δφ/2))² + cos(φ₁) × cos(φ₂) × (sin(Δλ/2))²`
 
-\[
-d = R \times c
-\]
+Keterangan:
+- `Δφ` adalah selisih lintang kedua titik dalam radian;
+- `Δλ` adalah selisih bujur kedua titik dalam radian;
+- `φ₁` adalah lintang titik pertama dalam radian;
+- `φ₂` adalah lintang titik kedua dalam radian;
+- fungsi `sin` dan `cos` adalah fungsi trigonometri sinus dan kosinus.
 
-`\varphi` menyatakan lintang dalam radian, `\lambda` menyatakan bujur, `R` adalah jari-jari bumi, dan `d` adalah jarak dalam meter. Hasil dibandingkan dengan radius snapshot pada perintah dinas.
+**Langkah 2 — menghitung nilai `c`.**
+
+`c = 2 × arctan2(√a, √(1 − a))`
+
+Keterangan:
+- `√a` adalah akar kuadrat dari `a`;
+- `arctan2` adalah fungsi arctangen dua argumen;
+- hasil `c` merupakan sudut sentral antara dua titik dalam radian.
+
+**Langkah 3 — menghitung jarak `d` dalam meter.**
+
+`d = R × c`
+
+Keterangan:
+- `R` adalah jari-jari rata-rata bumi, yaitu 6.371.000 meter;
+- hasil `d` adalah jarak antara dua titik dalam meter.
+
+Hasil `d` kemudian dibandingkan dengan radius snapshot pada perintah dinas untuk menentukan apakah pegawai berada di dalam wilayah tugas.
 
 ### 3.2.6 Akurasi GPS dan Pemeriksaan Manual
 
-Geolocation browser mengembalikan estimasi akurasi dalam meter. Angka yang besar menunjukkan posisi kurang pasti. Karena itu, keputusan tidak hanya bergantung pada jarak. Sistem SDM memberi status pemeriksaan jika akurasi tidak tersedia atau melewati batas konfigurasi. Pola ini mempertahankan data untuk audit tanpa otomatis menerima informasi yang kualitasnya rendah.
+Geolocation browser mengembalikan estimasi akurasi dalam meter. Angka yang besar menunjukkan posisi kurang pasti. Oleh karena itu, keputusan tidak hanya bergantung pada jarak. Sistem SDM memberi status pemeriksaan jika akurasi tidak tersedia atau melewati batas konfigurasi. Pola ini mempertahankan data untuk audit tanpa otomatis menerima informasi yang kualitasnya rendah.
+
+Dengan demikian, data yang meragukan tidak langsung dibuang melainkan disimpan bersama alasan pemeriksaan. Pendekatan ini memungkinkan HR mempertimbangkan konteks sebelum menetapkan status final, sekaligus menjaga objektivitas proses.
 
 ### 3.2.7 Idempotensi dan Transaksi Basis Data
 
@@ -108,14 +127,50 @@ Skor kepatuhan dinas dihitung dari perbandingan tanggal dinas selesai yang memil
 
 Analisis gap membandingkan `required_level` pada standar jabatan dengan level aktual pegawai. Nilai selisih positif menunjukkan kebutuhan pengembangan. Sistem mencari pelatihan aktif yang terhubung dengan kompetensi tersebut. Bila tidak ada pelatihan yang sesuai, mentoring menjadi rekomendasi alternatif.
 
+Logika pemilihan rekomendasi tersebut menjadikan pengembangan karier berbasis data. Setiap rekomendasi dapat ditelusuri kembali ke kompetensi yang kurang, sehingga keputusan pelatihan atau mentoring tidak lagi bergantung pada asumsi subjektif semata.
+
 ### 3.2.10 Workflow dan State Transition
 
 Workflow membatasi perubahan status berdasarkan keadaan record dan aktor. Contoh alur pelatihan adalah `Menunggu Atasan` → `Menunggu HR` → `Disetujui` → `Selesai`, dengan jalur penolakan dan pengajuan ulang. Setiap transisi memeriksa peran, kepemilikan, status awal, dan aturan waktu.
+
+Pembatasan tersebut memberi jejak audit pada setiap perubahan tahap dan mencegah transisi yang tidak sah. Ketika dua pengguna mencoba mengubah record dalam waktu bersamaan, hubungan transisi dan penguncian memastikan hanya satu hasil yang berlaku dan dicatat.
 
 ### 3.2.11 Notifikasi, Queue, dan Scheduler
 
 Notifikasi database menyediakan informasi di dalam panel dan dipolling berkala. Email digunakan pada kejadian tertentu, seperti penugasan dinas, publikasi merit, dan absensi yang memerlukan pemeriksaan. Queue database memindahkan pekerjaan yang sesuai dari request utama. Scheduler menjalankan command berkala untuk kalkulasi, pengingat, laporan, dan backup sesuai konfigurasi aplikasi.
 
+Kombinasi ketiganya memisahkan pekerjaan berat dari permintaan interaktif sehingga antarmuka tetap responsif. Scheduler memastikan proses periodik, seperti kalkulasi merit dan pengingat KPI, berjalan tanpa campur tangan manual setiap siklus.
+
 ### 3.2.12 Pengujian Kotak Hitam dan Integrasi
 
 Pengujian kotak hitam memeriksa hubungan input, aksi, dan output tanpa bergantung pada detail internal. Pada Sistem SDM, pengujian otomatis menggunakan Laravel feature test untuk menguji route, model, service, database, serta komponen Livewire. Pengujian integrasi diperlukan karena banyak aturan melibatkan hubungan aktor, status, waktu, dan beberapa tabel sekaligus.
+
+Cakupan tersebut menempatkan aturan bisnis yang paling rawan — absensi, merit, pelatihan, dan mentoring — di bawah perlindungan yang dapat dijalankan ulang secara berkala. Setiap perubahan kode dapat diuji kembali dengan cepat untuk mendeteksi regresi pada alur lama.
+
+## 3.3 Definisi Istilah Penting
+
+| Istilah | Definisi dalam konteks laporan |
+| --- | --- |
+| Abu berjalan (dinas) | Penugasan di luar kantor yang ditetapkan melalui perintah dinas oleh Atasan |
+| Absensi valid | Kehadiran dinas yang memenuhi radius, akurasi GPS, dan toleransi waktu |
+| Aplikasi layanan (application service) | Kelas yang mengoordinasikan satu use case yang melibatkan beberapa model |
+| As-built | Keadaan implementasi yang benar-benar berjalan pada build aktif |
+| Atasan | Pengguna berperan Manager yang mengelola bawahan langsung |
+| Biometrik | Pengenalan identitas wajah/jari; tidak digunakan pada sistem |
+| Geofencing | Batas wilayah berbentuk lingkaran dari titik pusat dan radius |
+| Rumus Haversine | Formula jarak dua titik di permukaan bumi |
+| Idempotensi | Pengulangan request yang sama tidak membuat data ganda |
+| Kepatuhan dinas | Perbandingan tanggal dinas selesai yang memiliki absensi valid |
+| KPI | Key Performance Indicator, target dan capaian terukur pegawai |
+| Memerlukan Pemeriksaan | Status absensi yang datanya meragukan dan perlu penilaian HR |
+| Merit | Sistem penilaian kinerja dari empat komponen berbobot per periode |
+| Modular monolith | Satu aplikasi yang dibagi modul bertanggung jawab jelas |
+| Panel | Antarmuka Filament khusus peran (Pegawai, Atasan, HR) |
+| RAD | Rapid Application Development, metode pengembangan iteratif |
+| RBAC | Role-Based Access Control, kontrol akses berbasis peran |
+| Record scope | Pembatasan query dan aksi berdasarkan kepemilikan/hubungan |
+| Scheduler | Penjadwal command berkala di Laravel |
+| Snapshot | Salinan nilai yang menjadi dasar hasil agar tidak berubah |
+| Workflow | Aturan perubahan status yang dibatasi aktor dan kondisi |
+
+---

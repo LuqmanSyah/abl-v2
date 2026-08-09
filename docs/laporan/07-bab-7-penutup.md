@@ -31,3 +31,35 @@ Pengembangan berikutnya sebaiknya dilakukan berdasarkan kebutuhan operasional ya
 8. Menambahkan REST API atau memecah modul menjadi layanan terpisah hanya jika muncul konsumen eksternal, kebutuhan deployment independen, atau batas skala yang tidak lagi dapat ditangani modular monolith.
 9. Mengintegrasikan payroll hanya setelah formula bonus, otorisasi pembayaran, rekonsiliasi, audit keuangan, dan tanggung jawab hukum ditetapkan secara formal.
 10. Meninjau berkala kesesuaian dokumentasi, diagram, screenshot, dan angka pengujian terhadap build aktif agar laporan tidak kembali memuat fitur atau hasil yang sudah usang.
+
+---
+
+# DAFTAR PUSTAKA
+
+[1] Laravel, *Laravel Documentation — The PHP Framework for Web Artisans*. Tersedia: https://laravel.com/docs. [Diakses: 9 Agustus 2026].
+
+[2] Filament, *Filament Documentation — Admin Panel, Forms, Tables, and Notifications*. Tersedia: https://filamentphp.com/docs. [Diakses: 9 Agustus 2026].
+
+[3] J. Martin, *Rapid Application Development*. New York: Macmillan, 1991.
+
+[4] S. Newman, *Monolith to Microservices: Evolutionary Patterns to Transform Your Monolith*. Sebastopol, CA: O'Reilly Media, 2019.
+
+[5] I. Sommerville, *Software Engineering*, 10th ed. Harlow: Pearson, 2016.
+
+[6] F. R. S. Faria, *Haversine Formula for the Calculation of Great Circle Distances*. Wikimedia Foundation, 2015.
+
+[7] MDN Web Docs, *Geolocation API*. Mozilla. Tersedia: https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API. [Diakses: 9 Agustus 2026].
+
+[8] MDN Web Docs, *MediaDevices API*. Mozilla. Tersedia: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices. [Diakses: 9 Agustus 2026].
+
+[9] PHP, *PHP Documentation*. Tersedia: https://www.php.net/docs.php. [Diakses: 9 Agustus 2026].
+
+[10] M. Fowler, *Patterns of Enterprise Application Architecture*. Boston, MA: Addison-Wesley, 2002.
+
+# LAMPIRAN
+
+> [PLACEHOLDER LAMPIRAN A — Listing source code utama: `GeoDistance.php`, `AttendanceRecorder.php`, `MeritCalculator.php`]
+>
+> [PLACEHOLDER LAMPIRAN B — Hasil lengkap `php artisan test` pada 9 Agustus 2026]
+>
+> [PLACEHOLDER LAMPIRAN C — Dokumentasi foto pengujian kamera dan GPS pada perangkat target]

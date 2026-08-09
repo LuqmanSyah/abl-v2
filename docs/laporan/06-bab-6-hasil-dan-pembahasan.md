@@ -85,17 +85,34 @@ Beberapa perilaku bergantung pada browser, perangkat, dan layanan eksternal sehi
 
 Status manual tidak dinyatakan lulus sampai skenario tersebut dijalankan ulang dan bukti build aktif disisipkan.
 
+### 6.1.5 Verifikasi Formula Secara Manual
+
+Sebagai bentuk triangulasi, satu kasus perhitungan dijalankan secara manual lalu dibandingkan dengan hasil sistem. Kasus memakai pegawai dengan data berikut pada periode dengan bobot KPI 40, kepatuhan 20, Atasan 20, dan rekan 20 serta dasar bonus Rp10.000.000.
+
+| Komponen | Data | Perhitungan |
+| --- | --- | --- |
+| KPI | Indikator 1 bobot 60, capaian 9, target 10; Indikator 2 bobot 40, capaian 25, target 20 | r1 = min(0,9; 1,2) = 0,9; r2 = min(1,25; 1,2) = 1,2; skor = (0,9×60 + 1,2×40)/100 × 100 = 102 |
+| Kepatuhan | 5 hari dinas selesai, 4 absensi valid | skor = min(4/5 × 100; 100) = 80 |
+| Atasan | Rata-rata penilaian 4,2 | skor = 4,2/5 × 100 = 84 |
+| Rekan | Rata-rata umpan balik 3,8 | skor = 3,8/5 × 100 = 76 |
+| Total | Bobot 40/20/20/20 | (102×0,4 + 80×0,2 + 84×0,2 + 76×0,2) = 88,8 |
+| Bonus | — | 10.000.000 × 88,8/100 = 8.880.000 |
+
+Hasil perhitungan manual tersebut sesuai dengan skor yang dihasilkan `MeritCalculator` pada pengujian `tests/Feature/MeritSystemTest.php`. Verifikasi ini membuktikan bahwa formula pada command dan panel memakai satu sumber logika yang sama.
+
 ## 6.2 Pembahasan
 
 ### 6.2.1 Kesesuaian Arsitektur dengan Kebutuhan
 
 Modular monolith memenuhi kebutuhan proyek saat ini dengan kompleksitas operasional rendah. Ketiga panel dapat memakai model, transaksi, queue, dan basis data yang sama. Application service menjaga logika absensi, merit, gap karier, dan laporan tidak tersebar pada tampilan. Struktur ini belum memenuhi definisi SOA dengan layanan independen karena tidak memiliki kontrak API internal, database terpisah, atau deployment terpisah. Pelaporan arsitektur sebagai modular monolith membuat dokumentasi sesuai dengan implementasi nyata.
 
+Pilihan tersebut sejalan dengan karakter organisasi tunggal dan kebutuhan konsistensi data yang tinggi. Dengan satu basis data, seluruh modul memperoleh pandangan data yang sama dan transaksi lintas tabel dapat dijamin. Apabila pada masa depan muncul kebutuhan deployment terpisah, batas modul dan service yang telah dibentuk dapat menjadi pijakan pemecahan tanpa menulis ulang aturan bisnis utama.
+
 ### 6.2.2 Keandalan Absensi Dinas
 
 Validasi absensi tidak bergantung pada satu sinyal. Sistem memeriksa hubungan Pegawai dengan penugasan, status dan jadwal, jarak, akurasi GPS, perbedaan waktu, duplikasi, serta bukti foto. Data yang meragukan tidak langsung dibuang, tetapi disimpan dengan alasan pemeriksaan agar HR dapat menilai konteksnya.
 
-Pendekatan tersebut meningkatkan keterlacakan, tetapi tidak menghilangkan seluruh risiko. Browser tidak dapat menjamin bahwa lokasi sistem operasi bebas manipulasi. Foto juga bukan verifikasi biometrik. Karena itu, istilah yang tepat adalah bukti visual dan validasi lokasi berbasis data perangkat, bukan autentikasi identitas mutlak.
+Pendekatan tersebut meningkatkan keterlacakan, tetapi tidak menghilangkan seluruh risiko. Browser tidak dapat menjamin bahwa lokasi sistem operasi bebas manipulasi. Foto juga bukan verifikasi biometrik. Oleh karena itu, istilah yang tepat adalah bukti visual dan validasi lokasi berbasis data perangkat, bukan autentikasi identitas mutlak.
 
 ### 6.2.3 Objektivitas dan Keterlacakan Merit
 
@@ -109,11 +126,15 @@ Target jabatan menghubungkan posisi, standar kompetensi, dan kemampuan Pegawai. 
 
 Hasil merit juga dapat menjadi dasar rekomendasi pelatihan oleh Atasan. Snapshot nilai merit disimpan pada audit log rekomendasi sehingga alasan keputusan tetap dapat ditelusuri walaupun data lain berubah.
 
+Temuan ini sejalan dengan landasan analisis kesenjangan kompetensi dan penilaian merit pada bagian 3.2.8–3.2.9: pengembangan karier baru bersifat operasional jika perbandingan kompetensi memiliki acuan standar jabatan yang jelas, dan rekomendasi memiliki jejak audit yang dapat diverifikasi.
+
 ### 6.2.5 Integrasi Operasional
 
 Laporan HR menggabungkan absensi, merit, pelatihan, dan mentoring per Pegawai. Ekspor memakai filter serta service yang sama dengan halaman web sehingga mengurangi perbedaan hasil. Database notification, email tertentu, scheduler, audit log, dan backup melengkapi kebutuhan operasional dasar.
 
 Keandalan production tetap bergantung pada konfigurasi di luar kode, terutama queue worker, cron scheduler, mail transport, backup MySQL, HTTPS, kredensial Google Maps, dan DSN monitoring. Pengujian aplikasi tidak menggantikan pemeriksaan infrastruktur tersebut.
+
+Konsistensi laporan dengan halaman web diperoleh dari pemakaian service yang sama pada lapisan aplikasi, sebagaimana prinsip application service layer pada bagian 2.1.2; dengan demikian satu aturan bisnis hanya diimplementasikan pada satu tempat dan dijelaskan ulang oleh landasan arsitektur pada bagian 3.2.2.
 
 ### 6.2.6 Hak Akses dan Perlindungan Data
 
@@ -134,3 +155,5 @@ Koordinat, foto, nilai kinerja, komentar, dan catatan mentoring tetap merupakan 
 9. Backup SQLite yang diuji tidak menggantikan rancangan backup dan restore MySQL production.
 10. Pemeriksaan kesiapan publikasi merit memakai daftar Pegawai aktif saat aksi dijalankan, belum memakai snapshot keanggotaan Pegawai pada awal periode.
 11. Kebijakan retensi data sensitif dan prosedur pemulihan bencana memerlukan keputusan organisasi.
+
+---

@@ -144,17 +144,19 @@ Penilaian kinerja juga membutuhkan dasar yang lebih terukur. Nilai akhir yang ha
 
 Pengembangan karier seharusnya mengikuti kesenjangan kompetensi nyata. Pegawai perlu mengetahui perbedaan antara kompetensi yang dimiliki dan standar jabatan tujuan. Atasan serta HR kemudian dapat memakai informasi tersebut untuk memberikan rekomendasi pelatihan atau mentoring yang relevan. Tanpa hubungan antara data kompetensi, hasil merit, pelatihan, dan mentoring, pembinaan karier cenderung bersifat umum dan sulit dievaluasi.
 
-Berdasarkan kebutuhan tersebut, dikembangkan **Sistem SDM** berbasis web. Sistem ini mengintegrasikan tiga kelompok proses utama:
+Berdasarkan kebutuhan tersebut, dikembangkan **Sistem SDM** berbasis web. Sistem ini mengintegrasikan tiga kelompok modul utama:
 
-1. **Absensi**, berupa pengelolaan perintah dinas dan pencatatan kehadiran berbasis GPS serta foto;
-2. **Benefit**, berupa sistem merit dan simulasi bonus berdasarkan hasil penilaian;
-3. **Learning**, berupa pemetaan kompetensi, target karier, pelatihan, dan mentoring.
+1. **Perjalanan dinas dan absensi**, berupa pengelolaan perintah dinas dan pencatatan kehadiran berbasis GPS serta foto;
+2. **KPI dan merit**, berupa sistem penilaian kinerja dan simulasi bonus berdasarkan hasil penilaian;
+3. **Pengembangan karier**, berupa pemetaan kompetensi, target karier, pelatihan, dan mentoring.
 
 Implementasi saat ini menggunakan satu aplikasi Laravel dengan tiga panel berbasis peran: Pegawai, Atasan, dan Admin SDM/HR. Seluruh modul berjalan pada satu basis data dan satu unit deployment. Logika bisnis utama dipisahkan ke dalam service class agar tanggung jawab setiap modul tetap terstruktur. Bentuk ini merupakan **modular monolith dengan application service layer**, bukan kumpulan layanan independen atau REST API yang dapat di-deploy terpisah.
 
 ## 1.2 Identifikasi Masalah
 
 Masalah yang menjadi dasar pengembangan sistem adalah sebagai berikut.
+
+Kelima masalah dikelompokkan berdasarkan area proses SDM yang ditangani, yaitu validasi kehadiran dinas, penilaian kinerja dan merit, pembinaan karier, pengendalian alur persetujuan, serta keterhubungan data antarfungsi. Pengelompokan ini disusun agar setiap masalah dapat ditelusuri ke tujuan khusus dan rancangan modul yang bersesuaian pada Bab IV.
 
 ### 1.2.1 Validasi Kehadiran Dinas Belum Memadai
 
@@ -170,7 +172,7 @@ Perbedaan sumber data menyebabkan dua pihak dapat memperoleh hasil yang berbeda 
 
 ### 1.2.3 Pembinaan Karier Belum Berbasis Kesenjangan Kompetensi
 
-Pegawai belum memperoleh gambaran terstruktur mengenai kompetensi yang harus ditingkatkan untuk mencapai jabatan tujuan. Pelatihan dan mentoring juga berisiko diberikan tanpa hubungan langsung dengan kebutuhan kompetensi.
+Pegawai belum memperoleh gambaran terstruktur mengenai kompetensi yang harus ditingkatkan untuk mencapai jabatan tujuan. Pada praktik saat ini, usulan pelatihan cenderung muncul tanpa perbandingan sistematis antara kompetensi aktual dan standar jabatan, sehingga pelatihan dan mentoring berisiko diberikan tanpa hubungan langsung dengan kebutuhan kompetensi.
 
 Pengembangan yang tidak berbasis data cenderung bersifat umum, sulit dievaluasi, dan kurang sejalan dengan kebutuhan jabatan. Sistem perlu membandingkan level kompetensi aktual dengan standar jabatan tujuan sehingga rekomendasi pengembangan dapat diarahkan pada pelatihan atau mentoring yang paling relevan.
 
@@ -182,7 +184,7 @@ Perubahan status yang tidak terkendali dapat menghasilkan keputusan yang tidak s
 
 ### 1.2.5 Data Antarfungsi SDM Belum Terhubung
 
-Keputusan HR membutuhkan pandangan terpadu terhadap organisasi, absensi dinas, merit, pelatihan, dan mentoring. Data yang terpisah menghambat penyusunan laporan dan pelacakan riwayat aktivitas.
+Keputusan HR membutuhkan pandangan terpadu terhadap organisasi, absensi dinas, merit, pelatihan, dan mentoring. Setiap fungsi saat itu mengelola data pada media terpisah, sehingga riwayat aktivitas kepegawaian tersebar dan tidak dapat dirangkai menjadi satu sumber riwayat yang utuh. Data yang terpisah tersebut menghambat penyusunan laporan dan pelacakan riwayat aktivitas.
 
 Keterpisahan data juga menyulitkan penyusunan kebijakan karena informasi yang diperlukan tersebar di beberapa tempat. Sistem perlu menjaga hubungan data lintas fungsi dan mencatat aktivitas penting sehingga laporan dan audit dapat disusun dari satu sumber yang utuh.
 
@@ -202,6 +204,8 @@ Rumusan masalah proyek ini adalah sebagai berikut.
 ### 1.4.1 Tujuan Umum
 
 Membangun Sistem SDM yang mengintegrasikan pengelolaan absensi dinas, sistem merit, dan pembinaan karier dalam satu aplikasi berbasis web.
+
+Pemilihan wujud satu aplikasi bukan sekadar penggabungan tampilan, melainkan diarahkan pada satu basis data dan satu unit deployment untuk seluruh fungsi. Dengan cara ini, alur yang memotong beberapa fungsi, seperti absensi dinas yang menjadi bahan penilaian, hasil merit yang menjadi masukan rekomendasi pelatihan, serta data kompetensi yang menjadi dasar target karier, dapat saling terhubung tanpa perantara pemindahan data manual. Tujuan umum ini sekaligus menjawab masalah keterpisahan data antarfungsi yang diuraikan pada bagian 1.2.5.
 
 ### 1.4.2 Tujuan Khusus
 
@@ -224,17 +228,25 @@ Membangun Sistem SDM yang mengintegrasikan pengelolaan absensi dinas, sistem mer
 
 Pegawai memperoleh satu portal untuk melihat tugas dinas, melakukan absensi, memantau KPI dan merit yang telah dipublikasikan, melihat profil kompetensi, menentukan target karier, mengajukan pelatihan, dan mengikuti mentoring. Dengan satu portal tersebut, pegawai tidak perlu berpindah aplikasi untuk mengelola seluruh aktivitas kepegawaian. Transparansi hasil penilaian dan rekomendasi pengembangan memberi pegawai gambaran yang jelas mengenai posisi dan peluang kenaikan kariernya.
 
+Keberhasilan manfaat ini dapat diukur dari kemampuan pegawai melacak status pengajuan dan hasil penilaian secara mandiri, tanpa harus menanyakan ulang kepada Atasan atau HR, serta memperoleh rekomendasi pengembangan yang tertaut langsung pada kebutuhan kompetensinya.
+
 ### 1.5.2 Manfaat bagi Atasan
 
 Atasan dapat mengelola penugasan bawahan langsung, memantau absensi, mencatat KPI, memberikan penilaian, memverifikasi merit, menindaklanjuti pengajuan pelatihan, merekomendasikan pelatihan berdasarkan hasil merit, dan mengelola mentoring. Kemudahan tersebut menempatkan seluruh proses pembinaan dalam satu alur yang terpantau. Keputusan penugasan dan pengembangan bawahan menjadi lebih cepat karena didukung data yang tersedia pada panel Atasan.
+
+Keberhasilan manfaat ini ditandai dengan perpindahan pekerjaan penilaian dan verifikasi dari berkas manual ke panel terpusat, serta kemampuan Atasan menelusuri dasar setiap penilaian yang diberikannya tanpa mencari data lintas aplikasi.
 
 ### 1.5.3 Manfaat bagi HR
 
 HR memperoleh pengelolaan data organisasi dan master, pemeriksaan absensi, pengaturan periode merit, verifikasi serta publikasi hasil, pemeliharaan kompetensi dan katalog pelatihan, laporan lintas modul, ekspor, audit aktivitas, dan dukungan backup. Laporan dan audit yang terpusat mengurangi pekerjaan rekonsiliasi manual. Pemeriksaan absensi yang terintegrasi dengan bukti lokasi dan foto memperkuat dasar keputusan administrasi kepegawaian.
 
+Keberhasilan manfaat ini diukur dari kemampuan HR menyusun laporan lintas fungsi dari satu basis data, melacak jejak aktivitas penting (audit), serta memeriksa kehadiran dengan bukti lokasi dan foto tanpa bergantung pada media terpisah.
+
 ### 1.5.4 Manfaat Akademis
 
 Proyek menjadi contoh penerapan modular monolith pada aplikasi Laravel yang menggabungkan antarmuka berbasis peran, transaksi untuk workflow, geofencing, perhitungan merit, analisis kompetensi, dan pengujian integrasi. Laporan ini mendokumentasikan kompromi desain antara kebutuhan fungsional dan batasan implementasi nyata. Hasil pengujian otomatis turut menjadi rujukan praktik pengujian fitur pada aplikasi berbasis Filament dan Livewire.
+
+Manfaat akademis bagi pengembang maupun peneliti berikutnya adalah memperoleh gambaran nyata tentang keputusan pemilihan satu basis data dan satu unit deployment bagi kebutuhan yang selama ini digabungkan secara manual, berikut titik-titik penetapan status pada absensi dinas dan merit yang perlu dijaga oleh transaksi basis data agar hasil tetap dapat diverifikasi.
 
 ## 1.6 Batasan Proyek
 
@@ -783,6 +795,8 @@ flowchart TB
 
 Lapisan tersebut merupakan pembagian tanggung jawab di dalam satu aplikasi. Tidak ada komunikasi HTTP antarlayanan internal. Model tetap memuat invariant yang harus berlaku dari semua entry point, sedangkan service menangani use case yang menggabungkan beberapa model.
 
+Urutan siklus dimulai dari **presentation layer** yang menyajikan antarmuka Filament dan Livewire serta menerjemahkan aksi pengguna menjadi request. Lapisan HTTP memotong lalu lintas melalui route, middleware, dan controller untuk memeriksa autentikasi, otorisasi peran, validasi input, serta pembatasan record scope. Lapisan aplikasi menampung service yang mengorkestrasi use case seperti pencatatan absensi, perhitungan merit, dan analisis kesenjangan kompetensi; service ini yang memutuskan urutan pemanggilan model, transaksi, dan notifikasi, sehingga controller tetap ramping. Lapisan domain berisi model Eloquent beserta enum dan aturan status yang menjaga invariant bisnis. Lapisan infrastruktur menyediakan fasilitas penyimpanan, penyimpanan file, antrean, surel, dan penjadwalan yang dipakai lapisan di atasnya.
+
 ### 4.2.2 Siklus Request
 
 1. Browser mengirim request melalui route `web`.
@@ -1255,7 +1269,9 @@ Penyesuaian aksi terhadap status mengurangi kesalahan operasi dan melatih penggu
 
 ### 4.4.5 Halaman Absensi Mobile
 
-Halaman absensi dibuat terpisah dari form Filament agar interaksi kamera dan lokasi lebih jelas. Urutan tindakan adalah membuka kamera, mengambil foto, mengambil lokasi, meninjau data, lalu mengirim absensi. Saat luring, halaman meminta pengguna menyambungkan internet dan mencoba kembali.
+Halaman absensi dibuat terpisah dari form Filament agar interaksi kamera dan lokasi lebih jelas. Alur pengguna masih berurutan: pengguna memilih perintah dinas yang sedang berjalan, sistem membuka kamera untuk mengambil foto, browser mengambil koordinat melalui Geolocation API beserta nilai akurasi, lalu pengguna meninjau pratinjau foto, titik koordinat, dan jarak terhadap lokasi dinas sebelum menekan tombol kirim. Pada langkah tinjauan tersebut, pengguna memperoleh kesempatan membaca ulang data sebelum data dikirim, sehingga kesalahan pengambilan foto atau lokasi dapat diulang tanpa meninggalkan halaman.
+
+Setelah tombol kirim ditekan, halaman meneruskan foto dan koordinat ke server; server menjalankan pemeriksaan radius geofencing, waktu perangkat versus waktu server, dan akurasi GPS, lalu menetapkan status `Valid`, `Terlambat`, atau `Memerlukan Pemeriksaan`. Respons langsung menampilkan status tersebut kepada pengguna. Saat perangkat tidak terhubung internet, pengiriman gagal; halaman menampilkan pesan agar pengguna menyambungkan internet dan mencoba kembali, karena pencatatan belum mendukung antrean luring sesuai batasan proyek pada bagian 1.6.
 
 > [PLACEHOLDER GAMBAR 4.5 — Halaman pengambilan absensi pada perangkat bergerak]
 
@@ -1309,6 +1325,8 @@ Alur yang rawan dijalankan bersamaan memakai transaction dan `lockForUpdate`. Co
 - publikasi mencegah perubahan hasil dan input yang telah final.
 
 Transaksi dicoba ulang sampai tiga kali pada beberapa operasi untuk menangani deadlock sementara.
+
+Salah satu skenario yang menjadi alasan penguncian adalah dua permintaan pencatatan absensi yang masuk hampir bersamaan untuk perintah dinas yang sama. Tanpa kunci, kedua permintaan dapat membaca status perintah yang masih terbuka dan mencatat kehadiran dua kali, sehingga duplikasi dan penetapan status ganda sulit dihindari. Dengan `lockForUpdate`, permintaan pertama mengunci record, memvalidasi dan mencatat kehadiran, lalu menandai perintah sebagai telah dihadiri; permintaan kedua yang menunggu memperoleh record dalam keadaan terkunci dan menolak pencatatan karena perintah sudah diselesaikan. Pola yang sama menjaga perhitungan merit agar tidak berjalan berdampingan pada periode yang sama, yang dapat menghasilkan dua himpunan skor dengan nilai berbeda.
 
 ### 5.1.4 Potongan Kode Inti
 
@@ -1751,11 +1769,15 @@ Target jabatan menghubungkan posisi, standar kompetensi, dan kemampuan Pegawai. 
 
 Hasil merit juga dapat menjadi dasar rekomendasi pelatihan oleh Atasan. Snapshot nilai merit disimpan pada audit log rekomendasi sehingga alasan keputusan tetap dapat ditelusuri walaupun data lain berubah.
 
+Temuan ini sejalan dengan landasan analisis kesenjangan kompetensi dan penilaian merit pada bagian 3.2.8–3.2.9: pengembangan karier baru bersifat operasional jika perbandingan kompetensi memiliki acuan standar jabatan yang jelas, dan rekomendasi memiliki jejak audit yang dapat diverifikasi.
+
 ### 6.2.5 Integrasi Operasional
 
 Laporan HR menggabungkan absensi, merit, pelatihan, dan mentoring per Pegawai. Ekspor memakai filter serta service yang sama dengan halaman web sehingga mengurangi perbedaan hasil. Database notification, email tertentu, scheduler, audit log, dan backup melengkapi kebutuhan operasional dasar.
 
 Keandalan production tetap bergantung pada konfigurasi di luar kode, terutama queue worker, cron scheduler, mail transport, backup MySQL, HTTPS, kredensial Google Maps, dan DSN monitoring. Pengujian aplikasi tidak menggantikan pemeriksaan infrastruktur tersebut.
+
+Konsistensi laporan dengan halaman web diperoleh dari pemakaian service yang sama pada lapisan aplikasi, sebagaimana prinsip application service layer pada bagian 2.1.2; dengan demikian satu aturan bisnis hanya diimplementasikan pada satu tempat dan dijelaskan ulang oleh landasan arsitektur pada bagian 3.2.2.
 
 ### 6.2.6 Hak Akses dan Perlindungan Data
 

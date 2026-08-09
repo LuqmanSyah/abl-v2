@@ -35,6 +35,8 @@ Route Laravel biasa digunakan untuk halaman login, halaman pengambilan absensi, 
 
 ### 2.1.4 Diagram Arsitektur Aktual
 
+> Gambar 2.1 — Diagram arsitektur aktual Sistem SDM
+
 ```mermaid
 flowchart TB
     subgraph Client[Browser Pengguna]
@@ -82,6 +84,8 @@ flowchart TB
 ## 2.2 Metode Pengembangan Sistem
 
 Pengembangan mengikuti pola iteratif Rapid Application Development (RAD). Metode ini sesuai untuk aplikasi yang banyak bergantung pada alur kerja dan antarmuka pengguna karena kebutuhan dapat divalidasi melalui implementasi kecil, pengujian, lalu perbaikan berulang.
+
+> Gambar 2.2 — Siklus metode Rapid Application Development (RAD)
 
 ```mermaid
 flowchart LR
@@ -134,6 +138,19 @@ Tahap transisi memastikan implementasi dapat dijalankan pada lingkungan lokal da
 - pemeriksaan perubahan Git;
 - pengujian manual browser dan perangkat untuk kamera, GPS, responsive layout, serta integrasi Google Maps.
 
+### 2.2.5 Jadwal Tahapan Pengembangan
+
+Tahapan pengembangan dilaksanakan secara iteratif dengan durasi yang dapat disesuaikan kebutuhan operasional. Jadwal berikut menjadi acuan dokumentasi.
+
+| Tahap | Kegiatan utama | Deliverable |
+| --- | --- | --- |
+| Perencanaan kebutuhan | Pemetaan peran, proses, data sensitif, batas as-built | Daftar kebutuhan fungsional dan nonfungsional |
+| Perancangan pengguna | Rancangan panel, resource, form, alur status | Prototipe antarmuka dan diagram alur |
+| Konstruksi | Migration, model, service, panel, laporan, test | Implementasi modul pada lingkungan lokal |
+| Transisi dan verifikasi | Testing otomatis, hak akses, ekspor, pengujian manual | Hasil uji, dokumentasi as-built, laporan akhir |
+
+Setiap iterasi bekerja pada modul dengan prioritas: organisasi dan autentikasi, dinas dan absensi, KPI dan merit, kemudian kompetensi, pelatihan, dan mentoring. Perubahan pada satu modul diuji kembali bersama suite untuk memastikan tidak terjadi regresi pada modul lain.
+
 ## 2.3 Perangkat dan Teknologi Pengembangan
 
 ### 2.3.1 Bahasa dan Framework Backend
@@ -160,9 +177,13 @@ Tahap transisi memastikan implementasi dapat dijalankan pada lingkungan lokal da
 
 MySQL merupakan basis data default aplikasi. Konfigurasi container lokal memakai image MySQL 8.4.10. PHPUnit memakai SQLite in-memory agar test cepat dan terisolasi. Session, cache, queue, dan notification menggunakan driver basis data. Foto absensi disimpan pada disk `local` dan tidak dipublikasikan langsung dari direktori web.
 
+Penggunaan driver basis data untuk session, cache, dan queue menyederhanakan deployment karena tidak memerlukan proses eksternal tambahan seperti Redis atau memcached. Penyimpanan foto pada disk privat, bukan direktori web publik, menjadi lapisan awal perlindungan data sensitif sebelum pemeriksaan otorisasi pada endpoint foto.
+
 ### 2.3.4 Peta, Lokasi, dan Kamera
 
 Google Maps JavaScript API dan Places digunakan untuk pencarian serta pemilihan lokasi dinas. Browser Geolocation API membaca koordinat dan akurasi perangkat. MediaDevices API membuka kamera. Canvas browser dipakai untuk menghasilkan foto ber-watermark sebelum file dikirim ke server.
+
+Seluruh pengambilan data tersebut berjalan pada sisi klien tanpa modul backend tambahan. Watermark dibubuhkan pada browser agar konteks pegawai, waktu, dan koordinat selalu menyatu dengan bukti visual, sehingga berkas yang tersimpan di server langsung siap ditelaah tanpa proses pengolahan lanjutan.
 
 ### 2.3.5 Laporan dan Ekspor
 
@@ -172,7 +193,7 @@ Laporan dapat ditampilkan pada halaman web dan diekspor menggunakan:
 - OpenSpout `4.32.0` untuk XLSX;
 - `barryvdh/laravel-dompdf` `3.1.2` untuk PDF.
 
-CSV dan XLSX dikirim sebagai streamed response. Nilai teks yang dapat dibaca spreadsheet sebagai formula dinetralkan sebelum ekspor.
+CSV dan XLSX dikirim sebagai streamed response agar berkas besar tidak memberatkan memori. Nilai teks yang dapat dibaca spreadsheet sebagai formula dinetralkan dengan karakter pelindung sebelum ekspor untuk mencegah formula injection ketika berkas dibuka pada aplikasi spreadsheet.
 
 ### 2.3.6 Operasional dan Pengujian
 
@@ -187,3 +208,7 @@ CSV dan XLSX dikirim sebagai streamed response. Nilai teks yang dapat dibaca spr
 ### 2.3.7 Komponen yang Tidak Digunakan
 
 Implementasi aktif tidak memakai `face-api.js`, Laravel Reverb, Laravel Sanctum, Laravel Socialite, Web Push, WhatsApp, service worker absensi, atau IndexedDB untuk antrean luring. Komponen tersebut tidak menjadi bagian rancangan as-built karena tidak ditemukan pada dependency, route, maupun alur aplikasi saat ini.
+
+Penjelasan ini penting untuk menjaga konsistensi antara dokumentasi dan implementasi nyata. Fitur yang tidak dikembangkan secara sengaja tidak dilaporkan sebagai bagian sistem, sehingga laporan tidak menimbulkan ekspektasi yang melebihi kemampuan build aktif.
+
+---

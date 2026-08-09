@@ -13,6 +13,7 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use League\Csv\Writer as CsvWriter;
 use OpenSpout\Common\Entity\Row;
@@ -26,8 +27,8 @@ class HrReportController extends Controller
         'name' => 'Nama',
         'unit' => 'Unit',
         'position' => 'Jabatan',
-        'attendance_count' => 'Total Absensi',
-        'valid_attendance_count' => 'Absensi Valid',
+        'attendance_count' => 'Total Absensi Dinas',
+        'valid_attendance_count' => 'Absensi Dinas Valid',
         'merit_score' => 'Skor Merit',
         'training_count' => 'Pelatihan',
         'completed_training_count' => 'Pelatihan Selesai',
@@ -77,7 +78,7 @@ class HrReportController extends Controller
         }, 'laporan-sdm-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function exportPdf(Request $request): \Illuminate\Http\Response
+    public function exportPdf(Request $request): Response
     {
         $this->authorizeHr($request);
         $filters = $this->filters($request);
@@ -224,5 +225,4 @@ class HrReportController extends Controller
     {
         abort_unless($request->user()?->is_active && $request->user()->role === UserRole::Hr, 403);
     }
-
 }

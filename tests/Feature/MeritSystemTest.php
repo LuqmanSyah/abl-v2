@@ -65,6 +65,15 @@ class MeritSystemTest extends TestCase
 
         $result->verifyByManager($manager);
         $this->assertFalse($employee->meritResults()->visibleTo($employee)->exists());
+
+        try {
+            $result->verifyByHr($hr);
+            $this->fail('Merit tidak boleh dipublikasikan sebelum periode selesai.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Hasil merit hanya dapat dipublikasikan setelah periode selesai.', $exception->getMessage());
+        }
+
+        $this->travelTo($period->ends_at->copy()->addDay());
         $result->verifyByHr($hr);
 
         $this->assertNotNull($result->fresh()->published_at);
@@ -116,6 +125,7 @@ class MeritSystemTest extends TestCase
     {
         $manager = User::factory()->create(['role' => UserRole::Manager]);
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $employeeWithoutTrip = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
         $period = ReviewPeriod::create([
             'name' => 'Disiplin', 'starts_at' => today()->subDay(), 'ends_at' => today()->addDay(),
             'kpi_weight' => 0, 'discipline_weight' => 100, 'manager_weight' => 0,
@@ -132,9 +142,61 @@ class MeritSystemTest extends TestCase
         ]);
 
         $result = app(MeritCalculator::class)->calculate($period, $employee);
+        $withoutTrip = app(MeritCalculator::class)->calculate($period, $employeeWithoutTrip);
 
         $this->assertEquals(50, $result->discipline_score);
         $this->assertEquals(50, $result->total_score);
+        $this->assertEquals(100, $withoutTrip->discipline_score);
+        $this->assertEquals(100, $withoutTrip->total_score);
+    }
+
+    public function test_merit_requires_complete_weighted_inputs(): void
+    {
+        $unit = Unit::create(['name' => 'Operasional', 'code' => 'OPS']);
+        $manager = User::factory()->create(['role' => UserRole::Manager, 'unit_id' => $unit->id]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'unit_id' => $unit->id, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Kelengkapan', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 50, 'discipline_weight' => 0, 'manager_weight' => 25,
+            'review_360_weight' => 25, 'base_bonus' => 0,
+        ]);
+        $first = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 50]);
+        KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kecepatan', 'weight' => 50]);
+        EmployeeKpi::create([
+            'review_period_id' => $period->id, 'kpi_indicator_id' => $first->id,
+            'employee_id' => $employee->id, 'manager_id' => $manager->id,
+            'target' => 100, 'achievement' => 80,
+        ]);
+
+        try {
+            app(MeritCalculator::class)->calculate($period, $employee);
+            $this->fail('Merit dengan komponen wajib yang belum lengkap harus ditolak.');
+        } catch (DomainException $exception) {
+            $this->assertSame(
+                'Data merit belum lengkap: KPI Pegawai, penilaian Atasan, umpan balik Rekan.',
+                $exception->getMessage(),
+            );
+        }
+    }
+
+    public function test_upward_review_does_not_satisfy_peer_feedback(): void
+    {
+        $manager = User::factory()->create(['role' => UserRole::Manager]);
+        $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
+        $period = ReviewPeriod::create([
+            'name' => 'Peer', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'kpi_weight' => 0, 'discipline_weight' => 0, 'manager_weight' => 0,
+            'review_360_weight' => 100, 'base_bonus' => 0,
+        ]);
+        PerformanceReview::create([
+            'review_period_id' => $period->id, 'reviewer_id' => $employee->id,
+            'reviewee_id' => $manager->id, 'type' => ReviewType::EmployeeToManager,
+            'score' => 5, 'submitted_at' => now(),
+        ]);
+
+        $this->expectExceptionMessage('Data merit belum lengkap: umpan balik Rekan.');
+
+        app(MeritCalculator::class)->calculate($period, $manager);
     }
 
     public function test_merit_weights_must_total_one_hundred(): void
@@ -224,8 +286,8 @@ class MeritSystemTest extends TestCase
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
         $period = ReviewPeriod::create([
             'name' => 'Audit Merit', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
-            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 20,
-            'review_360_weight' => 20, 'base_bonus' => 1_000_000,
+            'kpi_weight' => 40, 'discipline_weight' => 20, 'manager_weight' => 40,
+            'review_360_weight' => 0, 'base_bonus' => 1_000_000,
         ]);
         $indicator = KpiIndicator::create(['review_period_id' => $period->id, 'name' => 'Kualitas', 'weight' => 100]);
 
@@ -281,7 +343,7 @@ class MeritSystemTest extends TestCase
         $employee = User::factory()->create(['role' => UserRole::Employee, 'manager_id' => $manager->id]);
         $hr = User::factory()->create(['role' => UserRole::Hr]);
         $period = ReviewPeriod::create([
-            'name' => 'Terkunci', 'starts_at' => today(), 'ends_at' => today()->addMonth(),
+            'name' => 'Terkunci', 'starts_at' => today()->subMonth(), 'ends_at' => today()->subDay(),
             'kpi_weight' => 100, 'discipline_weight' => 0, 'manager_weight' => 0,
             'review_360_weight' => 0, 'base_bonus' => 1_000_000,
         ]);

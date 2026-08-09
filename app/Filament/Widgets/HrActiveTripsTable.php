@@ -44,7 +44,7 @@ class HrActiveTripsTable extends TableWidget
                     ->label('Selesai')
                     ->dateTime('d M Y'),
                 TextColumn::make('attendance_status')
-                    ->label('Status Absensi')
+                    ->label('Status Absensi Dinas')
                     ->getStateUsing(function (DutyTrip $record): string {
                         $latest = $record->attendances->first();
 
@@ -60,7 +60,7 @@ class HrActiveTripsTable extends TableWidget
             ->recordActions([
                 ActionGroup::make([
                     Action::make('view_attendance')
-                        ->label('Lihat Absensi')
+                        ->label('Lihat Absensi Dinas')
                         ->icon('heroicon-o-eye')
                         ->url(fn (DutyTrip $record): string => AttendanceResource::getUrl('index', [
                             'tableFilters[duty_trip_id][value]' => $record->id,

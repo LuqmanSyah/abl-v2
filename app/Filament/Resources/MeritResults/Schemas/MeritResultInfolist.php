@@ -13,7 +13,7 @@ class MeritResultInfolist
         return $schema
             ->components([
                 Section::make('Ringkasan merit')
-                    ->description('Skor akhir dan estimasi bonus pegawai pada periode ini.')
+                    ->description('Skor akhir dan simulasi bonus pegawai. Simulasi tidak terhubung ke payroll.')
                     ->icon('heroicon-o-trophy')
                     ->columns(2)
                     ->schema([
@@ -30,13 +30,13 @@ class MeritResultInfolist
                                 default => 'danger',
                             }),
                         TextEntry::make('estimated_bonus')
-                            ->label('Estimasi bonus')
+                            ->label('Simulasi bonus')
                             ->money('IDR')
                             ->numeric(),
                     ])
                     ->columnSpanFull(),
                 Section::make('Komponen Nilai')
-                    ->description('Rincian nilai berdasarkan KPI, kedisiplinan, penilaian atasan, dan umpan balik kinerja.')
+                    ->description('Rincian nilai berdasarkan KPI, kepatuhan dinas, penilaian atasan, dan umpan balik rekan.')
                     ->icon('heroicon-o-chart-bar')
                     ->columns(4)
                     ->schema([
@@ -45,7 +45,7 @@ class MeritResultInfolist
                             ->numeric()
                             ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->kpi_weight ?? 0).'%'),
                         TextEntry::make('discipline_score')
-                            ->label('Nilai kedisiplinan')
+                            ->label('Nilai kepatuhan dinas')
                             ->numeric()
                             ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->discipline_weight ?? 0).'%'),
                         TextEntry::make('manager_score')
@@ -53,7 +53,7 @@ class MeritResultInfolist
                             ->numeric()
                             ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->manager_weight ?? 0).'%'),
                         TextEntry::make('review_360_score')
-                            ->label('Nilai umpan balik')
+                            ->label('Nilai umpan balik rekan')
                             ->numeric()
                             ->suffix(fn ($record): string => ' × '.($record->reviewPeriod->review_360_weight ?? 0).'%'),
                     ])

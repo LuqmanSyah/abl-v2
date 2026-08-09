@@ -44,7 +44,7 @@ class EmployeeActiveTripsTable extends TableWidget
                     ->label('Selesai')
                     ->dateTime('d M Y'),
                 TextColumn::make('attendance_status')
-                    ->label('Absensi')
+                    ->label('Absensi Dinas')
                     ->getStateUsing(fn (DutyTrip $record): string => $record->attended_today ? 'Sudah absen hari ini' : 'Belum absen hari ini')
                     ->color(fn (DutyTrip $record): string => $record->attended_today ? 'success' : 'danger')
                     ->badge(),

@@ -2,10 +2,8 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\UserRole;
 use App\Models\MeritResult;
 use App\Models\ReviewPeriod;
-use App\Models\User;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -16,7 +14,7 @@ class ManagerTeamMeritTable extends TableWidget
 
     protected static ?int $sort = 2;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -40,7 +38,7 @@ class ManagerTeamMeritTable extends TableWidget
                     ->numeric(decimalPlaces: 2)
                     ->color(fn ($state): string => (float) $state >= 80 ? 'success' : ((float) $state >= 60 ? 'warning' : 'danger')),
                 TextColumn::make('discipline_score')
-                    ->label('Kedisiplinan')
+                    ->label('Kepatuhan Dinas')
                     ->numeric(decimalPlaces: 2)
                     ->color(fn ($state): string => (float) $state >= 80 ? 'success' : ((float) $state >= 60 ? 'warning' : 'danger')),
                 TextColumn::make('total_score')
@@ -56,7 +54,7 @@ class ManagerTeamMeritTable extends TableWidget
             ])
             ->defaultSort('total_score', 'desc')
             ->emptyStateHeading('Belum ada hasil merit')
-            ->emptyStateDescription($period ? 'Periode ' . $period->name : 'Tidak ada periode aktif')
+            ->emptyStateDescription($period ? 'Periode '.$period->name : 'Tidak ada periode aktif')
             ->paginated(false);
     }
 }

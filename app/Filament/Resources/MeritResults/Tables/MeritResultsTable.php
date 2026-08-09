@@ -31,7 +31,7 @@ class MeritResultsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('discipline_score')
-                    ->label('Nilai kedisiplinan')
+                    ->label('Nilai kepatuhan dinas')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('manager_score')
@@ -39,7 +39,7 @@ class MeritResultsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('review_360_score')
-                    ->label('Nilai umpan balik')
+                    ->label('Nilai umpan balik rekan')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('total_score')
@@ -47,7 +47,7 @@ class MeritResultsTable
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('estimated_bonus')
-                    ->label('Estimasi bonus')
+                    ->label('Simulasi bonus')
                     ->money('IDR')
                     ->numeric()
                     ->sortable(),
@@ -85,7 +85,8 @@ class MeritResultsTable
                     ->color('success')
                     ->visible(fn (MeritResult $record): bool => auth()->user()?->role === UserRole::Manager
                         && $record->employee->manager_id === auth()->id()
-                        && $record->employee->is_active)
+                        && $record->employee->is_active
+                        && $record->published_at !== null)
                     ->modalHeading(fn (MeritResult $record): string => "Rekomendasi Pelatihan — {$record->employee->name}")
                     ->modalDescription('Rekomendasi langsung disetujui tanpa antrean verifikasi HR.')
                     ->modalWidth('5xl')

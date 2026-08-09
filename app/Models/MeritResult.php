@@ -164,6 +164,10 @@ class MeritResult extends Model
                 throw new BusinessRuleException('Verifikasi Atasan wajib selesai sebelum verifikasi HR.');
             }
 
+            if ($result->reviewPeriod->ends_at->endOfDay()->isFuture()) {
+                throw new BusinessRuleException('Hasil merit hanya dapat dipublikasikan setelah periode selesai.');
+            }
+
             $result->update(['hr_verified_by' => $hr->id, 'hr_verified_at' => now(), 'published_at' => now()]);
             ActivityLog::record('merit.hr_published', $result, $hr);
             $result->employee->notify(new MeritPublished($result));

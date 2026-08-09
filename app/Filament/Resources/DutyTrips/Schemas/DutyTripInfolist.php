@@ -41,8 +41,8 @@ class DutyTripInfolist
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
-                Section::make('Lokasi absensi')
-                    ->description('Titik dan radius yang menjadi acuan validasi absensi.')
+                Section::make('Lokasi absensi dinas')
+                    ->description('Titik dan radius yang menjadi acuan validasi absensi dinas.')
                     ->icon('heroicon-o-map-pin')
                     ->columns(2)
                     ->schema([

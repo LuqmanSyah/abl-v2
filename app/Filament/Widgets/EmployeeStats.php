@@ -39,8 +39,8 @@ class EmployeeStats extends StatsOverviewWidget
                 ->color('success')
                 ->icon(Heroicon::OutlinedCheckBadge)
                 ->url(DutyTripResource::getUrl()),
-            Stat::make('Riwayat absensi', Attendance::where('employee_id', $userId)->count())
-                ->description('Lihat bukti dan status absensi')
+            Stat::make('Riwayat absensi dinas', Attendance::where('employee_id', $userId)->count())
+                ->description('Lihat bukti dan status absensi dinas')
                 ->color('info')
                 ->icon(Heroicon::OutlinedMapPin)
                 ->url(AttendanceResource::getUrl()),
@@ -59,8 +59,8 @@ class EmployeeStats extends StatsOverviewWidget
                 ->color('primary')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->url(MentoringResource::getUrl()),
-            Stat::make('Absensi hari ini', Attendance::where('employee_id', $userId)->whereDate('captured_at', $today)->count())
-                ->description('Status absensi hari ini')
+            Stat::make('Absensi dinas hari ini', Attendance::where('employee_id', $userId)->whereDate('captured_at', $today)->count())
+                ->description('Status absensi dinas hari ini')
                 ->color(Attendance::where('employee_id', $userId)->whereDate('captured_at', $today)->exists() ? 'success' : 'warning')
                 ->icon(Heroicon::OutlinedClock)
                 ->url(AttendanceResource::getUrl()),

@@ -26,7 +26,7 @@ class AttendanceRecorder
             $trip = DutyTrip::query()->lockForUpdate()->findOrFail($trip->getKey());
 
             if ($trip->employee_id !== $employee->id) {
-                throw new BusinessRuleException('Absensi hanya tersedia untuk pegawai yang ditugaskan.');
+                throw new BusinessRuleException('Absensi dinas hanya tersedia untuk pegawai yang ditugaskan.');
             }
 
             $capturedAt = CarbonImmutable::parse($data['captured_at']);
@@ -37,13 +37,13 @@ class AttendanceRecorder
             }
 
             if ($trip->status !== DutyTripStatus::Approved) {
-                throw new BusinessRuleException('Absensi hanya tersedia untuk dinas aktif.');
+                throw new BusinessRuleException('Absensi dinas hanya tersedia untuk dinas aktif.');
             }
 
             $receivedAt = CarbonImmutable::now();
 
             if ($receivedAt->isBefore($trip->starts_at) || $capturedAt->isBefore($trip->starts_at)) {
-                throw new BusinessRuleException('Absensi belum dibuka. Coba lagi saat jadwal dinas dimulai.');
+                throw new BusinessRuleException('Absensi dinas belum dibuka. Coba lagi saat jadwal dinas dimulai.');
             }
 
             $distance = GeoDistance::meters(
@@ -54,7 +54,10 @@ class AttendanceRecorder
             );
             $clockMismatch = abs($capturedAt->getTimestamp() - $receivedAt->getTimestamp())
                 > config('hr.attendance_clock_tolerance_minutes') * 60;
+            $accuracy = isset($data['accuracy_meters']) ? (int) $data['accuracy_meters'] : null;
+            $inaccurate = $accuracy === null || $accuracy > config('hr.attendance_max_accuracy_meters');
             $status = match (true) {
+                $inaccurate => AttendanceStatus::NeedsReview,
                 $distance > $trip->radius_meters => AttendanceStatus::NeedsReview,
                 $capturedAt->isAfter($trip->ends_at) => AttendanceStatus::Late,
                 default => AttendanceStatus::Valid,
@@ -65,9 +68,10 @@ class AttendanceRecorder
             }
 
             $reasons = array_filter([
+                $inaccurate ? 'Akurasi GPS tidak tersedia atau melewati batas.' : null,
                 $clockMismatch ? 'Waktu perangkat melewati batas toleransi.' : null,
                 $distance > $trip->radius_meters ? 'Lokasi berada di luar radius dinas.' : null,
-                $capturedAt->isAfter($trip->ends_at) ? 'Absensi dilakukan setelah jadwal dinas berakhir.' : null,
+                $capturedAt->isAfter($trip->ends_at) ? 'Absensi dinas dilakukan setelah jadwal berakhir.' : null,
             ]);
 
             $attendance = Attendance::create([
@@ -77,7 +81,7 @@ class AttendanceRecorder
                 'captured_at' => $capturedAt,
                 'latitude' => $data['latitude'],
                 'longitude' => $data['longitude'],
-                'accuracy_meters' => $data['accuracy_meters'] ?? null,
+                'accuracy_meters' => $accuracy,
                 'distance_meters' => $distance,
                 'photo_path' => $photoPath,
                 'status' => $status,

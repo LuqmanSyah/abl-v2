@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#2563eb">
-    <title>Absensi · {{ $trip->destination }}</title>
+    <title>Absensi Dinas · {{ $trip->destination }}</title>
     <style>
         :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; }
         * { box-sizing: border-box; }
@@ -88,14 +88,14 @@
 
             @php $todayAttendance = $trip->attendances()->whereDate('captured_at', today())->first(); @endphp
             @if ($todayAttendance)
-                <p class="notice success">Absensi hari ini sudah tercatat dengan status <strong>{{ $todayAttendance->status->label() }}</strong>.</p>
+                <p class="notice success">Absensi dinas hari ini sudah tercatat dengan status <strong>{{ $todayAttendance->status->label() }}</strong>.</p>
             @elseif (now()->isBefore($trip->starts_at))
-                <p class="notice warning">Absensi dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y, H:i') }} WIB</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
+                <p class="notice warning">Absensi dinas dibuka pada <strong>{{ $trip->starts_at->translatedFormat('d F Y, H:i') }} WIB</strong>. Kembali ke halaman ini saat jadwal dimulai.</p>
             @else
-                <ol class="steps" aria-label="Langkah absensi">
+                <ol class="steps" aria-label="Langkah absensi dinas">
                     <li>Izinkan browser mengakses kamera dan lokasi akurat.</li>
                     <li>Ambil foto wajah di lokasi tugas.</li>
-                    <li>Pastikan perangkat online, lalu kirim absensi.</li>
+                    <li>Pastikan perangkat online, lalu kirim absensi dinas.</li>
                 </ol>
 
                 <div id="camera-ui">
@@ -111,12 +111,12 @@
                 </div>
 
                 <form id="attendance-form" hidden>
-                    <button id="submit" class="btn btn-primary" type="submit">Ambil lokasi dan simpan absensi</button>
+                    <button id="submit" class="btn btn-primary" type="submit">Ambil lokasi dan simpan absensi dinas</button>
                 </form>
             @endif
 
             <p id="status" role="status" aria-live="polite"></p>
-            <p class="privacy">Lokasi dan foto hanya dipakai untuk verifikasi dinas. Absensi memerlukan koneksi internet dan tidak disimpan pada browser.</p>
+            <p class="privacy">Lokasi dan foto hanya dipakai untuk verifikasi dinas. Absensi dinas memerlukan koneksi internet dan tidak disimpan pada browser.</p>
         </div>
     </article>
 </main>
@@ -264,7 +264,7 @@ async function send(data) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-        throw new Error(payload.message || 'Absensi gagal disimpan. Coba lagi.');
+        throw new Error(payload.message || 'Absensi dinas gagal disimpan. Coba lagi.');
     }
 
     return payload;
@@ -295,12 +295,12 @@ form?.addEventListener('submit', async event => {
         button.textContent = 'Menyimpan…';
         const payload = await send(data);
         form.setAttribute('hidden', 'hidden');
-        setStatus(payload.message || 'Absensi berhasil disimpan.', 'success');
+        setStatus(payload.message || 'Absensi dinas berhasil disimpan.', 'success');
     } catch (error) {
-        setStatus(error.message || 'Absensi gagal diproses. Coba lagi.', 'error');
+        setStatus(error.message || 'Absensi dinas gagal diproses. Coba lagi.', 'error');
     } finally {
         button.disabled = false;
-        button.textContent = 'Ambil lokasi dan simpan absensi';
+        button.textContent = 'Ambil lokasi dan simpan absensi dinas';
     }
 });
 

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\AttendanceStatus;
 use App\Enums\DutyTripStatus;
 use App\Enums\ReviewType;
+use App\Exceptions\BusinessRuleException;
 use App\Models\ActivityLog;
 use App\Models\DutyTrip;
 use App\Models\EmployeeKpi;
@@ -31,6 +32,35 @@ class MeritCalculator
             }
 
             $kpis = EmployeeKpi::with('indicator')->where('review_period_id', $period->id)->where('employee_id', $employee->id)->get();
+            $missing = collect();
+
+            if ($period->kpi_weight > 0) {
+                $indicators = $period->indicators()->get();
+
+                if ((int) $indicators->sum('weight') !== 100
+                    || $indicators->pluck('id')->diff($kpis->pluck('kpi_indicator_id'))->isNotEmpty()) {
+                    $missing->push('KPI Pegawai');
+                }
+            }
+
+            if ($period->manager_weight > 0 && PerformanceReview::where('review_period_id', $period->id)
+                ->where('reviewee_id', $employee->id)
+                ->where('type', ReviewType::ManagerToEmployee)
+                ->doesntExist()) {
+                $missing->push('penilaian Atasan');
+            }
+
+            if ($period->review_360_weight > 0 && PerformanceReview::where('review_period_id', $period->id)
+                ->where('reviewee_id', $employee->id)
+                ->where('type', ReviewType::Peer)
+                ->doesntExist()) {
+                $missing->push('umpan balik Rekan');
+            }
+
+            if ($missing->isNotEmpty()) {
+                throw new BusinessRuleException('Data merit belum lengkap: '.$missing->join(', ').'.');
+            }
+
             $indicatorWeight = $kpis->sum(fn (EmployeeKpi $kpi) => $kpi->indicator?->weight ?? 0);
             $kpiScore = $indicatorWeight
                 ? $kpis->sum(fn (EmployeeKpi $kpi) => min((float) $kpi->achievement / max((float) $kpi->target, 0.01), 1.2) * ($kpi->indicator?->weight ?? 0)) / $indicatorWeight * 100
@@ -59,10 +89,10 @@ class MeritCalculator
             }
             $totalDays = $allDates->count();
             $validDays = $validDates->count();
-            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 0;
+            $disciplineScore = $totalDays ? min($validDays / $totalDays * 100, 100) : 100;
 
             $managerScore = $this->reviewScore($period, $employee, [ReviewType::ManagerToEmployee]);
-            $review360Score = $this->reviewScore($period, $employee, [ReviewType::EmployeeToManager, ReviewType::Peer]);
+            $review360Score = $this->reviewScore($period, $employee, [ReviewType::Peer]);
             $total = ($kpiScore * $period->kpi_weight + $disciplineScore * $period->discipline_weight
                 + $managerScore * $period->manager_weight + $review360Score * $period->review_360_weight) / 100;
             $scores = [

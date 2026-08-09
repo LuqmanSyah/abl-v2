@@ -34,7 +34,7 @@ class HrAttendanceDropAlert extends StatsOverviewWidget
         }
 
         return [
-            Stat::make('Pegawai dengan Penurunan Absensi', $dropped)
+            Stat::make('Pegawai dengan Penurunan Absensi Dinas', $dropped)
                 ->description('Perbandingan 2 bulan terakhir')
                 ->color($dropped > 0 ? 'danger' : 'success')
                 ->icon('heroicon-o-exclamation-triangle'),

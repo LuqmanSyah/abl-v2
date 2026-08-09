@@ -58,7 +58,7 @@ class DutyTripForm
                         Hidden::make('manager_id'),
                         Hidden::make('status')->default(DutyTripStatus::Approved->value),
                     ]),
-                Section::make('Lokasi absensi')
+                Section::make('Lokasi absensi dinas')
                     ->description('Pilih lokasi tersimpan atau tentukan titik baru. Data lokasi tersimpan akan mengisi form otomatis.')
                     ->icon('heroicon-o-map-pin')
                     ->columnSpanFull()
@@ -93,7 +93,7 @@ class DutyTripForm
                             ->placeholder('Contoh: Kantor Cabang Jakarta')
                             ->required(),
                         TextInput::make('radius_meters')
-                            ->label('Batas jarak absensi (meter)')
+                            ->label('Batas jarak absensi dinas (meter)')
                             ->helperText('Pegawai di luar jarak ini akan ditandai untuk diperiksa.')
                             ->required()
                             ->numeric()

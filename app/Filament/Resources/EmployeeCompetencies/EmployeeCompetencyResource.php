@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EmployeeCompetencies;
 
+use App\Enums\CompetencyLevel;
 use App\Enums\UserRole;
 use App\Filament\Resources\EmployeeCompetencies\Pages\ListEmployeeCompetencies;
 use App\Models\EmployeeCompetency;
@@ -11,7 +12,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -78,7 +78,7 @@ class EmployeeCompetencyResource extends Resource
                 ->relationship('employee', 'name', fn (Builder $query) => $query->where('role', UserRole::Employee))
                 ->searchable()->preload()->required(),
             Select::make('competency_id')->label('Kompetensi')->relationship('competency', 'name')->searchable()->preload()->required(),
-            TextInput::make('level')->label('Level saat ini')->numeric()->minValue(1)->maxValue(5)->required(),
+            Select::make('level')->label('Level saat ini')->options(CompetencyLevel::options())->required(),
             DatePicker::make('assessed_at')->label('Tanggal penilaian')->default(today())->required(),
             Textarea::make('notes')->label('Catatan')->columnSpanFull(),
         ]);

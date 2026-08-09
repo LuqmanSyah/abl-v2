@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PositionCompetencies;
 
+use App\Enums\CompetencyLevel;
 use App\Enums\UserRole;
 use App\Filament\Resources\PositionCompetencies\Pages\ListPositionCompetencies;
 use App\Models\PositionCompetency;
@@ -9,7 +10,6 @@ use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -57,7 +57,7 @@ class PositionCompetencyResource extends Resource
         return $schema->components([
             Select::make('position_id')->label('Jabatan')->relationship('position', 'name')->searchable()->preload()->required(),
             Select::make('competency_id')->label('Kompetensi')->relationship('competency', 'name')->searchable()->preload()->required(),
-            TextInput::make('required_level')->label('Level wajib')->numeric()->minValue(1)->maxValue(5)->required(),
+            Select::make('required_level')->label('Level wajib')->options(CompetencyLevel::options())->required(),
         ]);
     }
 

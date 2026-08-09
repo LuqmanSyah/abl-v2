@@ -10,7 +10,7 @@ use Illuminate\Support\Collection;
 
 class CareerGapService
 {
-    /** @return Collection<int, array{competency: string, current: int, required: int, gap: int, recommendations: string}> */
+    /** @return Collection<int, array{competency: string, current: ?int, required: int, gap: int, recommendations: string}> */
     public function analyze(CareerGoal $goal): Collection
     {
         if (! $goal->target_position_id || ! $goal->targetPosition) {
@@ -20,14 +20,16 @@ class CareerGapService
         $standards = PositionCompetency::with('competency')
             ->where('position_id', $goal->target_position_id)
             ->get();
-        $trainings = Training::where('is_active', true)
+        $trainings = Training::available()
             ->whereIn('competency_id', $standards->pluck('competency_id'))
             ->get()
             ->groupBy('competency_id');
 
         return $standards->map(function (PositionCompetency $standard) use ($levels, $trainings): array {
-            $current = (int) ($levels[$standard->competency_id] ?? 0);
-            $gap = max(0, $standard->required_level - $current);
+            $current = $levels->has($standard->competency_id)
+                ? (int) $levels[$standard->competency_id]
+                : null;
+            $gap = max(0, $standard->required_level - ($current ?? 0));
             $names = $trainings->get($standard->competency_id, collect())->pluck('name')->join(', ');
 
             return [
@@ -42,10 +44,19 @@ class CareerGapService
 
     public function summary(CareerGoal $goal): string
     {
-        $gaps = $this->analyze($goal)->where('gap', '>', 0);
+        $analysis = $this->analyze($goal);
+        if ($analysis->isEmpty()) {
+            return 'Standar kompetensi jabatan belum ditetapkan.';
+        }
+
+        $gaps = $analysis->where('gap', '>', 0);
 
         return $gaps->isEmpty()
             ? 'Semua standar kompetensi terpenuhi.'
-            : $gaps->map(fn (array $gap): string => "{$gap['competency']}: {$gap['current']}/{$gap['required']} — {$gap['recommendations']}")->join("\n");
+            : $gaps->map(function (array $gap): string {
+                $current = $gap['current'] ?? 'Belum dinilai';
+
+                return "{$gap['competency']}: {$current}/{$gap['required']} — {$gap['recommendations']}";
+            })->join("\n");
     }
 }

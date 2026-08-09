@@ -3,9 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\MentoringStatus;
-use App\Enums\TrainingRequestStatus;
 use App\Filament\Resources\Mentorings\MentoringResource;
-use App\Filament\Resources\TrainingRequests\TrainingRequestResource;
 use App\Models\Mentoring;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -19,7 +17,7 @@ class ManagerPendingApprovalsTable extends TableWidget
 
     protected static ?int $sort = 3;
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -47,7 +45,7 @@ class ManagerPendingApprovalsTable extends TableWidget
                         ->label('Atur Jadwal')
                         ->icon('heroicon-o-calendar')
                         ->color('primary')
-                        ->url(fn (Mentoring $record): string => MentoringResource::getUrl('edit', [$record])),
+                        ->url(fn (): string => MentoringResource::getUrl('index')),
                 ]),
             ])
             ->emptyStateHeading('Tidak ada permintaan mentoring')

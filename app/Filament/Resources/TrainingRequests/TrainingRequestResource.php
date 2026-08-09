@@ -39,7 +39,7 @@ class TrainingRequestResource extends Resource
         return match (auth()->user()?->role) {
             UserRole::Employee => 'Pengajuan Pelatihan',
             UserRole::Manager => 'Persetujuan Pelatihan',
-            UserRole::Hr => 'Verifikasi Pelatihan',
+            UserRole::Hr => 'Verifikasi & Hasil Pelatihan',
             default => 'Pengajuan Pelatihan',
         };
     }
@@ -79,7 +79,7 @@ class TrainingRequestResource extends Resource
             Select::make('training_id')
                 ->label('Pelatihan')
                 ->relationship('training', 'name', fn (Builder $query) => $query
-                    ->where('is_active', true)
+                    ->available()
                     ->whereDoesntHave('requests', fn (Builder $query) => $query->where('user_id', auth()->id())))
                 ->searchable()
                 ->preload()
@@ -99,6 +99,7 @@ class TrainingRequestResource extends Resource
                     ->formatStateUsing(fn ($state): string => $state instanceof TrainingRequestStatus ? $state->label() : (string) $state),
                 TextColumn::make('reason')->label('Alasan')->limit(50),
                 TextColumn::make('manager_notes')->label('Catatan Atasan')->limit(50)->placeholder('-'),
+                TextColumn::make('hr_notes')->label('Catatan HR')->limit(50)->placeholder('-'),
                 TextColumn::make('hr_result')->label('Hasil')->limit(50)->placeholder('-'),
                 TextColumn::make('requested_at')->label('Diajukan')->dateTime()->sortable(),
             ])
@@ -139,6 +140,13 @@ class TrainingRequestResource extends Resource
                     ->modalWidth('md')
                     ->visible(fn ($record): bool => auth()->user()->role === UserRole::Hr && $record->status === TrainingRequestStatus::PendingHr)
                     ->action(fn ($record) => $record->verifyByHr(auth()->user())),
+                Action::make('reject_hr')->label('Tolak HR')->color('danger')
+                    ->modalHeading('Tolak Pengajuan Pelatihan')
+                    ->modalDescription('Pengajuan akan dikembalikan kepada Pegawai dengan alasan penolakan.')
+                    ->modalSubmitActionLabel('Tolak Pengajuan')
+                    ->schema([Textarea::make('notes')->label('Alasan')->required()])
+                    ->visible(fn ($record): bool => auth()->user()->role === UserRole::Hr && $record->status === TrainingRequestStatus::PendingHr)
+                    ->action(fn ($record, array $data) => $record->rejectByHr(auth()->user(), $data['notes'])),
                 Action::make('complete')->label('Catat Hasil')->color('success')
                     ->modalHeading('Selesaikan Pelatihan')
                     ->modalDescription('Catat hasil pelatihan sebelum menandai pengajuan sebagai selesai.')

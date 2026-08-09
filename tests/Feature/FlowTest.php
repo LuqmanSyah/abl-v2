@@ -168,14 +168,17 @@ class FlowTest extends TestCase
         // TRAINING — manager rekomendasi jalur
         $second = Training::create(['name' => 'Komunikasi', 'type' => 'internal', 'is_active' => true]);
         $rec = TrainingRequest::recommendByManager($manager, $employee, $second, $result, 'Rekomendasi');
+        $this->assertSame(TrainingRequestStatus::PendingHr, $rec->status);
+        $rec->verifyByHr($hr);
         $this->assertSame(TrainingRequestStatus::Approved, $rec->status);
 
         // ===== 10. MENTORING =====
         $mentoring = Mentoring::create([
             'employee_id' => $employee->id, 'manager_id' => $manager->id,
-            'topic' => 'Karier', 'target' => 'Promosi', 'requested_at' => now()->addDay(),
+            'topic' => 'Karier', 'target' => 'Promosi', 'requested_at' => now()->addMinute(),
         ]);
-        $mentoring->approve($manager, now()->addDays(2), 'Siapkan agenda');
+        $mentoring->approve($manager, now()->addMinute(), 'Siapkan agenda');
+        $this->travel(2)->minutes();
         $mentoring->complete($manager, 'Target jelas', 'Evaluasi bulan depan');
         $this->assertSame(MentoringStatus::Completed, $mentoring->fresh()->status);
 

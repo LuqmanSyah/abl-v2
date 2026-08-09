@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CompetencyLevel;
 use App\Enums\UserRole;
 use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,7 +24,7 @@ class EmployeeCompetency extends Model
     protected static function booted(): void
     {
         static::saving(function (self $competency): void {
-            if ($competency->level < 1 || $competency->level > 5) {
+            if (! CompetencyLevel::tryFrom((int) $competency->level)) {
                 throw new BusinessRuleException('Level kompetensi Pegawai harus 1 sampai 5.');
             }
             if ($competency->assessed_at?->isFuture()) {

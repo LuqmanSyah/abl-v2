@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CompetencyLevel;
 use App\Exceptions\BusinessRuleException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,7 @@ class PositionCompetency extends Model
     protected static function booted(): void
     {
         static::saving(function (self $standard): void {
-            if ($standard->required_level < 1 || $standard->required_level > 5) {
+            if (! CompetencyLevel::tryFrom((int) $standard->required_level)) {
                 throw new BusinessRuleException('Level kompetensi jabatan harus 1 sampai 5.');
             }
         });

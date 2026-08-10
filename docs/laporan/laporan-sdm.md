@@ -303,8 +303,7 @@ Logika yang membutuhkan perhitungan atau koordinasi beberapa model ditempatkan p
 - `GeoDistance` untuk perhitungan jarak Haversine;
 - `MeritCalculator` dan `MeritBatchCalculator` untuk perhitungan merit;
 - `CareerGapService` untuk analisis kesenjangan kompetensi;
-- `HrReportService` untuk menyusun data laporan lintas modul;
-- `SqliteBackup` untuk backup dan pemulihan basis data SQLite pada lingkungan yang sesuai.
+- `HrReportService` untuk menyusun data laporan lintas modul.
 
 Pemisahan tersebut mengurangi duplikasi logika pada controller, command, dan komponen Filament. Walaupun nama dan tanggung jawabnya menyerupai layanan, seluruh class tetap dipanggil di dalam proses aplikasi yang sama.
 
@@ -489,12 +488,6 @@ CSV dan XLSX dikirim sebagai streamed response agar berkas besar tidak memberatk
 | GitHub Actions | Workflow proyek | Continuous integration |
 | Sentry Laravel SDK | `4.27.0` | Monitoring bila DSN dikonfigurasi |
 | Laravel Scheduler | Bawaan framework | Kalkulasi, pengingat, laporan, dan backup terjadwal |
-
-### 2.3.7 Komponen yang Tidak Digunakan
-
-Implementasi aktif tidak memakai `face-api.js`, Laravel Reverb, Laravel Sanctum, Laravel Socialite, Web Push, WhatsApp, service worker absensi, atau IndexedDB untuk antrean luring. Komponen tersebut tidak menjadi bagian rancangan as-built karena tidak ditemukan pada dependency, route, maupun alur aplikasi saat ini.
-
-Penjelasan ini penting untuk menjaga konsistensi antara dokumentasi dan implementasi nyata. Fitur yang tidak dikembangkan secara sengaja tidak dilaporkan sebagai bagian sistem, sehingga laporan tidak menimbulkan ekspektasi yang melebihi kemampuan build aktif.
 
 ---
 
